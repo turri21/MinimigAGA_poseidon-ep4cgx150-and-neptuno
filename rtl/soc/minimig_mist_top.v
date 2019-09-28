@@ -163,6 +163,8 @@ wire           user_io_sdo;
 wire           minimig_sdo;
 wire [  16-1:0] joya;
 wire [  16-1:0] joyb;
+wire [  16-1:0] joyc;
+wire [  16-1:0] joyd;
 wire [  8-1:0] kbd_mouse_data;
 wire           kbd_mouse_strobe;
 wire           kms_level;
@@ -476,6 +478,8 @@ user_io user_io(
      .SPI_MOSI(SPI_DI),
      .JOY0(joya),
      .JOY1(joyb),
+     .JOY2(joyc),
+     .JOY3(joyd),
      .MOUSE_BUTTONS(mouse_buttons),
      .KBD_MOUSE_DATA(kbd_mouse_data),
      .KBD_MOUSE_TYPE(kbd_mouse_type),
@@ -529,6 +533,8 @@ minimig minimig (
   //I/O
   ._joy1        (~joya            ),  // joystick 1 [fire7:fire,up,down,left,right] (default mouse port)
   ._joy2        (~joyb            ),  // joystick 2 [fire7:fire,up,down,left,right] (default joystick port)
+  ._joy3        (~joyc            ),  // joystick 3 [fire7:fire,up,down,left,right]
+  ._joy4        (~joyd            ),  // joystick 4 [fire7:fire,up,down,left,right]
   .mouse_btn1   (1'b1             ), // mouse button 1
   .mouse_btn2   (1'b1             ), // mouse button 2
   .mouse_btn    (mouse_buttons    ),  // mouse buttons

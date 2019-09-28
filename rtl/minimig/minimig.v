@@ -189,6 +189,8 @@ module minimig
 	//I/O
 	input	[15:0]_joy1,		//joystick 1 [fire7:fire,up,down,left,right] (default mouse port)
 	input	[15:0]_joy2,		//joystick 2 [fire7:fire,up,down,left,right] (default joystick port)
+	input	[15:0]_joy3,		//joystick 3 [fire7:fire,up,down,left,right]
+	input	[15:0]_joy4,		//joystick 4 [fire7:fire,up,down,left,right]
   input mouse_btn1, // mouse button 1
   input mouse_btn2, // mouse button 2
   input [2:0] mouse_btn, // mouse buttons
@@ -747,6 +749,7 @@ ciaa CIAA1
 	.irq(int2),
 	.porta_in({_fire1,_fire0,_ready,_track0,_wprot,_change}),
 	.porta_out({_fire1_dat,_fire0_dat,_led,ovl}),
+	.portb_in({_joy4[0],_joy4[1],_joy4[2],_joy4[3],_joy3[0],_joy3[1],_joy3[2],_joy3[3]}),
 	.kbdrst(kbdrst),
 	.kbddat(kbddat),
 	.kbdclk(kbdclk),
@@ -782,7 +785,7 @@ ciab CIAB1
 	.eclk(eclk[8]),
 	.irq(int6),
 	.flag(index),
-	.porta_in({1'b0,cts,1'b0}),
+	.porta_in({1'b0,cts,1'b0,_joy3[4],1'b1,_joy4[4]}),
 	.porta_out({dtr,rts}),
 	.portb_out({_motor,_sel3,_sel2,_sel1,_sel0,side,direc,_step})
 );

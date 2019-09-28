@@ -94,6 +94,7 @@ module ciaa
   output   irq,           // interrupt request out
   input  [7:2] porta_in,   // porta in
   output   [3:0] porta_out,  // porta out
+  input  [7:0] portb_in,   // portb in
   output  kbdrst,        // keyboard reset out
   inout  kbddat,        // ps2 keyboard data
   inout  kbdclk,        // ps2 keyboard clock
@@ -369,7 +370,7 @@ always @(posedge clk)
 always @(*)
 begin
   if (!wr && prb)
-    pb_out[7:0] = (portb_out[7:0]);
+    pb_out[7:0] = (portb_in[7:0]);
   else if (!wr && ddrb)
     pb_out[7:0] = (ddrportb[7:0]);
   else
