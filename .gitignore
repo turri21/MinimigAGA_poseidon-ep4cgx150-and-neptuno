@@ -23,6 +23,7 @@ rel/
 fpga/*/out/
 fpga/*/db/
 fpga/*/incremental_db/
+greybox_tmp/
 
 # build script shouldn't be in repo
 build.sh
