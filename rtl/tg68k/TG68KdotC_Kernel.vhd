@@ -1226,9 +1226,9 @@ PROCESS (clk, IPL, setstate, state, exec_write_back, set_direct_data, next_micro
 	if exec(andisR) = '1' then
 	  SRin <= FlagsSR and last_data_read(15 downto 8);
 	elsif exec(eorisR) = '1' then
-	  SRin <= FlagsSR Xor last_data_read(15 downto 8);
+	  SRin <= FlagsSR Xor (last_data_read(15 downto 8) and x"f7");
 	elsif exec(orisR) = '1' then
-	  SRin <= FlagsSR or last_data_read(15 downto 8);
+	  SRin <= FlagsSR or (last_data_read(15 downto 8) and x"f7");
 	else
 	  SRin <= OP2out(15 downto 8);
 	end if;
