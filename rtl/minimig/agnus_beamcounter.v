@@ -82,10 +82,10 @@ parameter	BEAMCON0 = 9'h1DC;
 parameter	VSSTRT   = 9'h1E0;
 parameter	HCENTER  = 9'h1E2;
 
-parameter	HBSTRT_VAL      = 17+4+4;	// horizontal blanking start
+parameter	HBSTRT_VAL      = 17+4+4-12;// horizontal blanking start
 parameter	HSSTRT_VAL      = 29+4+4;	// front porch = 1.6us (29)
 parameter	HSSTOP_VAL      = 63-1+4+4;	// hsync pulse duration = 4.7us (63)
-parameter	HBSTOP_VAL      = 103-5+4;	// back porch = 4.7us (103) shorter blanking for overscan visibility
+parameter	HBSTOP_VAL      = 103-5+4-12;// back porch = 4.7us (103) shorter blanking for overscan visibility
 parameter	HCENTER_VAL     = 256+4+4;	// position of vsync pulse during the long field of interlaced screen
 parameter	VSSTRT_VAL      = 2; //3	// vertical sync start
 parameter	VSSTOP_VAL      = 5;	// PAL vsync width: 2.5 lines (NTSC: 3 lines - not implemented)
