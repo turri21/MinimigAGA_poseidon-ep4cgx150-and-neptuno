@@ -76,6 +76,7 @@ end TG68K;
 
 ARCHITECTURE logic OF TG68K IS
 
+SIGNAL addrtg68         : std_logic_vector(31 downto 0);
 SIGNAL cpuaddr          : std_logic_vector(31 downto 0);
 SIGNAL r_data           : std_logic_vector(15 downto 0);
 SIGNAL cpuIPL           : std_logic_vector(2 downto 0);
@@ -208,6 +209,8 @@ BEGIN
     ELSE cpuaddr(23 downto 21);
   ramaddr(20 downto 0) <= cpuaddr(20 downto 0);
 
+  -- 32bit address space for 68020, limit address space to 24bit for 68000/68010
+  cpuaddr <= addrtg68 WHEN cpu(1) = '1' ELSE "00000000" & addrtg68(23 downto 0);
 
 pf68K_Kernel_inst: work.TG68KdotC_Kernel
   generic map (
@@ -227,7 +230,7 @@ pf68K_Kernel_inst: work.TG68KdotC_Kernel
     IPL_autovector  => '1',           -- : in std_logic:='0';
     CPU             => cpu,
     regin_out       => open,          -- : out std_logic_vector(31 downto 0);
-    addr_out        => cpuaddr,       -- : buffer std_logic_vector(31 downto 0);
+    addr_out        => addrtg68,      -- : buffer std_logic_vector(31 downto 0);
     data_write      => data_write,    -- : out std_logic_vector(15 downto 0);
     busstate        => state,         -- : buffer std_logic_vector(1 downto 0);
     nWr             => wr,            -- : out std_logic;
@@ -252,7 +255,7 @@ PROCESS (clk, turbochipram, turbokick) BEGIN
   END IF;
 END PROCESS;
 
-PROCESS (clk, fastramcfg, cpuaddr) BEGIN
+PROCESS (clk, fastramcfg, cpuaddr, cpu) BEGIN
   -- Zorro II RAM (Up to 8 meg at 0x200000)
   autoconfig_data <= "1111";
   IF fastramcfg/="000" THEN
@@ -275,7 +278,7 @@ PROCESS (clk, fastramcfg, cpuaddr) BEGIN
 
   -- Zorro III RAM (Up to 16 meg, address assigned by ROM)
   autoconfig_data2 <= "1111";
-  IF fastramcfg(2)='1' THEN -- Zorro III RAM
+  IF fastramcfg(2)='1' AND cpu(1)='1' THEN -- Zorro III 32bit RAM, 68020
     CASE cpuaddr(6 downto 1) IS
       WHEN "000000" => autoconfig_data2 <= "1010";    -- Zorro-III card, add mem, no ROM
       WHEN "000001" => autoconfig_data2 <= "0000";    -- 8MB (extended to 16 in reg 08)
