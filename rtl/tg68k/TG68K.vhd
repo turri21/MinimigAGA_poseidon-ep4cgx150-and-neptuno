@@ -139,12 +139,16 @@ SIGNAL sel_nmi_vector   : std_logic;
 BEGIN
 
   -- NMI
-  PROCESS(clk) BEGIN
+  PROCESS(reset, clk) BEGIN
+    IF reset='0' THEN
+      NMI_addr <= X"0000007c";
+    ELSE
+      NMI_addr <= VBR_out + X"0000007c";
+    END IF;
     IF rising_edge(clk) THEN
-      IF reset='0' THEN
-        NMI_addr <= X"0000007c";
-      ELSE
-        NMI_addr <= VBR_out + X"0000007c";
+	  sel_nmi_vector <= '0';
+      IF (cpuaddr(31 downto 2) = NMI_addr(31 downto 2)) AND state="10" THEN
+        sel_nmi_vector <= '1';
       END IF;
     END IF;
   END PROCESS;
@@ -168,7 +172,6 @@ BEGIN
   sel_slow        <= '1' WHEN (cpuaddr(31 downto 24) = "00000000") AND ((cpuaddr(23 downto 20)="1100") OR (cpuaddr(23 downto 19)="11010")) ELSE '0'; -- $C00000 - $D7FFFF
   sel_slowram     <= '1' WHEN sel_slow='1' AND turbochip_ena='1' AND turbokick_d='1' ELSE '0';
   sel_cart        <= '1' WHEN (cpuaddr(31 downto 24) = "00000000") AND (cpuaddr(23 downto 20)="1010") ELSE '0'; -- $A00000 - $A7FFFF
-  sel_nmi_vector  <= '1' WHEN (cpuaddr(31 downto 2) = NMI_addr(31 downto 2)) AND state="10" ELSE '0';
 
   sel_ram         <= '1' WHEN state/="01" AND sel_nmi_vector='0' AND (
          sel_z2ram='1'
