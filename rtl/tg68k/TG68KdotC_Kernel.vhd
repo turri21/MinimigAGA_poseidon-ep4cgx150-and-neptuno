@@ -1225,14 +1225,14 @@ PROCESS (clk, IPL, setstate, state, exec_write_back, set_direct_data, next_micro
   ------------------------------------------------------------------------------
   --SR op
   ------------------------------------------------------------------------------
-  process (clk, Reset, FlagsSR, last_data_read, OP2out, exec)
+  process (clk, Reset, FlagsSR, last_data_read, OP2out, exec, cpu)
   begin
 	if exec(andisR) = '1' then
 	  SRin <= FlagsSR and last_data_read(15 downto 8);
 	elsif exec(eorisR) = '1' then
-	  SRin <= FlagsSR Xor (last_data_read(15 downto 8) and x"f7");
+	  SRin <= FlagsSR Xor last_data_read(15 downto 8);
 	elsif exec(orisR) = '1' then
-	  SRin <= FlagsSR or (last_data_read(15 downto 8) and x"f7");
+	  SRin <= FlagsSR or last_data_read(15 downto 8);
 	else
 	  SRin <= OP2out(15 downto 8);
 	end if;
@@ -1273,7 +1273,12 @@ PROCESS (clk, IPL, setstate, state, exec_write_back, set_direct_data, next_micro
 		end if;
 		-- if exec(to_CCR)='1' and exec(to_SR)='1' then
 		if exec(to_SR) = '1' then
-		  FlagsSR(7 downto 0) <= SRin; --SR
+		  if (cpu(1) = '0') then
+			FlagsSR(7 downto 0) <= SRin and x"a7"; -- SR 68000/68010
+		  else
+			FlagsSR(7 downto 0) <= SRin and x"f7"; -- SR 68020
+		  end if;
+
 		  FC(2) <= SRin(5);
 		  -- end if;
 		elsif exec(update_FC) = '1' then
