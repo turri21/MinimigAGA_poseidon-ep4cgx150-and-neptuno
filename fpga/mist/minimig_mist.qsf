@@ -28,13 +28,13 @@ set_global_assignment -name DEVICE EP3C25E144C8
 set_global_assignment -name TOP_LEVEL_ENTITY minimig_mist_top
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 7.2
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "22:27:29  OCTOBER 30, 2007"
-set_global_assignment -name LAST_QUARTUS_VERSION 13.1
+set_global_assignment -name LAST_QUARTUS_VERSION "13.1 SP4.26"
 set_global_assignment -name USE_GENERATED_PHYSICAL_CONSTRAINTS OFF -section_id eda_palace
 set_global_assignment -name DEVICE_FILTER_PIN_COUNT 144
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "NO HEAT SINK WITH STILL AIR"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
 set_global_assignment -name OPTIMIZE_HOLD_TIMING "ALL PATHS"
-set_global_assignment -name FITTER_EFFORT "AUTO FIT"
+set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
 set_global_assignment -name STRATIX_CONFIGURATION_DEVICE EPCS4
 set_global_assignment -name CYCLONEII_RESERVE_NCEO_AFTER_CONFIGURATION "USE AS REGULAR IO"
 set_global_assignment -name RESERVE_ASDO_AFTER_CONFIGURATION "AS INPUT TRI-STATED"
@@ -46,7 +46,7 @@ set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
 set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE SPEED
 set_global_assignment -name SMART_RECOMPILE ON
 set_global_assignment -name ENABLE_SIGNALTAP OFF
-set_global_assignment -name USE_SIGNALTAP_FILE cpu_nmi.stp
+set_global_assignment -name USE_SIGNALTAP_FILE out/cpu.stp
 set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC ON
 set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_DUPLICATION ON
 set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT NORMAL
@@ -335,6 +335,17 @@ set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to VGA_VS
 
 
 
+
+set_global_assignment -name HDL_MESSAGE_LEVEL LEVEL2
+set_global_assignment -name ROUTER_CLOCKING_TOPOLOGY_ANALYSIS ON
+set_global_assignment -name OPTIMIZE_SSN "NORMAL COMPILATION"
+set_global_assignment -name TIMEQUEST_MULTICORNER_ANALYSIS ON
+set_global_assignment -name TIMEQUEST_DO_REPORT_TIMING OFF
+set_global_assignment -name SYNCHRONIZER_IDENTIFICATION AUTO
+set_global_assignment -name TIMEQUEST_DO_CCPP_REMOVAL ON
+set_global_assignment -name SEED 1
+set_global_assignment -name OPTIMIZE_POWER_DURING_FITTING "NORMAL COMPILATION"
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name SYSTEMVERILOG_FILE ../../rtl/mist/video_mixer.sv
 set_global_assignment -name VERILOG_FILE ../../rtl/minimig/rga_decode.v
 set_global_assignment -name VERILOG_FILE ../../rtl/minimig/debug.v
@@ -345,6 +356,7 @@ set_global_assignment -name VERILOG_FILE ../../rtl/cache/TwoWayCache.v
 set_global_assignment -name VERILOG_FILE ../../rtl/cache/CacheBlockRAM.v
 set_global_assignment -name VERILOG_FILE ../../rtl/cache/Cache_DataRAM.v
 set_global_assignment -name VERILOG_FILE ../../rtl/soc/minimig_mist_top.v
+set_global_assignment -name VHDL_FILE ../../rtl/soc/TG68K.vhd
 set_global_assignment -name VERILOG_FILE ../../rtl/minimig/minimig.v
 set_global_assignment -name VERILOG_FILE ../../rtl/minimig/minimig_syscontrol.v
 set_global_assignment -name VERILOG_FILE ../../rtl/minimig/minimig_sram_bridge.v
@@ -415,20 +427,11 @@ set_global_assignment -name VHDL_FILE ../../rtl/mist/sdram.vhd
 set_global_assignment -name VHDL_FILE ../../rtl/tg68k/TG68KdotC_Kernel.vhd
 set_global_assignment -name VHDL_FILE ../../rtl/tg68k/TG68K_Pack.vhd
 set_global_assignment -name VHDL_FILE ../../rtl/tg68k/TG68K_ALU.vhd
-set_global_assignment -name VHDL_FILE ../../rtl/tg68k/TG68K.vhd
 set_global_assignment -name SDC_FILE minimig_mist.sdc
 set_global_assignment -name QIP_FILE ../../rtl/sdram/dpram_be_1024x16.qip
 set_global_assignment -name QIP_FILE ../../rtl/sdram/dpram_256x32.qip
 set_global_assignment -name SIGNALTAP_FILE scroller.stp
 set_global_assignment -name SIGNALTAP_FILE cpu_cache.stp
 set_global_assignment -name SIGNALTAP_FILE cpu_debug.stp
-
-set_global_assignment -name HDL_MESSAGE_LEVEL LEVEL2
-set_global_assignment -name ROUTER_CLOCKING_TOPOLOGY_ANALYSIS ON
-set_global_assignment -name OPTIMIZE_SSN "NORMAL COMPILATION"
-set_global_assignment -name TIMEQUEST_MULTICORNER_ANALYSIS ON
-set_global_assignment -name TIMEQUEST_DO_REPORT_TIMING OFF
-set_global_assignment -name SYNCHRONIZER_IDENTIFICATION AUTO
-set_global_assignment -name TIMEQUEST_DO_CCPP_REMOVAL ON
 set_global_assignment -name SIGNALTAP_FILE cpu_nmi.stp
-set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
+set_global_assignment -name SIGNALTAP_FILE out/cpu.stp

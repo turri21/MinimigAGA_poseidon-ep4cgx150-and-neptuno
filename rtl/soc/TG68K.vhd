@@ -219,7 +219,8 @@ pf68K_Kernel_inst: work.TG68KdotC_Kernel
     extAddr_Mode    => 2, -- 0=>no,     1=>yes,           2=>switchable with CPU(1)
     MUL_Mode        => 2, -- 0=>16Bit,  1=>32Bit,         2=>switchable with CPU(1),  3=>no MUL,
     DIV_Mode        => 2, -- 0=>16Bit,  1=>32Bit,         2=>switchable with CPU(1),  3=>no DIV,
-    BitField        => 2  -- 0=>no,     1=>yes,           2=>switchable with CPU(1)
+    BitField        => 2, -- 0=>no,     1=>yes,           2=>switchable with CPU(1)
+	MUL_Hardware    => 1  -- 0=>no,     1=>yes
   )
   PORT MAP (
     clk             => clk,           -- : in std_logic;
