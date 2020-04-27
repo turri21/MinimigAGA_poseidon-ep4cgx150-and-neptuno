@@ -444,12 +444,12 @@ indicators indicators(
 //// amiga clocks ////
 amiga_clk amiga_clk (
   .rst          (pll_rst          ), // async reset input
-  .clk_in       (pll_in_clk       ), // input clock     ( 50.000000MHz)
-  .clk_114      (clk_114          ), // output clock c0 (114.285714MHz)
-  .clk_sdram    (clk_sdram        ), // output clock c2 (114.285714MHz, -146.25 deg)
-  .clk_28       (clk_28           ), // output clock c1 ( 28.571428MHz)
-  .clk_7        (clk_7            ), // output clock 7  (  7.142857MHz)
+  .clk_in       (pll_in_clk       ), // input clock     ( 27.000000MHz)
+  .clk_114      (clk_114          ), // output clock c0 (114.750000MHz)
+  .clk_sdram    (clk_sdram        ), // output clock c2 (114.750000MHz, -146.25 deg)
+  .clk_28       (clk_28           ), // output clock c1 ( 28.687500MHz)
   .clk7_en      (clk7_en          ), // output clock 7 enable (on 28MHz clock domain)
+  .clk7n_en     (clk7n_en         ), // 7MHz negedge output clock enable (on 28MHz clock domain)
   .c1           (c1               ), // clk28m clock domain signal synchronous with clk signal
   .c3           (c3               ), // clk28m clock domain signal synchronous with clk signal delayed by 90 degrees
   .cck          (cck              ), // colour clock output (3.54 MHz)
@@ -504,14 +504,15 @@ TG68K tg68k (
   .ramready     (tg68_cpuena      ),
   .cpu          (cpu_config[1:0]  ),
 //  .fastkick     (cctrl[1]/*cpu_config[3]*/    ),
-  .memcfg       (memcfg           ),
+  .fastramcfg   ({&memcfg[5:4],memcfg[5:4]}),
   .ramaddr      (tg68_cad         ),
   .cpustate     (tg68_cpustate    ),
-  .nResetOut    (                 ),
+  .nResetOut    (tg68_nrst_out    ),
   .skipFetch    (                 ),
-  .cpuDMA       (tg68_cdma        ),
+//  .cpuDMA       (tg68_cdma        ),
   .ramlds       (tg68_clds        ),
   .ramuds       (tg68_cuds        ),
+  .CACR_out     (tg68_CACR_out    ),
   .VBR_out      (tg68_VBR_out     )
 );
 
@@ -540,11 +541,12 @@ TG68 tg68 (
 sdram_ctrl sdram (
   // sys
   .sysclk       (clk_114          ),
-  .c_7m         (clk_7            ),
+  .clk7_en      (clk7_en          ),
   .reset_in     (sdctl_rst        ),
   .cache_rst    (tg68_rst         ),
   .reset_out    (reset_out        ),
-  .cache_ena    (1/*cctrl[0]*/    ),
+  .cache_inhibit(cache_inhibit    ),
+  .cpu_cache_ctrl (tg68_CACR_out    ),
   // sdram
   .sdaddr       (DRAM_ADDR        ),
   .sd_cs        (sdram_cs         ),
@@ -555,13 +557,14 @@ sdram_ctrl sdram (
   .dqm          (sdram_dqm        ),
   .sdata        (DRAM_DQ          ),
   // host
-  .host_cs      (bridge_cs        ),
-  .host_adr     ({~bridge_adr[22], 2'b00, bridge_adr[21:0]}),
-  .host_we      (bridge_we        ),
-  .host_bs      (bridge_sel       ),
-  .host_wdat    (bridge_dat_w     ),
-  .host_rdat    (bridge_dat_r     ),
-  .host_ack     (bridge_ack       ),
+  .hostAddr    ({~bridge_adr[22], 2'b00, bridge_adr[21:0]}),
+  .hostState   ({1'b0,bridge_we,bridge_cs}),
+  .hostL       (bridge_sel[0]    ),
+  .hostU       (bridge_sel[1]    ),
+  .hostWR      (bridge_dat_w     ),
+  .hostRD      (bridge_dat_r     ),
+  .hostena     (bridge_ack       ),
+
   // chip
   .chipAddr     ({2'b00, ram_address[21:1]}),
   .chipL        (_ram_ble         ),
@@ -589,7 +592,7 @@ assign VGA_RST = 1; // Active low
 assign VGA_DEN = VGA_HS & VGA_VS;
 
 //// minimig top ////
-Minimig1 minimig (
+minimig minimig (
   //m68k pins
   .cpu_address  (tg68_adr[23:1]   ), // M68K address bus
   .cpu_data     (tg68_dat_in      ), // M68K data bus
@@ -601,7 +604,6 @@ Minimig1 minimig (
   .cpu_r_w      (tg68_rw          ), // M68K read / write
   ._cpu_dtack   (tg68_dtack       ), // M68K data acknowledge
   ._cpu_reset   (tg68_rst         ), // M68K reset
-  .cpu_clk      (clk_7            ), // M68K clock
   .cpu_vbr      (tg68_VBR_out     ), // M68K VBR
   //sram pins
   .ram_data     (ram_data         ), // SRAM data bus
@@ -612,15 +614,15 @@ Minimig1 minimig (
   ._ram_we      (_ram_we          ), // SRAM write enable
   ._ram_oe      (_ram_oe          ), // SRAM output enable
   //system  pins
-  .rst_ext      (rst_minimig      ), // reset from ctrl block
-  .rst_out      (minimig_rst_out  ), // minimig reset status
-  .clk28m       (clk_28           ), // output clock c1 ( 28.687500MHz)
-  .clk          (clk_7            ), // output clock 7  (  7.171875MHz)
-  .clk7_en      (clk7_en          ), // 7MHz clock enable
-  .c1           (c1               ), // clk28m clock domain signal synchronous with clk signal
-  .c3           (c3               ), // clk28m clock domain signal synchronous with clk signal delayed by 90 degrees
-  .cck          (cck              ), // colour clock output (3.54 MHz)
-  .eclk         (eclk             ), // 0.709379 MHz clock enable output (clk domain pulse)
+  .rst_ext      (rst_minimig      ), // in reset from ctrl block
+  .rst_out      (minimig_rst_out  ), // ''out'' (añadido por JEPALZA) minimig reset status
+  .clk          (clk_28           ), // in desde clk principal clock c1 ( 28.687500MHz)
+  .clk7_en      (clk7_en          ), // in 7MHz clock enable
+  .clk7n_en     (clk7n_en         ), // in 7MHz negedge clock enable
+  .c1           (c1               ), // in clk28m clock domain signal synchronous with clk signal
+  .c3           (c3               ), // in clk28m clock domain signal synchronous with clk signal delayed by 90 degrees
+  .cck          (cck              ), // in colour clock output (3.54 MHz)
+  .eclk         (eclk             ), // in 0.709379 MHz clock enable output (clk domain pulse)
   //rs232 pins
   .rxd          (minimig_rxd      ), // RS232 receive
   .txd          (minimig_txd      ), // RS232 send
