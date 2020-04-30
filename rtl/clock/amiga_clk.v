@@ -62,6 +62,17 @@ assign locked = pll_locked_r;
 //// hardware clocks ////
 
 // device-specific PLL/DCM
+`ifdef MINIMIG_INTEL
+amiga_clk_max10 amiga_clk_i (
+  .areset   (rst      ),
+  .inclk0   (clk_in   ),
+  .c0       (clk_sdram),
+  .c1       (clk_114  ),
+  .c2       (clk_28   ),
+  .locked   (locked   )
+);
+`endif
+
 `ifdef MINIMIG_ALTERA
 amiga_clk_altera amiga_clk_i (
   .areset   (rst      ),

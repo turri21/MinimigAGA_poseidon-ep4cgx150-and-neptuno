@@ -1,6 +1,15 @@
 /* minimig_defines.v */
 /* 2012, rok.krajnc@gmail.com */
 
+// virtual
+`ifdef MINIMIG_VIRTUAL
+`define MINIMIG_INTEL
+`define MINIMIG_CYCLONE3
+`define MINIMIG_VIDEO_FILTER
+`define MINIMIG_SERIAL_AUDIO
+`define MINIMIG_PS2_KEYBOARD
+`define MINIMIG_PS2_MOUSE
+`endif
 
 // minimig-de0_nano
 `ifdef MINIMIG_DE0_NANO

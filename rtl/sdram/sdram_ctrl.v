@@ -42,7 +42,10 @@ module sdram_ctrl(
   // host
   input  wire [ 16-1:0] hostWR,
   input  wire [ 24-1:0] hostAddr,
-  input  wire [  3-1:0] hostState,
+//  input  wire [  3-1:0] hostState,
+  input  wire           hostce,
+  input  wire           hostreq,
+  input  wire           hostwr,
   input  wire           hostL,
   input  wire           hostU,
   output reg  [ 16-1:0] hostRD,
@@ -238,7 +241,8 @@ assign reset_out = init_done;
 // host access
 ////////////////////////////////////////
 
-assign hostena = zena || hostState[1:0] == 2'b01 || zcachehit ? 1'b1 : 1'b0;
+//assign hostena = zena || hostState[1:0] == 2'b01 || zcachehit ? 1'b1 : 1'b0;
+assign hostena = zena || zcachehit ? 1'b1 : 1'b0;
 
 // map host processor's address space to 0x400000
 assign zmAddr = {2'b00, ~hostAddr[22], hostAddr[21:0]};
@@ -302,8 +306,8 @@ always @ (posedge sysclk) begin
     if(sdram_state == ph11 && slot1_type == HOST) begin
       zena            <= #1 1'b1;
     end
-    hostStated        <= #1 hostState[1:0];
-    if(zequal && |hostState[1:0]) begin
+    hostStated        <= #1 {!hostce,hostreq,hostreq&hostwr};//hostState[1:0];
+    if(zequal && hostwr && hostreq) begin
       zvalid          <= #1 4'b0000;
     end
     case(sdram_state)
@@ -735,7 +739,7 @@ always @ (posedge sysclk) begin
         end
         // the Amiga CPU gets next bite of the cherry, unless the OSD CPU has been cycle-starved
         // request from write buffer
-        else if(writebuffer_req && (|hostslot_cnt || (hostState[2] || hostena)) && (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23])) begin
+        else if(writebuffer_req && (|hostslot_cnt || (!hostce || hostena)) && (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23])) begin
           // We only yield to the OSD CPU if it's both cycle-starved and ready to go.
           slot1_type          <= #1 CPU_WRITECACHE;
           sdaddr              <= #1 writebufferAddr[22:10];
@@ -751,7 +755,7 @@ always @ (posedge sysclk) begin
           writebuffer_hold    <= #1 1'b1; // let the write buffer know we're about to write
         end
         // request from read cache
-        else if(cache_req && (|hostslot_cnt || (hostState[2] || hostena)) && (slot2_type == IDLE || slot2_bank != cpuAddr_mangled[24:23])) begin
+        else if(cache_req && (|hostslot_cnt || (!hostce || hostena)) && (slot2_type == IDLE || slot2_bank != cpuAddr_mangled[24:23])) begin
           // we only yield to the OSD CPU if it's both cycle-starved and ready to go
           slot1_type          <= #1 CPU_READCACHE;
           sdaddr              <= #1 cpuAddr_mangled[22:10];
@@ -764,7 +768,7 @@ always @ (posedge sysclk) begin
           cas_sd_we           <= #1 1'b1;
           cas_sd_cas          <= #1 1'b0;
         end
-        else if(!hostState[2] && !hostena) begin
+        else if(hostce && !hostena) begin
           hostslot_cnt        <= #1 8'b00001111;
           slot1_type          <= #1 HOST;
           sdaddr              <= #1 zmAddr[22:10];
@@ -777,7 +781,7 @@ always @ (posedge sysclk) begin
           sd_ras              <= #1 1'b0;
           casaddr             <= #1 zmAddr;
           cas_sd_cas          <= #1 1'b0;
-          if(hostState == 3'b011) begin
+          if(!hostce && hostwr && hostreq) begin
             cas_sd_we         <= #1 1'b0;
           end
         end
