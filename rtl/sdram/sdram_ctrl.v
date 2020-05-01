@@ -44,8 +44,7 @@ module sdram_ctrl(
   input  wire [ 24-1:0] hostAddr,
 //  input  wire [  3-1:0] hostState,
   input  wire           hostce,
-  input  wire           hostreq,
-  input  wire           hostwr,
+  input  wire           hostwe,
   input  wire           hostL,
   input  wire           hostU,
   output reg  [ 16-1:0] hostRD,
@@ -136,6 +135,7 @@ reg  [25-1:0] casaddr;
 reg           sdwrite;
 reg  [16-1:0] sdata_reg;
 wire [25-1:0] zmAddr;
+reg           zce;
 reg           zena;
 reg  [64-1:0] zcache;
 reg  [24-1:0] zcache_addr;
@@ -143,7 +143,6 @@ reg           zcache_fill;
 reg           zcachehit;
 reg  [ 4-1:0] zvalid;
 reg           zequal;
-reg  [ 2-1:0] hostStated;
 reg  [16-1:0] hostRDd;
 reg           cena;
 wire [64-1:0] ccache;
@@ -242,7 +241,7 @@ assign reset_out = init_done;
 ////////////////////////////////////////
 
 //assign hostena = zena || hostState[1:0] == 2'b01 || zcachehit ? 1'b1 : 1'b0;
-assign hostena = zena || zcachehit ? 1'b1 : 1'b0;
+assign hostena = zce & (zena | zcachehit);
 
 // map host processor's address space to 0x400000
 assign zmAddr = {2'b00, ~hostAddr[22], hostAddr[21:0]};
@@ -250,7 +249,7 @@ assign zmAddr = {2'b00, ~hostAddr[22], hostAddr[21:0]};
 always @ (*) begin
   zequal = (zmAddr[23:3] == zcache_addr[23:3]) ? 1'b1 : 1'b0;
   zcachehit = 1'b0;
-  if(zequal && zvalid[0] && !hostStated[1]) begin
+  if(zequal && zvalid[0]) begin
     case ({hostAddr[2:1], zcache_addr[2:1]})
       4'b0000,
       4'b0101,
@@ -297,22 +296,30 @@ always @ (posedge sysclk) begin
     zena              <= #1 1'b0;
     zvalid            <= #1 4'b0000;
   end else begin
-    if(enaWRreg) begin
-      zena            <= #1 1'b0;
-    end
+    zce <= #1 hostce;
+	 
+//    if(enaWRreg) begin
+//      zena            <= #1 1'b0;
+//    end
     if(sdram_state == ph9 && slot1_type == HOST) begin
       hostRDd         <= #1 sdata_reg;
     end
+
     if(sdram_state == ph11 && slot1_type == HOST) begin
       zena            <= #1 1'b1;
     end
-    hostStated        <= #1 {!hostce,hostreq,hostreq&hostwr};//hostState[1:0];
-    if(zequal && hostwr && hostreq) begin
+	 
+    if(zequal && hostwe && hostce) begin
       zvalid          <= #1 4'b0000;
     end
+
+ 	 if(hostce==1'b0) begin
+		zena<=#1 1'b0;
+	 end
+
     case(sdram_state)
     ph7 : begin
-      if(!hostStated[1] && slot1_type == HOST) begin // only instruction cache
+      if(slot1_type == HOST) begin // only instruction cache
         zcache_addr   <= #1 casaddr[23:0];
         zcache_fill   <= #1 1'b1;
         zvalid        <= #1 4'b0000;
@@ -768,7 +775,7 @@ always @ (posedge sysclk) begin
           cas_sd_we           <= #1 1'b1;
           cas_sd_cas          <= #1 1'b0;
         end
-        else if(hostce && !hostena) begin
+        else if(hostce && !zcachehit) begin
           hostslot_cnt        <= #1 8'b00001111;
           slot1_type          <= #1 HOST;
           sdaddr              <= #1 zmAddr[22:10];
@@ -781,7 +788,7 @@ always @ (posedge sysclk) begin
           sd_ras              <= #1 1'b0;
           casaddr             <= #1 zmAddr;
           cas_sd_cas          <= #1 1'b0;
-          if(!hostce && hostwr && hostreq) begin
+          if(hostce && hostwe) begin
             cas_sd_we         <= #1 1'b0;
           end
         end

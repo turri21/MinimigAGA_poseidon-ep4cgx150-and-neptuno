@@ -298,6 +298,10 @@ wire           hostU;
 reg  [ 16-1:0] hostdata;
 wire           hostramena;
 wire           hostena;
+wire           hostwe;
+wire           hostreq;
+wire           hostack;
+wire           hostce;
 
 //sdram sdram (
 sdram_ctrl sdram (
@@ -318,9 +322,8 @@ sdram_ctrl sdram (
   .hostWR       (hostWR           ),
   .hostAddr     (hostaddr         ),
 //  .hostState    (hostState        ),
-  .hostreq      (hostreq),
-  .hostwr       (hostwr),
-  .hostce       (hostce),
+  .hostwe       (hostwe           ),
+  .hostce       (hostce           ),
   .hostL        (hostL            ),
   .hostU        (hostU            ),
   .hostRD       (hostRD           ),
@@ -469,10 +472,6 @@ minimig minimig (
 );
 
 
-wire           hostwr;
-wire           hostreq;
-wire           hostack;
-
 EightThirtyTwo_Bridge hostcpu
 (
 	.clk(clk_114),
@@ -486,7 +485,7 @@ EightThirtyTwo_Bridge hostcpu
 	.nLDS(hostL),
 	.req(hostreq),
 	.ack(hostack),
-	.wr(hostwr),
+	.wr(hostwe),
 //	.busstate(hostState[1:0])
 	);
 
@@ -498,7 +497,7 @@ cfide mycfide
 		.sysclk(clk_114),
 		.n_reset(reset_out),
 
-		.memce(memce),
+		.memce(hostce),
 		.cpuena_in(hostramena),
 		.memdata_in(hostRD),
 		.addr(hostaddr),
@@ -507,7 +506,7 @@ cfide mycfide
 		.lds(hostL),
 		.uds(hostU),
 		.cpu_req(hostreq),
-		.cpu_wr(hostwr),
+		.cpu_wr(hostwe),
 		.cpu_ack(hostack),
 		.cpudata(hostdata),
 //		.cpuena(hostena),
