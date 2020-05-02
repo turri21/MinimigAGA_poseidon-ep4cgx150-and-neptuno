@@ -243,13 +243,15 @@ assign reset_out = init_done;
 //assign hostena = zena || hostState[1:0] == 2'b01 || zcachehit ? 1'b1 : 1'b0;
 assign hostena = zce & (zena | zcachehit);
 
+// map host processor's address space to 0x580000
+assign zmAddr = {2'b00, ~hostAddr[22], ~hostAddr[21], hostAddr[20], ~hostAddr[19], hostAddr[18:0]};
 // map host processor's address space to 0x400000
-assign zmAddr = {2'b00, ~hostAddr[22], hostAddr[21:0]};
+// assign zmAddr = {2'b00, ~hostAddr[22], hostAddr[21:0]};
 
 always @ (*) begin
   zequal = (zmAddr[23:3] == zcache_addr[23:3]) ? 1'b1 : 1'b0;
   zcachehit = 1'b0;
-  if(zequal && zvalid[0]) begin
+  if(!hostwe && zequal && zvalid[0]) begin
     case ({hostAddr[2:1], zcache_addr[2:1]})
       4'b0000,
       4'b0101,
@@ -319,7 +321,7 @@ always @ (posedge sysclk) begin
 
     case(sdram_state)
     ph7 : begin
-      if(slot1_type == HOST) begin // only instruction cache
+      if(!hostwe && slot1_type == HOST) begin // only instruction cache, reads only
         zcache_addr   <= #1 casaddr[23:0];
         zcache_fill   <= #1 1'b1;
         zvalid        <= #1 4'b0000;
