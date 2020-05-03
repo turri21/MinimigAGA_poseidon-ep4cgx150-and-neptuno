@@ -430,10 +430,10 @@ minimig minimig (
 //  .mouse_btn    (mouse_buttons    ),  // mouse buttons
 //  .kbd_mouse_data (kbd_mouse_data ),  // mouse direction data, keycodes
 //  .kbd_mouse_type (kbd_mouse_type ),  // type of data
-//  .kbd_mouse_strobe (kbd_mouse_strobe), // kbd/mouse data strobe
-//  .kms_level    (kms_level        ),
-  ._15khz       (_15khz           ),  // scandoubler disable
-  .pwrled       (led              ),  // power led
+  .kbd_mouse_strobe (1'b0         ), // kbd_mouse_strobe), // kbd/mouse data strobe
+  .kms_level    (1'b0             ), // kms_level        ),
+  ._15khz       (_15khz           ), // scandoubler disable
+  .pwrled       (led              ), // power led
   .msdat        (PS2_MDAT         ), // PS2 mouse data
   .msclk        (PS2_MCLK         ), // PS2 mouse clk
   .kbddat       (PS2_DAT          ), // PS2 keyboard data

@@ -391,8 +391,6 @@ void HandleUI(void)
 				{
 					menumask|=(1<<i);	// Make enabled drives selectable
 
-					printf("Disk %d status: %x\n",i,df[i].status);
-					hexdump(&df[i],sizeof(adfTYPE));
 				    if (df[i].status & DSK_INSERTED) // floppy disk is inserted
 				    {
 				        strncpy(&s[6], df[i].name, sizeof(df[0].name));
@@ -1717,14 +1715,15 @@ void HandleUI(void)
                 config.filter.lores++;
                 config.filter.lores &= 0x03;
                 menustate = MENU_SETTINGS_VIDEO1;
-                ConfigFilter(config.filter.lores, config.filter.hires);
+                ConfigVideo(config.filter.lores, config.filter.hires,config.scanlines);
             }
             else if (menusub == 1)
             {
                 config.filter.hires++;
                 config.filter.hires &= 0x03;
                 menustate = MENU_SETTINGS_VIDEO1;
-                ConfigFilter(config.filter.lores, config.filter.hires);
+                ConfigVideo(config.filter.lores, config.filter.hires,config.scanlines);
+//                ConfigFilter(config.filter.lores, config.filter.hires);
             }
             else if (menusub == 2)
             {
@@ -1733,7 +1732,8 @@ void HandleUI(void)
 					tmp=0;
                 config.scanlines=(config.scanlines&0xfc)|(tmp&3);
                 menustate = MENU_SETTINGS_VIDEO1;
-                ConfigScanlines(config.scanlines);
+                ConfigVideo(config.filter.lores, config.filter.hires,config.scanlines);
+//                ConfigScanlines(config.scanlines);
             }
             else if (menusub == 3)
             {
@@ -1742,7 +1742,8 @@ void HandleUI(void)
 					tmp=0;
                 config.scanlines=(config.scanlines&0xf3)|(tmp&0xc);
                 menustate = MENU_SETTINGS_VIDEO1;
-                ConfigScanlines(config.scanlines);
+                ConfigVideo(config.filter.lores, config.filter.hires,config.scanlines);
+//                ConfigScanlines(config.scanlines);
             }
 
             else if (menusub == 4)

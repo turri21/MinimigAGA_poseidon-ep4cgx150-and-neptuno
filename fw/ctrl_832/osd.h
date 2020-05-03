@@ -108,7 +108,7 @@ void OsdEnable(unsigned char mode);
 void OsdDisable(void);
 void OsdWaitVBL(void);
 void OsdReset(unsigned char boot);
-void ConfigFilter(unsigned char lores, unsigned char hires);
+//void ConfigFilter(unsigned char lores, unsigned char hires);
 void OsdReconfig(); // Reset to Chameleon core.
 // deprecated functions from Minimig 1
 void MM1_ConfigFilter(unsigned char lores, unsigned char hires);

@@ -745,10 +745,10 @@ void ConfigVideo(unsigned char hires, unsigned char lores, unsigned char scanlin
 }
 
 
-void ConfigFilter(unsigned char lores, unsigned char hires, unsigned char scanlines)
-{
-	ConfigVideo(hires,lores,scanlines);
-}
+//void ConfigFilter(unsigned char lores, unsigned char hires, unsigned char scanlines)
+//{
+//	ConfigVideo(hires,lores,scanlines);
+//}
 
 
 void ConfigMemory(unsigned char memory)
