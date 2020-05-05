@@ -26,9 +26,9 @@ module minimig_virtual_top (
   // VGA
   output wire           VGA_HS,     // VGA H_SYNC
   output wire           VGA_VS,     // VGA V_SYNC
-  output wire [  6-1:0] VGA_R,      // VGA Red[5:0]
-  output wire [  6-1:0] VGA_G,      // VGA Green[5:0]
-  output wire [  6-1:0] VGA_B,      // VGA Blue[5:0]
+  output wire [  8-1:0] VGA_R,      // VGA Red[5:0]
+  output wire [  8-1:0] VGA_G,      // VGA Green[5:0]
+  output wire [  8-1:0] VGA_B,      // VGA Blue[5:0]
   
   // SDRAM
   inout  wire [ 16-1:0] SDRAM_DQ,   // SDRAM Data bus 16 Bits
@@ -156,9 +156,9 @@ wire           mixer_vs;
 wire           mixer_hs;
 reg            vs_reg;
 reg            hs_reg;
-reg  [  6-1:0] red_reg;
-reg  [  6-1:0] green_reg;
-reg  [  6-1:0] blue_reg;
+reg  [  8-1:0] red_reg;
+reg  [  8-1:0] green_reg;
+reg  [  8-1:0] blue_reg;
 
 // sdram
 wire           reset_out;
@@ -223,9 +223,9 @@ end
 
 assign VGA_VS           = vs_reg;
 assign VGA_HS           = hs_reg;
-assign VGA_R[5:0]       = red_reg[5:0];
-assign VGA_G[5:0]       = green_reg[5:0];
-assign VGA_B[5:0]       = blue_reg[5:0];
+assign VGA_R[7:0]       = red_reg[7:0];
+assign VGA_G[7:0]       = green_reg[7:0];
+assign VGA_B[7:0]       = blue_reg[7:0];
 
 
 //// amiga clocks ////
@@ -425,8 +425,8 @@ minimig minimig (
   ._joy2        (JOYB             ),  // joystick 2 [fire7:fire,up,down,left,right] (default joystick port)
   ._joy3        (JOYC             ),  // joystick 3 [fire7:fire,up,down,left,right]
   ._joy4        (JOYD             ),  // joystick 4 [fire7:fire,up,down,left,right]
-//  .mouse_btn1   (1'b1             ), // mouse button 1
-//  .mouse_btn2   (1'b1             ), // mouse button 2
+  .mouse_btn1   (1'b1             ), // mouse button 1
+  .mouse_btn2   (1'b1             ), // mouse button 2
 //  .mouse_btn    (mouse_buttons    ),  // mouse buttons
 //  .kbd_mouse_data (kbd_mouse_data ),  // mouse direction data, keycodes
 //  .kbd_mouse_type (kbd_mouse_type ),  // type of data

@@ -488,7 +488,7 @@ char BootPrint(const char *text)
 #endif
 }
 
-
+#if 0
 char PrepareBootUpload(unsigned char base, unsigned char size)
 // this function sends given file to Minimig's memory
 // base - memory base address (bits 23..16)
@@ -587,6 +587,8 @@ void BootExit(void)
 	DisableFpga();
 	return;
 }
+#endif
+
 
 void ClearMemory(unsigned long base, unsigned long size)
 {

@@ -182,6 +182,15 @@ always @(posedge clk) begin
   end
 end
 
+always @(posedge clk) begin
+  if (clk7_en) begin
+  	if (reset || !numlock)
+  		_rmb <= 1'b1;
+  	else if (enable2 && keyrom[15] && keyrom[7:0]==JOY1KEY_FIRE1)
+  		_rmb <= upstroke;
+  end
+end
+
 //always @(posedge clk)
 //  if (clk7_en) begin
 //  	enable2 <= enable;

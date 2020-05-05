@@ -88,7 +88,7 @@ void framebuffer_plot(int x,int y)
 static int quickrand()
 {
 	static int prev;
-	int r=*(volatile unsigned long *)0x80000c;
+	int r=*(volatile unsigned short *)0xDEE010;
 	r^=(prev&0xc75a)<<4;
 	r^=(prev&0x5a7c)>>(prev&7);
 	prev=r;
@@ -132,7 +132,7 @@ void StarsUpdate()
 
 // time delay after which file/dir name starts to scroll
 #define SCROLL_DELAY 1000
-#define SCROLL_DELAY2 50
+#define SCROLL_DELAY2 10
 
 static unsigned long scroll_offset=0; // file/dir name scrolling position
 static unsigned long scroll_timer=0;  // file/dir name scrolling timer

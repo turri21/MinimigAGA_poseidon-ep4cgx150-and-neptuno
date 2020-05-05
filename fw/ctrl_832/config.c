@@ -103,56 +103,56 @@ char UploadKickstart(char *name)
     } else if(romfile.size == 0x80000) {
       // 512KB Kickstart ROM
       BootPrint("Uploading 512KB Kickstart ...");
-      if (minimig_v1()) {
-        PrepareBootUpload(0xF8, 0x08);
-        SendFile(&romfile);
-      } else {
+//      if (minimig_v1()) {
+//        PrepareBootUpload(0xF8, 0x08);
+//        SendFile(&romfile);
+//      } else {
         SendFileV2(&romfile, NULL, 0, 0xf80000, romfile.size>>9);
         RAOpen(&romfile, filename);
         SendFileV2(&romfile, NULL, 0, 0xe00000, romfile.size>>9);
         ClearVectorTable();
-      }
+//      }
       return(1);
     } else if ((romfile.size == 0x8000b) && keysize) {
       // 512KB Kickstart ROM
       BootPrint("Uploading 512 KB Kickstart (Probably Amiga Forever encrypted...)");
-      if (minimig_v1()) {
-        PrepareBootUpload(0xF8, 0x08);
-        SendFileEncrypted(&romfile,romkey,keysize);
-      } else {
+//      if (minimig_v1()) {
+//        PrepareBootUpload(0xF8, 0x08);
+//        SendFileEncrypted(&romfile,romkey,keysize);
+//      } else {
         SendFileV2(&romfile, romkey, keysize, 0xf80000, romfile.size>>9);
         RAOpen(&romfile, filename);
         SendFileV2(&romfile, romkey, keysize, 0xe00000, romfile.size>>9);
         ClearVectorTable();
-      }
+//     }
       return(1);
     } else if (romfile.size == 0x40000) {
       // 256KB Kickstart ROM
       BootPrint("Uploading 256 KB Kickstart...");
-      if (minimig_v1()) {
-        PrepareBootUpload(0xF8, 0x04);
-        SendFile(&romfile);
-      } else {
+//      if (minimig_v1()) {
+//        PrepareBootUpload(0xF8, 0x04);
+//        SendFile(&romfile);
+//      } else {
         SendFileV2(&romfile, NULL, 0, 0xf80000, romfile.size>>9);
         RAOpen(&romfile, filename);
         SendFileV2(&romfile, NULL, 0, 0xfc0000, romfile.size>>9);
         ClearVectorTable();
         ClearKickstartMirrorE0();
-      }
+//      }
       return(1);
     } else if ((romfile.size == 0x4000b) && keysize) {
       // 256KB Kickstart ROM
       BootPrint("Uploading 256 KB Kickstart (Probably Amiga Forever encrypted...");
-      if (minimig_v1()) {
+/*      if (minimig_v1()) {
         PrepareBootUpload(0xF8, 0x04);
         SendFileEncrypted(&romfile,romkey,keysize);
-      } else {
+      } else {*/
         SendFileV2(&romfile, romkey, keysize, 0xf80000, romfile.size>>9);
         RAOpen(&romfile, filename);
         SendFileV2(&romfile, romkey, keysize, 0xfc0000, romfile.size>>9);
         ClearVectorTable();
         ClearKickstartMirrorE0();
-      }
+//      }
       return(1);
     } else {
       BootPrint("Unsupported ROM file size!");
@@ -164,10 +164,10 @@ char UploadKickstart(char *name)
   return(0);
 }
 
-
 //// UploadActionReplay() ////
 char UploadActionReplay()
 {
+#if 0
   if(minimig_v1()) {
     if (RAOpen(&romfile, "AR3     ROM")) {
       if (romfile.file.size == 0x40000) {
@@ -184,6 +184,7 @@ char UploadActionReplay()
       }
     }
   } else {
+#endif
     if (RAOpen(&romfile, "HRTMON  ROM")) {
       int adr, data;
       puts("Uploading HRTmon ROM... ");
@@ -259,7 +260,7 @@ char UploadActionReplay()
       puts("\rhrtmon.rom not found!\r");
       return(0);
     }
-  }
+//  }
   return(0);
 }
 

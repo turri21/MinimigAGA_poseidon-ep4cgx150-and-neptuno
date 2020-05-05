@@ -516,7 +516,6 @@ void HandleUI(void)
         break;
 
     case MENU_MAIN2_2 :
-		printf("From menu perspective, config is %x\n",(int)&config);
         if (menu)
             menustate = MENU_NONE1;
         else if (select)
@@ -1810,10 +1809,7 @@ void HandleUI(void)
                 OsdReset(RESET_BOOTLOADER);
                 ConfigChipset(config.chipset | CONFIG_TURBO);
                 ConfigFloppy(config.floppy.drives, CONFIG_FLOPPY2X);
-                if (UploadKickstart(config.kickstart.name))
-                {
-                    BootExit();
-                }
+				UploadKickstart(config.kickstart.name);
                 ConfigChipset(config.chipset); // restore CPU speed mode
                 ConfigFloppy(config.floppy.drives, config.floppy.speed); // restore floppy speed mode
 

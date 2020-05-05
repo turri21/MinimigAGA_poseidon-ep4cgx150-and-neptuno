@@ -129,9 +129,9 @@ architecture RTL of DE10liteToplevel is
 		UART_RX		:	 IN STD_LOGIC;
 		VGA_HS		:	 OUT STD_LOGIC;
 		VGA_VS		:	 OUT STD_LOGIC;
-		VGA_R		:	 OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
-		VGA_G		:	 OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
-		VGA_B		:	 OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
+		VGA_R		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+		VGA_G		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+		VGA_B		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
 		SDRAM_DQ		:	 INOUT STD_LOGIC_VECTOR(15 DOWNTO 0);
 		SDRAM_A		:	 OUT STD_LOGIC_VECTOR(12 DOWNTO 0);
 		SDRAM_DQML		:	 OUT STD_LOGIC;
@@ -198,9 +198,9 @@ PORT map
 		UART_RX => rs232_rxd,
 		VGA_HS => VGA_HS,
 		VGA_VS => VGA_VS,
-		VGA_R	=> vga_red(7 downto 2),
-		VGA_G	=> vga_green(7 downto 2),
-		VGA_B	=> vga_blue(7 downto 2),
+		VGA_R	=> vga_red,
+		VGA_G	=> vga_green,
+		VGA_B	=> vga_blue,
 	
 		SDRAM_DQ	=> DRAM_DQ,
 		SDRAM_A => DRAM_ADDR,
@@ -234,9 +234,9 @@ PORT map
 		SD_ACK => '1'
 	);
 
-VGA_R<=unsigned(vga_red(5 downto 2));
-VGA_G<=unsigned(vga_green(5 downto 2));
-VGA_B<=unsigned(vga_blue(5 downto 2));
+VGA_R<=unsigned(vga_red(7 downto 4));
+VGA_G<=unsigned(vga_green(7 downto 4));
+VGA_B<=unsigned(vga_blue(7 downto 4));
 	
 GPIO(0)<=rs232_txd;
 rs232_rxd<=GPIO(1);

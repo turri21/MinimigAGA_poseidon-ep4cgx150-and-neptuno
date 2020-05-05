@@ -741,7 +741,6 @@ char ScanDirectory(unsigned long mode, char *extension, unsigned char options)
         {
             if ((iEntry & 0xF) == 0) // first entry in sector, load the sector
             {
-				printf("Reading sector %x\n",iDirectorySector);
                 MMC_Read(iDirectorySector++, sector_buffer);
                 pEntry = (DIRENTRY*)sector_buffer;
 				for (i = 0; i < 16; i++) 
@@ -797,7 +796,7 @@ char ScanDirectory(unsigned long mode, char *extension, unsigned char options)
 
                             if (sequence_number & 0x40) // last lfn part
                                 *ptr++ = 0;
-							printf("Long filename: %s\n",&lfn[((sequence_number & 0x1F) - 1) * 13]);
+//							printf("Long filename: %s\n",&lfn[((sequence_number & 0x1F) - 1) * 13]);
                         }
                         else
                             printf("LFN error!\r");
