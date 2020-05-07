@@ -323,7 +323,7 @@ myReset : entity work.gen_reset
 virtual_top : COMPONENT minimig_virtual_top
 generic map
 	(
-		debug => 1
+		debug => 0
 	)
 PORT map
 	(
