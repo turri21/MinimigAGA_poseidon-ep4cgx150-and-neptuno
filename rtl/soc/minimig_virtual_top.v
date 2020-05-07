@@ -80,6 +80,7 @@ module minimig_virtual_top
 ////////////////////////////////////////
 
 // clock
+wire           clk_sdram;
 wire           clk_28;
 wire           clk7_en;
 wire           clk7n_en;

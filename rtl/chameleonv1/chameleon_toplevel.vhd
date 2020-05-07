@@ -113,6 +113,7 @@ architecture rtl of chameleon_toplevel is
 	signal spi_mosi : std_logic;
 	signal spi_cs : std_logic;
 	signal spi_clk : std_logic;
+	signal spi_raw_ack : std_logic;
 	
 -- RS232 serial
 	signal rs232_rxd : std_logic;
@@ -273,7 +274,7 @@ myReset : entity work.gen_reset
 			mmc_cs_n => spi_cs,
 			spi_raw_clk => spi_clk,
 			spi_raw_mosi => spi_mosi,
---			spi_raw_ack => spi_raw_ack,
+			spi_raw_ack => spi_raw_ack,
 
 		-- LEDs
 			led_green => '1',
@@ -375,7 +376,7 @@ PORT map
 		SD_MOSI => spi_mosi,
 		SD_CLK => spi_clk,
 		SD_CS => spi_cs,
-		SD_ACK => '1'
+		SD_ACK => spi_raw_ack
 	);
 
 red<=unsigned(vga_red(7 downto 3));
