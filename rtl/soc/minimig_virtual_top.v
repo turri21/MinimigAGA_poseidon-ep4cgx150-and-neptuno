@@ -11,10 +11,13 @@
 
 `include "minimig_defines.vh"
 
-
-module minimig_virtual_top (
+module minimig_virtual_top
+	#(parameter debug = 0 )
+(
   // clock inputs
-  input  wire           CLOCK_50,   // 50 MHz
+  input wire            CLK_IN,
+  output wire           clk_114,
+  input wire            RESET_N,
   
   // LED outputs
   output wire           LED,        // LED Yellow
@@ -48,10 +51,14 @@ module minimig_virtual_top (
   output wire           AUDIO_R,    // sigma-delta DAC output right
 
   // Keyboard / Mouse
-  inout                 PS2_DAT,      // PS2 Keyboard Data
-  inout                 PS2_CLK,      // PS2 Keyboard Clock
-  inout                 PS2_MDAT,     // PS2 Mouse Data
-  inout                 PS2_MCLK,     // PS2 Mouse Clock
+  input                 PS2_DAT_I,      // PS2 Keyboard Data
+  input                 PS2_CLK_I,      // PS2 Keyboard Clock
+  input                 PS2_MDAT_I,     // PS2 Mouse Data
+  input                 PS2_MCLK_I,     // PS2 Mouse Clock
+  output                PS2_DAT_O,      // PS2 Keyboard Data
+  output                PS2_CLK_O,      // PS2 Keyboard Clock
+  output                PS2_MDAT_O,     // PS2 Mouse Data
+  output                PS2_MCLK_O,     // PS2 Mouse Clock
 
   // Joystick
   input       [  7-1:0] JOYA,         // joystick port A
@@ -73,11 +80,7 @@ module minimig_virtual_top (
 ////////////////////////////////////////
 
 // clock
-wire           pll_in_clk;
-wire           clk_114;
 wire           clk_28;
-wire           clk_sdram;
-wire           pll_locked;
 wire           clk7_en;
 wire           clk7n_en;
 wire           c1;
@@ -199,9 +202,6 @@ assign SDRAM_DQML       = sdram_dqm[0];
 assign SDRAM_DQMH       = sdram_dqm[1];
 assign SDRAM_BA         = sdram_ba;
 
-// clock
-assign pll_in_clk       = CLOCK_50;
-
 // reset
 assign pll_rst          = 1'b0;
 assign sdctl_rst        = pll_locked;
@@ -230,8 +230,8 @@ assign VGA_B[7:0]       = blue_reg[7:0];
 
 //// amiga clocks ////
 amiga_clk amiga_clk (
-  .rst          (pll_rst          ), // async reset input
-  .clk_in       (pll_in_clk       ), // input clock     ( 27.000000MHz)
+  .rst          (1'b0             ), // async reset input
+  .clk_in       (CLK_IN           ), // input clock     ( 27.000000MHz)
   .clk_114      (clk_114          ), // output clock c0 (114.750000MHz)
   .clk_sdram    (clk_sdram        ), // output clock c2 (114.750000MHz, -146.25 deg)
   .clk_28       (clk_28           ), // output clock c1 ( 28.687500MHz)
@@ -434,10 +434,14 @@ minimig minimig (
   .kms_level    (1'b0             ), // kms_level        ),
   ._15khz       (_15khz           ), // scandoubler disable
   .pwrled       (led              ), // power led
-  .msdat        (PS2_MDAT         ), // PS2 mouse data
-  .msclk        (PS2_MCLK         ), // PS2 mouse clk
-  .kbddat       (PS2_DAT          ), // PS2 keyboard data
-  .kbdclk       (PS2_CLK          ), // PS2 keyboard clk
+  .msdat_i      (PS2_MDAT_I       ), // PS2 mouse data
+  .msclk_i      (PS2_MCLK_I       ), // PS2 mouse clk
+  .kbddat_i     (PS2_DAT_I        ), // PS2 keyboard data
+  .kbdclk_i     (PS2_CLK_I        ), // PS2 keyboard clk
+  .msdat_o      (PS2_MDAT_O       ), // PS2 mouse data
+  .msclk_o      (PS2_MCLK_O       ), // PS2 mouse clk
+  .kbddat_o     (PS2_DAT_O        ), // PS2 keyboard data
+  .kbdclk_o     (PS2_CLK_O        ), // PS2 keyboard clk
   //host controller interface (SPI)
   ._scs         ( {SPI_SS4,SPI_SS3,SPI_SS2}  ),  // SPI chip select spi_chipselect(6 downto 4),
   .direct_sdi   (SD_MISO          ),  // SD Card direct in  SPI_SDO
@@ -472,7 +476,7 @@ minimig minimig (
 );
 
 
-EightThirtyTwo_Bridge hostcpu
+EightThirtyTwo_Bridge #( debug ? "true" : "false") hostcpu
 (
 	.clk(clk_114),
 	.nReset(reset_out),

@@ -43,6 +43,7 @@ typedef struct
     unsigned char cpu;
 	unsigned char fastram;	// Contains fast mem (bit 0 & 1) and turbo chipram (bit 7) settings.
 	unsigned char kick13patch;
+	unsigned char autofire;
 } configTYPE;
 
 extern fileTYPE file;	// Temporary file available for use by other modules, to avoid repeated memory usage.

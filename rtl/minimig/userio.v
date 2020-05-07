@@ -38,8 +38,10 @@ module userio (
   input  wire [  9-1:1] reg_address_in,     // register adress inputs
   input  wire [ 16-1:0] data_in,            // bus data in
   output reg  [ 16-1:0] data_out,           // bus data out
-  inout  wire           ps2mdat,            // mouse PS/2 data
-  inout  wire           ps2mclk,            // mouse PS/2 clk
+  input  wire           ps2mdat_i,            // mouse PS/2 data
+  input  wire           ps2mclk_i,            // mouse PS/2 clk
+  output wire           ps2mdat_o,            // mouse PS/2 data
+  output wire           ps2mclk_o,            // mouse PS/2 clk
   output wire           _fire0,             // joystick 0 fire output (to CIA)
   output wire           _fire1,             // joystick 1 fire output (to CIA)
   input  wire           _fire0_dat,
@@ -421,8 +423,10 @@ userio_ps2mouse pm1
   .clk        (clk),
   .clk7_en    (clk7_en),
   .reset      (reset),
-  .ps2mdat    (ps2mdat),
-  .ps2mclk    (ps2mclk),
+  .ps2mdat_i  (ps2mdat_i),
+  .ps2mclk_i  (ps2mclk_i),
+  .ps2mdat_o  (ps2mdat_o),
+  .ps2mclk_o  (ps2mclk_o),
   .mou_emu    (mou_emu),
   .sof        (sof),
   .zcount     (mouse0scr),

@@ -121,9 +121,12 @@ architecture RTL of DE10liteToplevel is
 	signal joyd : std_logic_vector(6 downto 0);
 
 	COMPONENT minimig_virtual_top
+	generic
+	( debug : boolean := false );
 	PORT
 	(
-		CLOCK_50		:	 IN STD_LOGIC;
+		CLK_IN		:	 IN STD_LOGIC;
+		clk_114		:	 OUT STD_LOGIC;
 		LED		:	 OUT STD_LOGIC;
 		UART_TX		:	 OUT STD_LOGIC;
 		UART_RX		:	 IN STD_LOGIC;
@@ -145,10 +148,14 @@ architecture RTL of DE10liteToplevel is
 		SDRAM_CKE		:	 OUT STD_LOGIC;
 		AUDIO_L		:	 OUT STD_LOGIC;
 		AUDIO_R		:	 OUT STD_LOGIC;
-		PS2_DAT		:	 INOUT STD_LOGIC;
-		PS2_CLK		:	 INOUT STD_LOGIC;
-		PS2_MDAT		:	 INOUT STD_LOGIC;
-		PS2_MCLK		:	 INOUT STD_LOGIC;
+		PS2_DAT_I		:	 INOUT STD_LOGIC;
+		PS2_CLK_I		:	 INOUT STD_LOGIC;
+		PS2_MDAT_I	:	 INOUT STD_LOGIC;
+		PS2_MCLK_I		:	 INOUT STD_LOGIC;
+		PS2_DAT_O		:	 INOUT STD_LOGIC;
+		PS2_CLK_O		:	 INOUT STD_LOGIC;
+		PS2_MDAT_O		:	 INOUT STD_LOGIC;
+		PS2_MCLK_O		:	 INOUT STD_LOGIC;
 		JOYA		:	 IN STD_LOGIC_VECTOR(6 DOWNTO 0);
 		JOYB		:	 IN STD_LOGIC_VECTOR(6 DOWNTO 0);
 		JOYC		:	 IN STD_LOGIC_VECTOR(6 DOWNTO 0);
@@ -190,9 +197,13 @@ ps2_keyboard_clk <= '0' when ps2_keyboard_clk_out='0' else 'Z';
 
 
 virtual_top : COMPONENT minimig_virtual_top
+generic map
+	(
+		debug => true
+	)
 PORT map
 	(
-		CLOCK_50 => MAX10_CLK1_50,
+		CLK_IN => MAX10_CLK1_50,
 		LED => LEDR(0),
 		UART_TX => rs232_txd,
 		UART_RX => rs232_rxd,
@@ -217,10 +228,15 @@ PORT map
 		AUDIO_L => sigma_l,
 		AUDIO_R => sigma_r,
 		
-		PS2_DAT => ps2_keyboard_dat,
-		PS2_CLK => ps2_keyboard_clk,
-		PS2_MDAT => ps2_mouse_dat,
-		PS2_MCLK => ps2_mouse_clk,
+		PS2_DAT_I => ps2_keyboard_dat_in,
+		PS2_CLK_I => ps2_keyboard_clk_in,
+		PS2_MDAT_I => ps2_mouse_dat_in,
+		PS2_MCLK_I => ps2_mouse_clk_in,
+
+		PS2_DAT_O => ps2_keyboard_dat_out,
+		PS2_CLK_O => ps2_keyboard_clk_out,
+		PS2_MDAT_O => ps2_mouse_dat_out,
+		PS2_MCLK_O => ps2_mouse_clk_out,
 		
 		JOYA => joya,
 		JOYB => joyb,

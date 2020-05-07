@@ -200,10 +200,14 @@ module minimig
   input [7:0] kbd_mouse_data,
 	input	_15khz,				//scandoubler disable
 	output pwrled,				//power led
-  inout	msdat,				//PS2 mouse data
-	inout	msclk,				//PS2 mouse clk
-	inout	kbddat,				//PS2 keyboard data
-	inout	kbdclk,				//PS2 keyboard clk
+	input		msdat_i,				//PS2 mouse data
+	input		msclk_i,				//PS2 mouse clk
+	input		kbddat_i,				//PS2 keyboard data
+	input		kbdclk_i,				//PS2 keyboard clk
+   output	msdat_o,				//PS2 mouse data
+	output	msclk_o,				//PS2 mouse clk
+	output	kbddat_o,				//PS2 keyboard data
+	output	kbdclk_o,				//PS2 keyboard clk
 	//host controller interface (SPI)
 	input	[2:0]_scs,			//SPI chip select
 	input	direct_sdi,			//SD Card direct in
@@ -620,8 +624,10 @@ userio USERIO1
 	.reg_address_in(reg_address),
 	.data_in(custom_data_in),
 	.data_out(user_data_out),
-	.ps2mdat(msdat),
-	.ps2mclk(msclk),
+	.ps2mdat_i(msdat_i),
+	.ps2mclk_i(msclk_i),
+	.ps2mdat_o(msdat_o),
+	.ps2mclk_o(msclk_o),
 	._fire0(_fire0),
 	._fire1(_fire1),
   ._fire0_dat(_fire0_dat),
@@ -751,8 +757,10 @@ ciaa CIAA1
 	.porta_out({_fire1_dat,_fire0_dat,_led,ovl}),
 	.portb_in({_joy4[0],_joy4[1],_joy4[2],_joy4[3],_joy3[0],_joy3[1],_joy3[2],_joy3[3]}),
 	.kbdrst(kbdrst),
-	.kbddat(kbddat),
-	.kbdclk(kbdclk),
+	.kbddat_i(kbddat_i),
+	.kbdclk_i(kbdclk_i),
+	.kbddat_o(kbddat_o),
+	.kbdclk_o(kbdclk_o),
   .kbd_mouse_type(kbd_mouse_type),
   .kbd_mouse_strobe(kbd_mouse_strobe),
   .kms_level(kms_level),

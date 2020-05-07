@@ -78,10 +78,11 @@ const char *config_memory_slow_msg[] = {"none  ", "0.5 MB", "1.0 MB", "1.5 MB"};
 const char *config_on_off_msg[] = {"off", "on "};
 const char *config_scanlines_msg[] = {"off", "dim", "black"};
 const char *config_memory_fast_msg[] = {"none  ", "2.0 MB", "4.0 MB", "8.0 MB", "24.0 MB"};
-const char *config_cpu_msg[] = {"68000 ", "68010", "-----","020 alpha"};
+const char *config_cpu_msg[] = {"68000 ", "68010", "-","020 alpha"};
 const char *config_hdf_msg[] = {"Disabled", "Hardfile (disk img)", "MMC/SD card", "MMC/SD partition 1", "MMC/SD partition 2", "MMC/SD partition 3", "MMC/SD partition 4"};
-
-const char *config_chipset_msg[] = {"OCS-A500", "OCS-A1000", "ECS", "---"};
+const char *config_chipset_msg[] = {"OCS-A500", "OCS-A1000", "ECS", "---", "---", "---", "AGA", "---"};
+const char *config_turbo_msg[] = {"none", "CHIPRAM", "KICK", "BOTH"};
+const char *config_cd32pad_msg[] =  {"OFF", "ON"};
 
 char *config_autofire_msg[] = {"        AUTOFIRE OFF", "        AUTOFIRE FAST", "        AUTOFIRE MEDIUM", "        AUTOFIRE SLOW"};
 
@@ -649,7 +650,7 @@ void HandleUI(void)
 		OsdDrawLogo(3,3,1);
 		OsdDrawLogo(4,4,1);
 		OsdDrawLogo(6,6,1);
-		ScrollText(5,"                                 Minimig by Dennis van Weeren.  Chipset improvements by Jakub Bednarski and Sascha Boing.  TG68 softcore and Chameleon port by Tobias Gubener.  Menu / disk code by Dennis van Weeren, Jakub Bednarski and Alastair M. Robinson.  Build process, repository and tooling by Christian Vogelgsang.  Minimig logo based on a design by Loriano Pagni.  Minimig is distributed under the terms of the GNU General Public License version 3.",0,0,0);
+		ScrollText(5,"                                 Minimig by Dennis van Weeren.  Chipset improvements by Jakub Bednarski and Sascha Boing.  AGA Chipset by Rok Krajnc.  TG68 softcore and Chameleon port by Tobias Gubener.  Menu / disk code by Dennis van Weeren, Jakub Bednarski and Alastair M. Robinson.  Build process, repository and tooling by Christian Vogelgsang.  Minimig logo based on a design by Loriano Pagni.  Minimig is distributed under the terms of the GNU General Public License version 3.",0,0,0);
         if (select || menu)
         {
 			menusub = 2;
@@ -746,7 +747,8 @@ void HandleUI(void)
             if (iCurrentDirectory) // if not root directory
             {
                 ScanDirectory(SCAN_INIT, fs_pFileExt, fs_Options);
-                ChangeDirectory(DirEntry[sort_table[iSelectedEntry]].StartCluster + (fat32 ? (DirEntry[sort_table[iSelectedEntry]].HighCluster & 0x0FFF) << 16 : 0));
+                ChangeDirectory(DirEntry[sort_table[iSelectedEntry]].StartCluster +
+						(fat32 ? (DirEntry[sort_table[iSelectedEntry]].HighCluster & 0x0FFF) << 16 : 0));
                 if (ScanDirectory(SCAN_INIT_FIRST, fs_pFileExt, fs_Options))
                     ScanDirectory(SCAN_INIT_NEXT, fs_pFileExt, fs_Options);
 
@@ -827,7 +829,8 @@ void HandleUI(void)
         {
             if (DirEntry[sort_table[iSelectedEntry]].Attributes & ATTR_DIRECTORY)
             {
-                ChangeDirectory(DirEntry[sort_table[iSelectedEntry]].StartCluster + (fat32 ? (DirEntry[sort_table[iSelectedEntry]].HighCluster & 0x0FFF) << 16 : 0));
+                ChangeDirectory(DirEntry[sort_table[iSelectedEntry]].StartCluster +
+					(fat32 ? (DirEntry[sort_table[iSelectedEntry]].HighCluster & 0x0FFF) << 16 : 0));
                 {
                     if (strncmp((char*)DirEntry[sort_table[iSelectedEntry]].Name, "..", 2) == 0)
                     { // parent dir selected
@@ -862,7 +865,8 @@ void HandleUI(void)
 
                     file.size = DirEntry[sort_table[iSelectedEntry]].FileSize;
                     file.attributes = DirEntry[sort_table[iSelectedEntry]].Attributes;
-                    file.start_cluster = DirEntry[sort_table[iSelectedEntry]].StartCluster + (fat32 ? (DirEntry[sort_table[iSelectedEntry]].HighCluster & 0x0FFF) << 16 : 0);
+                    file.start_cluster = DirEntry[sort_table[iSelectedEntry]].StartCluster +
+						(fat32 ? (DirEntry[sort_table[iSelectedEntry]].HighCluster & 0x0FFF) << 16 : 0);
                     file.cluster = file.start_cluster;
                     file.sector = 0;
 
@@ -1030,6 +1034,7 @@ void HandleUI(void)
 		menumask=0;
  		OsdSetTitle("Chipset",OSD_ARROW_LEFT|OSD_ARROW_RIGHT);
 
+#if 0
         OsdWrite(0, "", 0,0);
         strcpy(s, "         CPU : ");
 //        strcat(s, config.chipset & CONFIG_TURBO ? "turbo" : "normal");
@@ -1044,6 +1049,25 @@ void HandleUI(void)
         OsdWrite(4, "", 0,0);
         OsdWrite(5, "", 0,0);
         OsdWrite(6, "", 0,0);
+#endif
+		OsdWrite(0, "", 0,0);
+		strcpy(s, "         CPU : ");
+		strcat(s, config_cpu_msg[config.cpu & 0x03]);
+		OsdWrite(1, s, menusub == 0,0);
+		strcpy(s, "       Turbo : ");
+		strcat(s, config_turbo_msg[(config.cpu >> 2) & 0x03]);
+		OsdWrite(2, s, menusub == 1,0);
+		strcpy(s, "       Video : ");
+		strcat(s, config.chipset & CONFIG_NTSC ? "NTSC" : "PAL");
+		OsdWrite(3, s, menusub == 2,0);
+		strcpy(s, "     Chipset : ");
+		strcat(s, config_chipset_msg[(config.chipset >> 2) & 7]);
+		OsdWrite(4, s, menusub == 3,0);
+		strcpy(s, "     CD32Pad : ");
+		strcat(s, config_cd32pad_msg[(config.autofire >> 2) & 1]);
+		OsdWrite(5, s, menusub == 4,0);
+		OsdWrite(6, "", 0,0);
+
         OsdWrite(7, STD_BACK, menusub == 3,0);
 
         menustate = MENU_SETTINGS_CHIPSET2;
@@ -1076,23 +1100,53 @@ void HandleUI(void)
                 ConfigCPU(config.cpu);
 
             }
-            else if (menusub == 1)
+			else if (menusub == 1)
+			{
+				int _config_turbo = (config.cpu >> 2) & 0x3;
+				menustate = MENU_SETTINGS_CHIPSET1;
+				_config_turbo += 1;
+				config.cpu = (config.cpu & 0x3) | ((_config_turbo & 0x3) << 2);
+				ConfigCPU(config.cpu);
+			}
+            else if (menusub == 2)
             {
                 config.chipset ^= CONFIG_NTSC;
                 menustate = MENU_SETTINGS_CHIPSET1;
                 ConfigChipset(config.chipset);
             }
-            else if (menusub == 2)
+            else if (menusub == 3)
             {
-                if (config.chipset & CONFIG_ECS)
-                   config.chipset &= ~(CONFIG_ECS|CONFIG_A1000);
-                else
-                    config.chipset += CONFIG_A1000;
+				switch(config.chipset&0x1c) {
+					case 0:
+						config.chipset = (config.chipset&3) | CONFIG_A1000;
+						break;
+					case CONFIG_A1000:
+						config.chipset = (config.chipset&3) | CONFIG_ECS;
+						break;
+					case CONFIG_ECS:
+						config.chipset = (config.chipset&3) | CONFIG_AGA | CONFIG_ECS;
+						break;
+					case (CONFIG_AGA|CONFIG_ECS):
+						config.chipset = (config.chipset&3) | 0;
+						break;
+				}
+
+//                if (config.chipset & CONFIG_ECS)
+//                   config.chipset &= ~(CONFIG_ECS|CONFIG_A1000);
+//                else
+//                    config.chipset += CONFIG_A1000;
 
                 menustate = MENU_SETTINGS_CHIPSET1;
                 ConfigChipset(config.chipset);
             }
-            else if (menusub == 3)
+            else if (menusub == 4)
+            {
+				/* CD32 pad */
+				config.autofire  = (config.autofire + 4) & 0x7;
+				menustate = MENU_SETTINGS_CHIPSET1;
+				ConfigAutofire(config.autofire);
+            }
+            else if (menusub == 5)
             {
                 menustate = MENU_MAIN2_1;
                 menusub = 2;

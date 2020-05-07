@@ -96,8 +96,10 @@ module ciaa
   output   [3:0] porta_out,  // porta out
   input  [7:0] portb_in,   // portb in
   output  kbdrst,        // keyboard reset out
-  inout  kbddat,        // ps2 keyboard data
-  inout  kbdclk,        // ps2 keyboard clock
+  input  kbddat_i,        // ps2 keyboard data
+  input  kbdclk_i,        // ps2 keyboard clock
+  output  kbddat_o,        // ps2 keyboard data
+  output  kbdclk_o,        // ps2 keyboard clock
   input  keyboard_disabled,  // disable keystrokes
   input kbd_mouse_strobe,
   input kms_level,
@@ -184,8 +186,10 @@ ciaa_ps2keyboard  kbd1
   .clk(clk),
   .clk7_en(clk7_en),
   .reset(reset),
-  .ps2kdat(kbddat),
-  .ps2kclk(kbdclk),
+  .ps2kdat_i(kbddat_i),
+  .ps2kclk_i(kbdclk_i),
+  .ps2kdat_o(kbddat_o),
+  .ps2kclk_o(kbdclk_o),
   .leda(~porta_out[1]),  // keyboard joystick LED - num lock
   .ledb(disk_led),    // disk activity LED - scroll lock
   .aflock(aflock),
