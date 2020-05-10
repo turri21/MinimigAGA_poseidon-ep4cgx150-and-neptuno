@@ -1031,7 +1031,8 @@ void HandleUI(void)
     case MENU_SETTINGS_CHIPSET1 :
         OsdColor(OSDCOLOR_SUBMENU);
 		helptext=helptexts[HELPTEXT_CHIPSET];
-		menumask=0;
+		parentstate = menustate;
+		menumask=0x3f;
  		OsdSetTitle("Chipset",OSD_ARROW_LEFT|OSD_ARROW_RIGHT);
 
 #if 0
@@ -1068,14 +1069,14 @@ void HandleUI(void)
 		OsdWrite(5, s, menusub == 4,0);
 		OsdWrite(6, "", 0,0);
 
-        OsdWrite(7, STD_BACK, menusub == 3,0);
+        OsdWrite(7, STD_BACK, menusub == 5,0);
 
         menustate = MENU_SETTINGS_CHIPSET2;
         break;
 
     case MENU_SETTINGS_CHIPSET2 :
 
-        if (down && menusub < 3)
+        if (down && menusub < 5)
         {
             menusub++;
             menustate = MENU_SETTINGS_CHIPSET1;
@@ -1091,12 +1092,14 @@ void HandleUI(void)
         {
             if (menusub == 0)
             {
+				int cpu=(config.cpu&3)+1;
 //                config.chipset ^= CONFIG_TURBO;
                 menustate = MENU_SETTINGS_CHIPSET1;
-                config.cpu += 1; 
-                if ((config.cpu & 0x03)==0x02)
-					config.cpu += 1; 
-//                ConfigChipset(config.chipset);
+				
+                if(cpu==2)
+					++cpu;
+				config.cpu&=~3;
+				config.cpu|=cpu;
                 ConfigCPU(config.cpu);
 
             }
@@ -1176,55 +1179,39 @@ void HandleUI(void)
     case MENU_SETTINGS_MEMORY1 :
         OsdColor(OSDCOLOR_SUBMENU);
 		helptext=helptexts[HELPTEXT_MEMORY];
-		menumask=0x7f;
+		menumask=0x3f;
 		parentstate=menustate;
 
  		OsdSetTitle("Memory",OSD_ARROW_LEFT|OSD_ARROW_RIGHT);
 
-        OsdWrite(0, "", 0,0);
-        strcpy(s, "        Chip : ");
-        strcat(s, config_memory_chip_msg[config.memory & 0x03]);
-        OsdWrite(1, s, menusub == 0,0);
-        strcpy(s, "        Slow : ");
-        strcat(s, config_memory_slow_msg[config.memory >> 2 & 0x03]);
-        OsdWrite(2, s, menusub == 1,0);
-        strcpy(s, "        Fast : ");
-        strcat(s, config_memory_fast_msg[(config.fastram&0x7f) % 5]);
-        OsdWrite(3, s, menusub == 2,0);
-
-		if(PLATFORM&(1<<PLATFORM_TURBOCHIP))
-		{
-	        strcpy(s, "  Turbo Chip : ");
-	        strcat(s, config_on_off_msg[(config.fastram&128)==128 ? 1 : 0 ]);
-	        OsdWrite(4, s, menusub==3,0);
-		}
+		OsdWrite(0, "", 0,0);
+		strcpy(s, "      CHIP  : ");
+		strcat(s, config_memory_chip_msg[config.memory & 0x03]);
+		OsdWrite(1, s, menusub == 0,0);
+		strcpy(s, "      SLOW  : ");
+		strcat(s, config_memory_slow_msg[config.memory >> 2 & 0x03]);
+		OsdWrite(2, s, menusub == 1,0);
+		strcpy(s, "      FAST  : ");
+		if (!(((config.cpu & 0x02) == 0x02) && ((config.memory >> 4 & 0x03) == 0x03)))
+			strcat(s, config_memory_fast_msg[config.memory >> 4 & 0x03]);
 		else
-		{
-	        OsdWrite(4, "", 0,0);
-			menumask&=0xf7;	// Remove option 3 from the menu mask.
-		}
+			strcat(s, config_memory_fast_msg[(config.memory >> 4 & 0x03) + 1]);
+		OsdWrite(3, s, menusub == 2,0);
+
+		OsdWrite(4, "", 0,0);
 
         strcpy(s, "        ROM  : ");
         if (config.kickstart.long_name[0])
             strncat(s, config.kickstart.long_name, sizeof(config.kickstart.long_name));
         else
             strncat(s, config.kickstart.name, sizeof(config.kickstart.name));
-        OsdWrite(5, s, menusub == 4,0);
+        OsdWrite(5, s, menusub == 3,0);
 
-		// Make apearance of Action Replay option dependent upon Platform config.
-		if(PLATFORM&(1<<PLATFORM_ACTIONREPLAY))
-		{
-	        strcpy(s, "      AR3  : ");
-	        strcat(s, config.disable_ar3 ? "disabled" : "enabled ");
-	        OsdWrite(6, s, menusub == 5,config.memory&0x20);	// Grey out AR3 if more than 2MB fast memory
-		}
-		else
-		{
-	        OsdWrite(6, "", 0,0);
-			menumask&=0xdf;	// Remove bit 5
-		}
+		strcpy(s, "      HRTmon: ");
+		strcat(s, (config.memory&0x40) ? "enabled " : "disabled");
+		OsdWrite(6, s, menusub == 4,0);
 
-        OsdWrite(7, STD_BACK, menusub == 6,0);
+        OsdWrite(7, STD_BACK, menusub == 5,0);
 
         menustate = MENU_SETTINGS_MEMORY2;
         break;
@@ -1232,48 +1219,39 @@ void HandleUI(void)
     case MENU_SETTINGS_MEMORY2 :
         if (select)
         {
-            if (menusub == 0)
-            {
-                config.memory = ((config.memory + 1) & 0x03) | (config.memory & ~0x03);
-                menustate = MENU_SETTINGS_MEMORY1;
-                ConfigMemory(config.memory);
-            }
-            else if (menusub == 1)
-            {
-                config.memory = ((config.memory + 4) & 0x0C) | (config.memory & ~0x0C);
-                menustate = MENU_SETTINGS_MEMORY1;
-                ConfigMemory(config.memory);
-            }
-            else if (menusub == 2)
-            {
-				// Fast RAM config values 0 through 4 are valid, bit 7 is Turbo ChipRAM.
-                config.fastram = (((config.fastram&0x07) + 0x1) % 0x5) | (config.fastram & ~0x7);
-//                if ((config.memory & 0x30) == 0x30)
-//					config.memory -= 0x30;
-//				if (!(config.disable_ar3 & 0x01)&&(config.memory & 0x20))
-//                    config.memory &= ~0x30;
-                menustate = MENU_SETTINGS_MEMORY1;
-                ConfigFastRAM((config.misc<<8)|config.fastram);
-            }
+			if (menusub == 0)
+			{
+				config.memory = ((config.memory + 1) & 0x03) | (config.memory & ~0x03);
+				menustate = MENU_SETTINGS_MEMORY1;
+				ConfigMemory(config.memory);
+			}
+			else if (menusub == 1)
+			{
+				config.memory = ((config.memory + 4) & 0x0C) | (config.memory & ~0x0C);
+				menustate = MENU_SETTINGS_MEMORY1;
+				ConfigMemory(config.memory);
+			}
+			else if (menusub == 2)
+			{
+				config.memory = ((config.memory + 0x10) & 0x30) | (config.memory & ~0x30);
+				menustate = MENU_SETTINGS_MEMORY1;
+				ConfigMemory(config.memory);
+			}
             else if (menusub == 3)
-            {
-				config.fastram^=0x80;
-                menustate = MENU_SETTINGS_MEMORY1;
-                ConfigFastRAM((config.misc<<8)|config.fastram);
-            }
-            else if (menusub == 4)
             {
                 SelectFile("ROM", SCAN_LFN, MENU_ROMFILE_SELECTED, MENU_SETTINGS_MEMORY1);
             }
-            else if (menusub == 5)
+            else if (menusub == 4)
             {
-		    if (!(config.disable_ar3 & 0x01)||(config.memory & 0x20))
-                    config.disable_ar3 |= 0x01;
-		    else
-                    config.disable_ar3 &= 0xFE;
-                menustate = MENU_SETTINGS_MEMORY1;
+				config.memory ^= 0x40;
+				ConfigMemory(config.memory);
+				//if (!(config.disable_ar3 & 0x01)||(config.memory & 0x20))
+				//  config.disable_ar3 |= 0x01;
+				//else
+				//  config.disable_ar3 &= 0xFE;
+				menustate = MENU_SETTINGS_MEMORY1;
             }
-            else if (menusub == 6)
+            else if (menusub == 5)
             {
                 menustate = MENU_MAIN2_1;
                 menusub = 3;

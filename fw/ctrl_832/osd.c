@@ -754,19 +754,9 @@ void ConfigVideo(unsigned char hires, unsigned char lores, unsigned char scanlin
 void ConfigMemory(unsigned char memory)
 {
     EnableOsd();
-    //SPI(OSDCMDCFGMEM | (memory & 0x03));				//chip
-    //DisableOsd();
-    //EnableOsd();
-    //SPI(OSDCMDCFGMEM | 0x04 | ((memory>>2) & 0x03));	//slow
-    //DisableOsd();
-    //EnableOsd();
-    //SPI(OSDCMDCFGMEM | 0x08 | ((memory>>4) & 0x03));	//fast
     SPI(OSD_CMD_MEM);
     SPI(memory);
     DisableOsd();
-    //EnableOsd(); TODO BUG probably!
-//    SPI(OSDCMDCFGCPU|  0x00);	//68000  -  Don't want to disable '020 here!  AMR
-//    DisableOsd();
 }
 
 void ConfigCPU(unsigned char cpu)
@@ -783,7 +773,7 @@ void ConfigChipset(unsigned char chipset)
     EnableOsd();
     //SPI(OSDCMDCFGCHP | (chipset & 0x0F));
     SPI(OSD_CMD_CHIP);
-    SPI(chipset & 0x0f);
+    SPI(chipset & 0x1f);
     DisableOsd();
 }
 

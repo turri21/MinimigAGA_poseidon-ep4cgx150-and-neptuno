@@ -53,16 +53,13 @@ architecture RTL of DE10liteToplevel is
 	
 -- System clocks
 
+	signal sysclk : std_logic;
+
 --	signal slowclk : std_logic;
 --	signal fastclk : std_logic;
 --	signal pll_locked : std_logic;
 
 -- SPI signals
-
-	signal clk: std_logic;
-	signal clk28m : std_logic;
-	signal clk7m: std_logic;
-	signal clk56m : std_logic;
 
 	signal diskled :std_logic;
 	signal floppyled : std_logic;
@@ -112,6 +109,8 @@ architecture RTL of DE10liteToplevel is
 	alias sigma_l : std_logic is GPIO(18);
 	alias sigma_r : std_logic is GPIO(20);
 
+	signal audio_l : std_logic_vector(15 downto 0);
+	signal audio_r : std_logic_vector(15 downto 0);
 	
 -- IO
 
@@ -120,13 +119,23 @@ architecture RTL of DE10liteToplevel is
 	signal joyc : std_logic_vector(6 downto 0);
 	signal joyd : std_logic_vector(6 downto 0);
 
+	COMPONENT hybrid_pwm_sd
+		PORT
+		(
+			clk		:	 IN STD_LOGIC;
+			n_reset	:	 IN STD_LOGIC;
+			din		:	 IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+			dout		:	 OUT STD_LOGIC
+		);
+	END COMPONENT;
+	
 	COMPONENT minimig_virtual_top
 	generic
 	( debug : boolean := false );
 	PORT
 	(
 		CLK_IN		:	 IN STD_LOGIC;
-		clk_114		:	 OUT STD_LOGIC;
+		CLK_114		:	 OUT STD_LOGIC;
 		LED		:	 OUT STD_LOGIC;
 		UART_TX		:	 OUT STD_LOGIC;
 		UART_RX		:	 IN STD_LOGIC;
@@ -146,8 +155,8 @@ architecture RTL of DE10liteToplevel is
 		SDRAM_BA		:	 OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
 		SDRAM_CLK		:	 OUT STD_LOGIC;
 		SDRAM_CKE		:	 OUT STD_LOGIC;
-		AUDIO_L		:	 OUT STD_LOGIC;
-		AUDIO_R		:	 OUT STD_LOGIC;
+		AUDIO_L		:	 OUT STD_LOGIC_VECTOR(14 downto 0);
+		AUDIO_R		:	 OUT STD_LOGIC_VECTOR(14 downto 0);
 		PS2_DAT_I		:	 INOUT STD_LOGIC;
 		PS2_CLK_I		:	 INOUT STD_LOGIC;
 		PS2_MDAT_I	:	 INOUT STD_LOGIC;
@@ -204,11 +213,12 @@ generic map
 PORT map
 	(
 		CLK_IN => MAX10_CLK1_50,
+		CLK_114 => sysclk,
 		LED => LEDR(0),
 		UART_TX => rs232_txd,
 		UART_RX => rs232_rxd,
-		VGA_HS => VGA_HS,
-		VGA_VS => VGA_VS,
+		VGA_HS => vga_hsync,
+		VGA_VS => vga_vsync,
 		VGA_R	=> vga_red,
 		VGA_G	=> vga_green,
 		VGA_B	=> vga_blue,
@@ -225,8 +235,8 @@ PORT map
 		SDRAM_CLK => DRAM_CLK,
 		SDRAM_CKE => DRAM_CKE,
 
-		AUDIO_L => sigma_l,
-		AUDIO_R => sigma_r,
+		AUDIO_L => audio_l(15 downto 1),
+		AUDIO_R => audio_r(15 downto 1),
 		
 		PS2_DAT_I => ps2_keyboard_dat_in,
 		PS2_CLK_I => ps2_keyboard_clk_in,
@@ -249,7 +259,12 @@ PORT map
 		SD_CS => sd_cs,
 		SD_ACK => '1'
 	);
+	
+audio_l(0)<='0';
+audio_r(0)<='0';
 
+VGA_HS<=vga_hsync;
+VGA_VS<=vga_vsync;
 VGA_R<=unsigned(vga_red(7 downto 4));
 VGA_G<=unsigned(vga_green(7 downto 4));
 VGA_B<=unsigned(vga_blue(7 downto 4));
@@ -261,6 +276,26 @@ joya<=(others=>'1');
 joyb<=(others=>'1');
 joyc<=(others=>'1');
 joyd<=(others=>'1');
+
+left_sd : COMPONENT hybrid_pwm_sd
+	PORT map
+	(
+		clk => sysclk,
+		n_reset => vga_hsync,
+		din(15) => not audio_l(15),
+		din(14 downto 0) => audio_l(14 downto 0),
+		dout => sigma_l
+	);
+
+right_sd : COMPONENT hybrid_pwm_sd
+	PORT map
+	(
+		clk => sysclk,
+		n_reset => vga_hsync,
+		din(15) => not audio_r(15),
+		din(14 downto 0) => audio_r(14 downto 0),
+		dout => sigma_r
+	);
 
 end rtl;
 

@@ -132,6 +132,8 @@ SIGNAL sel_kickram      : std_logic;
 SIGNAL sel_slow         : std_logic;
 SIGNAL sel_slowram      : std_logic;
 SIGNAL sel_cart         : std_logic;
+SIGNAL sel_32           : std_logic;
+signal sel_undecoded    : std_logic;
 
 SIGNAL NMI_addr         : std_logic_vector(31 downto 0);
 SIGNAL sel_nmi_vector   : std_logic;
@@ -156,30 +158,34 @@ BEGIN
 
   wrd <= wr;
   addr <= cpuaddr;
-  datatg68 <= fromram                         WHEN sel_ram='1' AND sel_nmi_vector='0'
+  datatg68 <=
+         X"ffff"                              when sel_undecoded='1'
+	 else fromram                              WHEN sel_ram='1' AND sel_nmi_vector='0'
     --ELSE frometh                              WHEN sel_eth='1'
     ELSE autoconfig_data&r_data(11 downto 0)  WHEN sel_autoconfig='1' AND autoconfig_out="01" -- Zorro II RAM autoconfig
     ELSE autoconfig_data2&r_data(11 downto 0) WHEN sel_autoconfig='1' AND autoconfig_out="10" -- Zorro III RAM autoconfig
     --ELSE autoconfig_data3&r_data(11 downto 0) WHEN sel_autoconfig='1' AND autoconfig_out="11" -- Zorro III ethernet autoconfig
-    ELSE r_data;
+    else r_data;
 
+  sel_32 <= '1' when cpu(1)='1' and cpuaddr(31 downto 24)/=X"00" and cpuaddr(31 downto 24)/=X"ff" else '0'; -- Decode 32-bit space, but exclude interrupt vectors
   sel_autoconfig  <= '1' WHEN fastramcfg(2 downto 0)/="000" AND cpuaddr(23 downto 19)="11101" AND autoconfig_out/="00" ELSE '0'; --$E80000 - $EFFFFF
   sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 24)=z3ram_base) AND z3ram_ena='1' ELSE '0';
-  sel_z2ram       <= '1' WHEN (cpuaddr(31 downto 24) = "00000000") AND ((cpuaddr(23 downto 21) = "001") OR (cpuaddr(23 downto 21) = "010") OR (cpuaddr(23 downto 21) = "011") OR (cpuaddr(23 downto 21) = "100")) AND z2ram_ena='1' ELSE '0';
+  sel_z2ram       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 21) = "001") OR (cpuaddr(23 downto 21) = "010") OR (cpuaddr(23 downto 21) = "011") OR (cpuaddr(23 downto 21) = "100")) AND z2ram_ena='1' ELSE '0';
   --sel_eth         <= '1' WHEN (cpuaddr(31 downto 24) = eth_base) AND eth_cfgd='1' ELSE '0';
-  sel_chipram     <= '1' WHEN (cpuaddr(31 downto 24) = "00000000") AND (cpuaddr(23 downto 21)="000") AND turbochip_ena='1' AND turbochip_d='1' ELSE '0'; --$000000 - $1FFFFF
-  sel_kick        <= '1' WHEN (cpuaddr(31 downto 24) = "00000000") AND ((cpuaddr(23 downto 19)="11111") OR (cpuaddr(23 downto 19)="11100")) AND state/="11" ELSE '0'; -- $F8xxxx, $E0xxxx
+  sel_chipram     <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 21)="000") AND turbochip_ena='1' AND turbochip_d='1' ELSE '0'; --$000000 - $1FFFFF
+  sel_kick        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 19)="11111") OR (cpuaddr(23 downto 19)="11100")) AND state/="11" ELSE '0'; -- $F8xxxx, $E0xxxx
   sel_kickram     <= '1' WHEN sel_kick='1' AND turbochip_ena='1' AND turbokick_d='1' ELSE '0';
-  sel_slow        <= '1' WHEN (cpuaddr(31 downto 24) = "00000000") AND ((cpuaddr(23 downto 20)="1100") OR (cpuaddr(23 downto 19)="11010")) ELSE '0'; -- $C00000 - $D7FFFF
+  sel_slow        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 20)=X"C") OR (cpuaddr(23 downto 19)=X"D"&'0')) ELSE '0'; -- $C00000 - $D7FFFF
   sel_slowram     <= '1' WHEN sel_slow='1' AND turbochip_ena='1' AND turbokick_d='1' ELSE '0';
-  sel_cart        <= '1' WHEN (cpuaddr(31 downto 24) = "00000000") AND (cpuaddr(23 downto 20)="1010") ELSE '0'; -- $A00000 - $A7FFFF
-
+  sel_cart        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 20)="1010") ELSE '0'; -- $A00000 - $A7FFFF
+  sel_undecoded   <= '1' when sel_32='1' and sel_z3ram='0' else '0';
   sel_ram         <= '1' WHEN state/="01" AND sel_nmi_vector='0' AND (
          sel_z2ram='1'
       OR sel_z3ram='1'
       OR sel_chipram='1'
       OR sel_slowram='1'
       OR sel_kickram='1'
+		or sel_undecoded='1'
     ) ELSE '0';
 
   -- when this is true, we set bit 23 to zero, to map the memory ranges within $A0-$FF to
@@ -190,7 +196,7 @@ BEGIN
 
   ramcs <= (NOT sel_ram) or slower(0);-- OR (state(0) AND NOT state(1));
 --  cpuDMA <= sel_ram;
-  cpustate <= clkena&slower(1 downto 0)&ramcs&state;
+  cpustate <= clkena&slower(1 downto 0)&ramcs&state(1)&(state(0) and not sel_undecoded);
   ramlds <= lds_in;
   ramuds <= uds_in;
 
@@ -198,19 +204,47 @@ BEGIN
   -- map $00-$1F to $00-$1F (chipram), $A0-$FF to $20-$7F. All non-fastram goes into the first
   -- 8M block. This map should be the same as in minimig_sram_bridge.v
   -- 8M Zorro II RAM $20-9F goes to $80-$FF
+  
+-- Boolean logic can handle this mapping.  Furthermore, applying the same
+-- mapping to the other three banks is harmless, so there's no point expending logic
+-- to make it specific to the first bank.
+
+-- ABCD  B|C  A^(B|C)
+--
+-- 0000  0    0       0 -> 0
+--
+-- 0010  1    1       2 -> A
+-- 0100  1    1       4 -> C
+-- 0110  1    1       6 -> E
+-- 1000  0    1       8 -> 8
+--
+-- 1010  1    0       A -> 2
+-- 1100  1    0       C -> 4
+-- 1110  1    0       E -> 6 
+  
   ramaddr(31 downto 25) <= "0000000";
   ramaddr(24) <= sel_z3ram; -- Remap the Zorro III RAM to 0x1000000
-  ramaddr(23 downto 21)     -- Remap the Zorro II RAM $200000-$9FFFFF to $800000-$FFFFFF
-    <=   "100" WHEN sel_z2ram&cpuaddr(23 downto 21)="1001" -- $2 -> $8
-    ELSE "101" WHEN sel_z2ram&cpuaddr(23 downto 21)="1010" -- $4 -> $A
-    ELSE "110" WHEN sel_z2ram&cpuaddr(23 downto 21)="1011" -- $6 -> $C
-    ELSE "111" WHEN sel_z2ram&cpuaddr(23 downto 21)="1100" -- $8 -> $E
-    ELSE '0'&cpuaddr(22 downto 21) WHEN sel_a0map='1' -- Remap $A0xxxx-$FFxxxx to $20xxxx-$7Fxxxx
-    ELSE cpuaddr(23 downto 21);
-  ramaddr(20 downto 0) <= cpuaddr(20 downto 0);
+--  ramaddr(23 downto 21)     -- Remap the Zorro II RAM $200000-$9FFFFF to $800000-$FFFFFF
+--    <=   "100" WHEN sel_z2ram&cpuaddr(23 downto 21)="1001" -- $2 -> $8
+--    ELSE "101" WHEN sel_z2ram&cpuaddr(23 downto 21)="1010" -- $4 -> $A
+--    ELSE "110" WHEN sel_z2ram&cpuaddr(23 downto 21)="1011" -- $6 -> $C
+--    ELSE "111" WHEN sel_z2ram&cpuaddr(23 downto 21)="1100" -- $8 -> $E
+--    ELSE '0'&cpuaddr(22 downto 21) WHEN sel_a0map='1' -- Remap $A0xxxx-$FFxxxx to $20xxxx-$7Fxxxx
+--    ELSE cpuaddr(23 downto 21);
+--  ramaddr(20 downto 0) <= cpuaddr(20 downto 0);
+
+-- AMR - simplify...
+	ramaddr(23)<=cpuaddr(23) xor (cpuaddr(22) or cpuaddr(21));
+   ramaddr(22 downto 0) <= cpuaddr(22 downto 0);
+	
+--    ramaddr(23)     -- Remap the Zorro II RAM $200000-$9FFFFF to $A00000-$FFFFFF, $800000-9FFFFF
+--    <=   '1' WHEN sel_z2ram
+--    ELSE '0' WHEN sel_a0map='1' -- Remap $A0xxxx-$FFxxxx to $20xxxx-$7Fxxxx
+--    ELSE cpuaddr(23);
+--  ramaddr(20 downto 0) <= cpuaddr(20 downto 0);
 
   -- 32bit address space for 68020, limit address space to 24bit for 68000/68010
-  cpuaddr <= addrtg68 WHEN cpu(1) = '1' ELSE "00000000" & addrtg68(23 downto 0);
+  cpuaddr <= addrtg68 WHEN cpu(1) = '1' ELSE X"00" & addrtg68(23 downto 0);
 
 pf68K_Kernel_inst: work.TG68KdotC_Kernel
   generic map (

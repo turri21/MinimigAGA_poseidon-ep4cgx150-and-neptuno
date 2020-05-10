@@ -16,7 +16,7 @@ module minimig_virtual_top
 (
   // clock inputs
   input wire            CLK_IN,
-  output wire           clk_114,
+  output wire           CLK_114,
   input wire            RESET_N,
   
   // LED outputs
@@ -47,8 +47,8 @@ module minimig_virtual_top
   output wire           SDRAM_CKE,  // SDRAM Clock Enable
   
   // MINIMIG specific
-  output wire           AUDIO_L,    // sigma-delta DAC output left
-  output wire           AUDIO_R,    // sigma-delta DAC output right
+  output wire[14:0]     AUDIO_L,    // sigma-delta DAC output left
+  output wire[14:0]     AUDIO_R,    // sigma-delta DAC output right
 
   // Keyboard / Mouse
   input                 PS2_DAT_I,      // PS2 Keyboard Data
@@ -144,10 +144,6 @@ wire           _ram_oe;       // sram output enable
 wire           _15khz;        // scandoubler disable
 wire           joy_emu_en;    // joystick emulation enable
 wire           sdo;           // SPI data output
-wire [ 15-1:0] ldata;         // left DAC data
-wire [ 15-1:0] rdata;         // right DAC data
-wire           audio_left;
-wire           audio_right;
 wire           vs;
 wire           hs;
 wire [  8-1:0] red;
@@ -233,7 +229,7 @@ assign VGA_B[7:0]       = blue_reg[7:0];
 amiga_clk amiga_clk (
   .rst          (1'b0             ), // async reset input
   .clk_in       (CLK_IN           ), // input clock     ( 27.000000MHz)
-  .clk_114      (clk_114          ), // output clock c0 (114.750000MHz)
+  .clk_114      (CLK_114          ), // output clock c0 (114.750000MHz)
   .clk_sdram    (clk_sdram        ), // output clock c2 (114.750000MHz, -146.25 deg)
   .clk_28       (clk_28           ), // output clock c1 ( 28.687500MHz)
   .clk7_en      (clk7_en          ), // output clock 7 enable (on 28MHz clock domain)
@@ -249,7 +245,7 @@ amiga_clk amiga_clk (
 //// TG68K main CPU ////
 
 TG68K tg68k (
-  .clk          (clk_114          ),
+  .clk          (CLK_114          ),
   .reset        (tg68_rst         ),
   .clkena_in    (1'b1             ),
   .IPL          (tg68_IPL         ),
@@ -317,7 +313,7 @@ sdram_ctrl sdram (
   .sd_we        (SDRAM_nWE        ),
   .sd_ras       (SDRAM_nRAS       ),
   .sd_cas       (SDRAM_nCAS       ),
-  .sysclk       (clk_114          ),
+  .sysclk       (CLK_114          ),
   .reset_in     (sdctl_rst        ),
   
   .hostWR       (hostWR           ),
@@ -456,10 +452,10 @@ minimig minimig (
   .green        (green            ),  // green
   .blue         (blue             ),  // blue
   //audio
-  .left         (AUDIO_L          ),  // audio bitstream left
-  .right        (AUDIO_R          ),  // audio bitstream right
-  .ldata        (                 ),  // left DAC data
-  .rdata        (                 ),  // right DAC data
+  .left         (                 ),  // audio bitstream left
+  .right        (                 ),  // audio bitstream right
+  .ldata        (AUDIO_L          ),  // left DAC data
+  .rdata        (AUDIO_R          ),  // right DAC data
   //user i/o
   .cpu_config   (cpu_config       ), // CPU config
   .memcfg       (memcfg           ), // memory config
@@ -479,7 +475,7 @@ minimig minimig (
 
 EightThirtyTwo_Bridge #( debug ? "true" : "false") hostcpu
 (
-	.clk(clk_114),
+	.clk(CLK_114),
 	.nReset(reset_out),
 //	.clkena_in(hostena),
 	.data_in(hostdata),
@@ -499,7 +495,7 @@ assign enaWRreg=1'b1;
 
 cfide mycfide
 ( 
-		.sysclk(clk_114),
+		.sysclk(CLK_114),
 		.n_reset(reset_out),
 
 		.memce(hostce),

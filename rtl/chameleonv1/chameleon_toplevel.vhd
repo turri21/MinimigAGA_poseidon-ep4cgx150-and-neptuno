@@ -120,8 +120,8 @@ architecture rtl of chameleon_toplevel is
 	signal rs232_txd : std_logic;
 
 -- Sound
-	signal audio_l : signed(15 downto 0);
-	signal audio_r : signed(15 downto 0);
+	signal audio_l : std_logic_vector(15 downto 0);
+	signal audio_r : std_logic_vector(15 downto 0);
 
 -- IO
 	signal ena_1mhz : std_logic;
@@ -139,6 +139,8 @@ architecture rtl of chameleon_toplevel is
 	signal usart_rx : std_logic:='1'; -- Safe default
 	signal ir : std_logic;
 
+	signal vga_hsync : std_logic;
+	signal vga_vsync : std_logic;
 	signal vga_red : std_logic_vector(7 downto 0);
 	signal vga_green : std_logic_vector(7 downto 0);
 	signal vga_blue : std_logic_vector(7 downto 0);
@@ -155,13 +157,23 @@ architecture rtl of chameleon_toplevel is
 	);
 	END COMPONENT;
 
+	COMPONENT hybrid_pwm_sd
+		PORT
+		(
+			clk		:	 IN STD_LOGIC;
+			n_reset	:	 IN STD_LOGIC;
+			din		:	 IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+			dout		:	 OUT STD_LOGIC
+		);
+	END COMPONENT;
+
 	COMPONENT minimig_virtual_top
 	generic
 	( debug : integer := 0 );
 	PORT
 	(
-		clk_114		:	 out STD_LOGIC;
-		clk_IN : in std_logic;
+		CLK_114		:	 out STD_LOGIC;
+		CLK_IN : in std_logic;
 --		RESET_N : in STD_LOGIC;
 		LED		:	 OUT STD_LOGIC;
 		UART_TX		:	 OUT STD_LOGIC;
@@ -182,8 +194,8 @@ architecture rtl of chameleon_toplevel is
 		SDRAM_BA		:	 OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
 		SDRAM_CLK		:	 OUT STD_LOGIC;
 		SDRAM_CKE		:	 OUT STD_LOGIC;
-		AUDIO_L		:	 OUT STD_LOGIC;
-		AUDIO_R		:	 OUT STD_LOGIC;
+		AUDIO_L		:	 OUT STD_LOGIC_VECTOR(14 downto 0);
+		AUDIO_R		:	 OUT STD_LOGIC_VECTOR(14 downto 0);
 		PS2_DAT_I		:	 IN STD_LOGIC;
 		PS2_CLK_I		:	 IN STD_LOGIC;
 		PS2_MDAT_I		:	 IN STD_LOGIC;
@@ -328,12 +340,12 @@ generic map
 PORT map
 	(
 		CLK_IN => clk8,
-		clk_114 => clk_114,
+		CLK_114 => clk_114,
 		LED => led_red,
 		UART_TX => rs232_txd,
 		UART_RX => rs232_rxd,
-		VGA_HS => nHSync,
-		VGA_VS => nVSync,
+		VGA_HS => vga_hsync,
+		VGA_VS => vga_vsync,
 		VGA_R	=> vga_red,
 		VGA_G	=> vga_green,
 		VGA_B	=> vga_blue,
@@ -351,8 +363,8 @@ PORT map
 		SDRAM_CLK => sd_clk,
 --		SDRAM_CKE => sd_CKE,
 
-		AUDIO_L => sigmaL,
-		AUDIO_R => sigmaR,
+		AUDIO_L => audio_l(15 downto 1),
+		AUDIO_R => audio_r(15 downto 1),
 		
 		PS2_DAT_I => ps2_keyboard_dat_in,
 		PS2_CLK_I => ps2_keyboard_clk_in,
@@ -378,9 +390,33 @@ PORT map
 		SD_CS => spi_cs,
 		SD_ACK => spi_raw_ack
 	);
+audio_l(0)<='0';
+audio_r(0)<='0';
 
+nHSync<=vga_hsync;
+nVSync<=vga_vsync;
 red<=unsigned(vga_red(7 downto 3));
 grn<=unsigned(vga_green(7 downto 3));
 blu<=unsigned(vga_blue(7 downto 3));
+
+left_sd : COMPONENT hybrid_pwm_sd
+	PORT map
+	(
+		clk => clk_114,
+		n_reset => vga_hsync,
+		din(15) => not audio_l(15),
+		din(14 downto 0) => audio_l(14 downto 0),
+		dout => sigmaL
+	);
+
+right_sd : COMPONENT hybrid_pwm_sd
+	PORT map
+	(
+		clk => clk_114,
+		n_reset => vga_hsync,
+		din(15) => not audio_r(15),
+		din(14 downto 0) => audio_r(14 downto 0),
+		dout => sigmaR
+	);
 
 end architecture;
