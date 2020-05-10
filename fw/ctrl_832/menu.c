@@ -1092,7 +1092,7 @@ void HandleUI(void)
         {
             if (menusub == 0)
             {
-				int cpu=(config.cpu&3)+1;
+				int cpu=(config.cpu+1)&3;
 //                config.chipset ^= CONFIG_TURBO;
                 menustate = MENU_SETTINGS_CHIPSET1;
 				
