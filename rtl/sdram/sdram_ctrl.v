@@ -244,7 +244,7 @@ assign reset_out = init_done;
 assign hostena = zce & (zena | zcachehit);
 
 // map host processor's address space to 0x580000
-assign zmAddr = {2'b00, ~hostAddr[22], ~hostAddr[21], hostAddr[20], ~hostAddr[19], hostAddr[18:0]};
+assign zmAddr = {2'b00, ~hostAddr[22], hostAddr[21], ~hostAddr[20], ~hostAddr[19], hostAddr[18:0]};
 // map host processor's address space to 0x400000
 // assign zmAddr = {2'b00, ~hostAddr[22], hostAddr[21:0]};
 

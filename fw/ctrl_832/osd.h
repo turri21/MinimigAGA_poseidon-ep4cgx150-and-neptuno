@@ -104,8 +104,8 @@ void OsdSetTitle(char *s,int arrow);	// arrow > 0 = display right arrow in botto
 void OsdWrite(unsigned char n, char *s, unsigned char inver, unsigned char stipple);
 void OsdWriteOffset(unsigned char n, char *s, unsigned char inver, unsigned char stipple, char offset); // Used for scrolling "Exit" text downwards...
 void OsdClear(void);
-void OsdEnable(unsigned char mode);
-void OsdDisable(void);
+void OsdShow(unsigned char mode);
+void OsdHide(void);
 void OsdWaitVBL(void);
 void OsdReset(unsigned char boot);
 //void ConfigFilter(unsigned char lores, unsigned char hires);

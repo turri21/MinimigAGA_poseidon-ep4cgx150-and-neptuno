@@ -160,14 +160,14 @@ void ShowSplash()
 	OsdDrawLogo(5,4,0);
     OsdWrite(6, "", 0,0);
     OsdWrite(7, "", 0,0);
-	OsdEnable(0);
+	OsdShow(0);
 	OsdColor(OSDCOLOR_TOPLEVEL);
 }
 
 
 void HideSplash()
 {
-	OsdDisable();
+	OsdHide();
 }
 
 
@@ -348,10 +348,10 @@ void HandleUI(void)
 		if(DebugMode)
 		{
 			helptext=helptexts[HELPTEXT_NONE];
-			OsdEnable(0);
+			OsdShow(0);
 		}
 		else
-	        OsdDisable();
+	        OsdHide();
         menustate = MENU_NONE2;
         break;
 
@@ -363,7 +363,7 @@ void HandleUI(void)
             menustate = MENU_MAIN1;
             menusub = 0;
             OsdClear();
-            OsdEnable(DISABLE_KEYBOARD);
+            OsdShow(DISABLE_KEYBOARD);
         }
         break;
 
@@ -701,7 +701,7 @@ void HandleUI(void)
         {
 			if(menusub<5)
 			{
-				OsdDisable();
+				OsdHide();
 				SetConfigurationFilename(menusub);
 				LoadConfiguration(NULL);
 //				OsdReset(RESET_NORMAL);
@@ -1133,11 +1133,6 @@ void HandleUI(void)
 						config.chipset = (config.chipset&3) | 0;
 						break;
 				}
-
-//                if (config.chipset & CONFIG_ECS)
-//                   config.chipset &= ~(CONFIG_ECS|CONFIG_A1000);
-//                else
-//                    config.chipset += CONFIG_A1000;
 
                 menustate = MENU_SETTINGS_CHIPSET1;
                 ConfigChipset(config.chipset);
@@ -1837,13 +1832,27 @@ void HandleUI(void)
                 memcpy((void*)config.kickstart.name, (void*)file.name, sizeof(config.kickstart.name));
                 memcpy((void*)config.kickstart.long_name, (void*)file.long_name, sizeof(config.kickstart.long_name));
 
-                OsdDisable();
-                OsdReset(RESET_BOOTLOADER);
-                ConfigChipset(config.chipset | CONFIG_TURBO);
-                ConfigFloppy(config.floppy.drives, CONFIG_FLOPPY2X);
+                OsdHide();
+
+				EnableOsd();
+				SPI(OSD_CMD_RST);
+				SPI(SPI_RST_CPU | SPI_CPU_HLT);
+				DisableOsd();
+
+//                ConfigChipset(config.chipset | CONFIG_TURBO);
+//                ConfigFloppy(config.floppy.drives, CONFIG_FLOPPY2X);
 				UploadKickstart(config.kickstart.name);
-                ConfigChipset(config.chipset); // restore CPU speed mode
-                ConfigFloppy(config.floppy.drives, config.floppy.speed); // restore floppy speed mode
+//                ConfigChipset(config.chipset); // restore CPU speed mode
+//                ConfigFloppy(config.floppy.drives, config.floppy.speed); // restore floppy speed mode
+				EnableOsd();
+			    SPI(OSD_CMD_RST);
+				SPI(SPI_RST_USR | SPI_CPU_HLT | SPI_RST_CPU);
+			    DisableOsd();
+			    SPIN; SPIN; SPIN; SPIN;
+			    EnableOsd();
+			    SPI(OSD_CMD_RST);
+				SPI(0);
+			    DisableOsd();
 
                 menustate = MENU_NONE1;
             }
@@ -2465,7 +2474,7 @@ void ErrorMessage(char *message, unsigned char code)
 	    OsdWrite(6, "", 0,0);
 	    OsdWrite(7, "", 0,0);
 
-		OsdEnable(0);
+		OsdShow(0);
         OsdColor(OSDCOLOR_WARNING); // do not disable KEYBOARD
     }
 }
@@ -2477,8 +2486,8 @@ void InfoMessage(char *message)
     {
 //        OsdClear();
  		OsdSetTitle("Message",0);
-        OsdEnable(0); // do not disable keyboard
-		OsdEnable(OSDCOLOR_TOPLEVEL);
+        OsdShow(0); // do not disable keyboard
+		OsdShow(OSDCOLOR_TOPLEVEL);
     }
     OsdWrite(0, "", 0,0);
     OsdWrite(1, message, 0,0);

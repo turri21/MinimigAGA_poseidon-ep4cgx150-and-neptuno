@@ -137,9 +137,10 @@ begin
 		sel_chip[1] = cpu_address_in[23:19]==5'b0000_1 ? 1'b1 : 1'b0;
 		sel_chip[2] = cpu_address_in[23:19]==5'b0001_0 ? 1'b1 : 1'b0;
 		sel_chip[3] = cpu_address_in[23:19]==5'b0001_1 ? 1'b1 : 1'b0;
-		sel_slow[0] = t_sel_slow[0];
-		sel_slow[1] = t_sel_slow[1];
-		sel_slow[2] = t_sel_slow[2];
+		// AMR - filter out sel_slow signals based on memcfg
+		sel_slow[0] = sel_xram & t_sel_slow[0];
+		sel_slow[1] = sel_xram & t_sel_slow[1];
+		sel_slow[2] = sel_xram & t_sel_slow[2];
 		sel_kick    = (cpu_address_in[23:19]==5'b1111_1 && (cpu_rd || cpu_hlt)) || (cpu_rd && ovl && cpu_address_in[23:19]==5'b0000_0) ? 1'b1 : 1'b0; //$F80000 - $FFFFFF
 		sel_kick1mb = (cpu_address_in[23:19]==5'b1110_0 && (cpu_rd || cpu_hlt)) ? 1'b1 : 1'b0; //$E00000 - $E7FFFF
 	end
@@ -163,7 +164,9 @@ assign sel_gayle = hdc_ena && cpu_address_in[23:12]==12'b1101_1110_0001 ? 1'b1 :
 
 assign sel_rtc = (cpu_address_in[23:16]==8'b1101_1100) ? 1'b1 : 1'b0;   //RTC registers at $DC0000 - $DCFFFF
 
-assign sel_reg = cpu_address_in[23:21]==3'b110 ? ~(sel_xram | sel_rtc | sel_ide | sel_gayle) : 1'b0;		//chip registers at $DF0000 - $DFFFFF
+// AMR - decode 5 bits here to avoid unmapped C80000 / D00000 accesses going to hardware registers.
+// Matching D8xxxx - DFxxxx
+assign sel_reg = cpu_address_in[23:19]==5'b11011 ? ~(sel_xram | sel_rtc | sel_ide | sel_gayle) : 1'b0;		//chip registers at $DF0000 - $DFFFFF
 
 assign sel_cia = cpu_address_in[23:20]==4'b1011 ? 1'b1 : 1'b0;
 

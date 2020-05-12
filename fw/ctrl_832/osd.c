@@ -668,7 +668,7 @@ void OsdWaitVBL(void)
 
 
 // enable displaying of OSD
-void OsdEnable(unsigned char mode)
+void OsdShow(unsigned char mode)
 {
     EnableOsd();
     //SPI(OSDCMDENABLE | (mode & DISABLE_KEYBOARD));
@@ -679,7 +679,7 @@ void OsdEnable(unsigned char mode)
 
 
 // disable displaying of OSD
-void OsdDisable(void)
+void OsdHide(void)
 {
     EnableOsd();
     //SPI(OSDCMDDISABLE);

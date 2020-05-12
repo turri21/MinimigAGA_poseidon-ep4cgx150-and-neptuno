@@ -103,12 +103,14 @@ void HandleFpga(void)
     UpdateDriveStatus();
 }
 
+void setstack();
 #ifdef __GNUC__
 void c_entry(void)
 #else
 __geta4 void main(void)
 #endif
 {
+	setstack();
 	debugmsg[0]=0;
 	debugmsg2[0]=0;
 //    unsigned long time;

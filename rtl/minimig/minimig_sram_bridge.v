@@ -136,7 +136,7 @@ assign address[22:18] = (bank[7] ? // access to $F8-$FF or ovl
 //always @(posedge clk28m)
 //	if (c1 && !c3 && enable)	// set address in Q1		
 //		address <= {bank[7]|bank[5]|bank[3]|bank[1],address_in[18:1]};
-			
+
 // data_out multiplexer
 assign data_out[15:0] = (enable && rd) ? ramdata_in[15:0] : 16'b0000000000000000;
 
