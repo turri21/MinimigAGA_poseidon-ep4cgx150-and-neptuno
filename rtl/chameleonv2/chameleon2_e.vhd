@@ -33,7 +33,7 @@ use ieee.numeric_std.all;
 
 -- -----------------------------------------------------------------------
 
-entity chameleon2 is
+entity chameleon2_toplevel is
 	port (
 -- Clocks
 		clk50m : in std_logic;

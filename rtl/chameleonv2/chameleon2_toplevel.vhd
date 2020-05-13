@@ -5,13 +5,12 @@ use ieee.numeric_std.all;
 
 -- -----------------------------------------------------------------------
 
-architecture rtl of chameleon2 is
+architecture rtl of chameleon2_toplevel is
    constant reset_cycles : integer := 131071;
 	
 -- System clocks
 
-	signal slowclk : std_logic;
-	signal fastclk : std_logic;
+	signal clk_114 : std_logic;
 	signal pll_locked : std_logic;
 	signal ena_1mhz : std_logic;
 	signal ena_1khz : std_logic;
@@ -120,6 +119,55 @@ architecture rtl of chameleon2 is
 	);
 	END COMPONENT;
 
+	COMPONENT minimig_virtual_top
+	generic
+	( debug : integer := 0 );
+	PORT
+	(
+		CLK_114		:	 out STD_LOGIC;
+		CLK_IN : in std_logic;
+--		RESET_N : in STD_LOGIC;
+		LED		:	 OUT STD_LOGIC;
+		UART_TX		:	 OUT STD_LOGIC;
+		UART_RX		:	 IN STD_LOGIC;
+		VGA_HS		:	 OUT STD_LOGIC;
+		VGA_VS		:	 OUT STD_LOGIC;
+		VGA_R		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+		VGA_G		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+		VGA_B		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+		SDRAM_DQ		:	 INOUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+		SDRAM_A		:	 OUT STD_LOGIC_VECTOR(12 DOWNTO 0);
+		SDRAM_DQML		:	 OUT STD_LOGIC;
+		SDRAM_DQMH		:	 OUT STD_LOGIC;
+		SDRAM_nWE		:	 OUT STD_LOGIC;
+		SDRAM_nCAS		:	 OUT STD_LOGIC;
+		SDRAM_nRAS		:	 OUT STD_LOGIC;
+		SDRAM_nCS		:	 OUT STD_LOGIC;
+		SDRAM_BA		:	 OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+		SDRAM_CLK		:	 OUT STD_LOGIC;
+		SDRAM_CKE		:	 OUT STD_LOGIC;
+		AUDIO_L		:	 OUT STD_LOGIC_VECTOR(14 downto 0);
+		AUDIO_R		:	 OUT STD_LOGIC_VECTOR(14 downto 0);
+		PS2_DAT_I		:	 IN STD_LOGIC;
+		PS2_CLK_I		:	 IN STD_LOGIC;
+		PS2_MDAT_I		:	 IN STD_LOGIC;
+		PS2_MCLK_I		:	 IN STD_LOGIC;
+		PS2_DAT_O	:	 OUT STD_LOGIC;
+		PS2_CLK_O	:	 OUT STD_LOGIC;
+		PS2_MDAT_O	:	 OUT STD_LOGIC;
+		PS2_MCLK_O	:	 OUT STD_LOGIC;
+		JOYA		:	 IN STD_LOGIC_VECTOR(6 DOWNTO 0);
+		JOYB		:	 IN STD_LOGIC_VECTOR(6 DOWNTO 0);
+		JOYC		:	 IN STD_LOGIC_VECTOR(6 DOWNTO 0);
+		JOYD		:	 IN STD_LOGIC_VECTOR(6 DOWNTO 0);
+		SD_MISO	:	 IN STD_LOGIC;
+		SD_MOSI	:	 OUT STD_LOGIC;
+		SD_CLK	:	 OUT STD_LOGIC;
+		SD_CS		:	 OUT STD_LOGIC;
+		SD_ACK	:	 IN STD_LOGIC
+	);
+	END COMPONENT;
+
 begin
 -- -----------------------------------------------------------------------
 -- Unused pins
@@ -145,7 +193,7 @@ begin
 			resetCycles => reset_cycles
 		)
 		port map (
-			clk => slowclk,
+			clk => clk_114,
 			enable => '1',
 
 			button => not reset_btn,
@@ -161,14 +209,14 @@ begin
 			clk_ticks_per_usec => 100
 		)
 		port map (
-			clk => fastclk,
+			clk => clk_114,
 			ena_1mhz => ena_1mhz,
 			ena_1mhz_2 => open
 		);
 
 	my1Khz : entity work.chameleon_1khz
 		port map (
-			clk => fastclk,
+			clk => clk_114,
 			ena_1mhz => ena_1mhz,
 			ena_1khz => ena_1khz
 		);
@@ -178,7 +226,7 @@ begin
 -- -----------------------------------------------------------------------
 	io_ps2iec_inst : entity work.chameleon2_io_ps2iec
 		port map (
-			clk => slowclk,
+			clk => clk_114,
 
 			ps2iec_sel => ps2iec_sel,
 			ps2iec => ps2iec,
@@ -199,7 +247,7 @@ begin
 -- -----------------------------------------------------------------------
 	io_shiftreg_inst : entity work.chameleon2_io_shiftreg
 		port map (
-			clk => slowclk,
+			clk => clk_114,
 
 			ser_out_clk => ser_out_clk,
 			ser_out_dat => ser_out_dat,
@@ -228,7 +276,7 @@ begin
 				enable_c64_4player => true
 			)
 			port map (
-				clk => fastclk,
+				clk => clk_114,
 				ena_1mhz => ena_1mhz,
 				phi2_n => phi2_n,
 				dotclock_n => dotclk_n,
@@ -273,9 +321,9 @@ begin
 	end block;
 
 -- Synchronise IR signal
-process (slowclk)
+process (clk_114)
 begin
-	if rising_edge(slowclk) then
+	if rising_edge(clk_114) then
 		ir_d<=ir_data;
 		ir<=ir_d;
 	end if;
@@ -291,98 +339,97 @@ joy3<="11" & joystick3;
 joy4<="11" & joystick4;
 	
 
-  U00 : entity work.pll
-    port map(
-      inclk0 => clk50m,       -- 50 MHz external
-      c0     => slowclk,         -- 50MHz internal
-      c1     => fastclk,         -- 100MHz = 21.43MHz x 4
-      c2     => ram_clk,        -- 100MHz external
-      locked => pll_locked
-    );
-
 vga_window<='1';
 
-virtualtoplevel : entity work.VirtualToplevel
-	generic map(
-		sdram_rows => 13,
-		sdram_cols => 9,
-		sysclk_frequency => 100 -- Sysclk frequency * 10
+virtual_top : COMPONENT minimig_virtual_top
+generic map
+	(
+		debug => 0
 	)
-	port map(
-		clk => fastclk,
-		slowclk => slowclk,
-		reset_in => n_reset,
+PORT map
+	(
+		CLK_IN => clk50m,
+		CLK_114 => clk_114,
+		LED => led_red,
+		UART_TX => rs232_txd,
+		UART_RX => rs232_rxd,
+		VGA_HS => vga_hsync,
+		VGA_VS => vga_vsync,
+		VGA_R	=> vga_r,
+		VGA_G	=> vga_g,
+		VGA_B	=> vga_b,
+	
+		SDRAM_DQ	=> std_logic_vector(ram_d),
+		unsigned(SDRAM_A) => ram_a,
+		SDRAM_DQML => ram_ldqm,
+		SDRAM_DQMH => ram_udqm,
+		SDRAM_nWE => ram_we,
+		SDRAM_nCAS => ram_cas,
+		SDRAM_nRAS => ram_ras,
+--		SDRAM_nCS => sd_cs,
+		SDRAM_BA(1) => ram_ba(1),
+		SDRAM_BA(0) => ram_ba(0),
+		SDRAM_CLK => ram_clk,
+--		SDRAM_CKE => sd_CKE,
 
-		-- VGA
-		unsigned(vga_red) => vga_r,
-		unsigned(vga_green) => vga_g,
-		unsigned(vga_blue) => vga_b,
-		vga_hsync => vga_hsync,
-		vga_vsync => vga_vsync,
-		vga_window => open,
-
-		-- SDRAM
-		unsigned(sdr_data) => ram_d,
-		unsigned(sdr_addr)	=> ram_a,
-		sdr_dqm(1) => ram_udqm,
-		sdr_dqm(0) => ram_ldqm,
-		sdr_we => ram_we,
-		sdr_cas => ram_cas,
-		sdr_ras => ram_ras,
-		unsigned(sdr_ba) => ram_ba,
-
+		AUDIO_L => audio_l(15 downto 1),
+		AUDIO_R => audio_r(15 downto 1),
 		
-    -- PS/2 keyboard ports
-	 ps2k_clk_out => ps2_keyboard_clk_out,
-	 ps2k_dat_out => ps2_keyboard_dat_out,
-	 ps2k_clk_in => ps2_keyboard_clk_in,
-	 ps2k_dat_in => ps2_keyboard_dat_in,
+		PS2_DAT_I => ps2_keyboard_dat_in,
+		PS2_CLK_I => ps2_keyboard_clk_in,
+		PS2_MDAT_I => ps2_mouse_dat_in,
+		PS2_MCLK_I => ps2_mouse_clk_in,
+		PS2_DAT_O => ps2_keyboard_dat_out,
+		PS2_CLK_O => ps2_keyboard_clk_out,
+		PS2_MDAT_O => ps2_mouse_dat_out,
+		PS2_MCLK_O => ps2_mouse_clk_out,
 
-	 ps2m_clk_out => ps2_mouse_clk_out,
-	 ps2m_dat_out => ps2_mouse_dat_out,
-	 ps2m_clk_in => ps2_mouse_clk_in,
-	 ps2m_dat_in => ps2_mouse_dat_in,
- 
-    -- SD/MMC slot ports
-	spi_clk => spi_clk,
-	spi_mosi => spi_mosi,
-	spi_cs => mmc_cs,
-	spi_miso => spi_miso,
+		JOYA(6) => '1',
+		JOYB(6) => '1',
+		JOYC(6) => '1',
+		JOYD(6) => '1',
+		JOYA(5 downto 0) => std_logic_vector(c64_joy1),
+		JOYB(5 downto 0) => std_logic_vector(c64_joy2),
+		JOYC(5 downto 0) => std_logic_vector(joystick3),
+		JOYD(5 downto 0) => std_logic_vector(joystick4),
 
-	signed(audio_l) => audio_l,
-	signed(audio_r) => audio_r,
-	 
-	rxd => rs232_rxd,
-	txd => rs232_txd
-);
-
+		SD_MISO => spi_miso,
+		SD_MOSI => spi_mosi,
+		SD_CLK => spi_clk,
+		SD_CS => mmc_cs,
+		SD_ACK => '1'
+	);
+audio_l(0)<='0';
+audio_r(0)<='0';
 	
 -- Dither the video down to 5 bits per gun.
 	vga_window<='1';
 	hsync_n<= not vga_hsync;
 	vsync_n<= not vga_vsync;	
-
-	mydither : component video_vga_dither
-		generic map(
-			outbits => 5
-		)
-		port map(
-			clk=>fastclk,
-			hsync=>vga_hsync,
-			vsync=>vga_vsync,
-			vid_ena=>vga_window,
-			iRed => unsigned(vga_r),
-			iGreen => unsigned(vga_g),
-			iBlue => unsigned(vga_b),
-			oRed => red,
-			oGreen => grn,
-			oBlue => blu
-		);
+	red<=unsigned(vga_r(7 downto 3));
+	grn<=unsigned(vga_g(7 downto 3));
+	blu<=unsigned(vga_b(7 downto 3));
+--	mydither : component video_vga_dither
+--		generic map(
+--			outbits => 5
+--		)
+--		port map(
+--			clk=>clk_114,
+--			hsync=>vga_hsync,
+--			vsync=>vga_vsync,
+--			vid_ena=>vga_window,
+--			iRed => unsigned(vga_r),
+--			iGreen => unsigned(vga_g),
+--			iBlue => unsigned(vga_b),
+--			oRed => red,
+--			oGreen => grn,
+--			oBlue => blu
+--		);
 	
 leftsd: component hybrid_pwm_sd
 	port map
 	(
-		clk => fastclk,
+		clk => clk_114,
 		n_reset => n_reset,
 		din(15) => not audio_l(15),
 		din(14 downto 0) => std_logic_vector(audio_l(14 downto 0)),
@@ -392,7 +439,7 @@ leftsd: component hybrid_pwm_sd
 rightsd: component hybrid_pwm_sd
 	port map
 	(
-		clk => fastclk,
+		clk => clk_114,
 		n_reset => n_reset,
 		din(15) => not audio_r(15),
 		din(14 downto 0) => std_logic_vector(audio_r(14 downto 0)),
