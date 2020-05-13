@@ -5,7 +5,7 @@
 -- Multi purpose FPGA expansion for the Commodore 64 computer
 --
 -- -----------------------------------------------------------------------
--- Copyright 2005-2017 by Peter Wendrich (pwsoft@syntiac.com)
+-- Copyright 2005-2019 by Peter Wendrich (pwsoft@syntiac.com)
 -- http://www.syntiac.com/chameleon.html
 --
 -- This source file is free software: you can redistribute it and/or modify
@@ -60,6 +60,9 @@
 -- debug_code  - Last received raw code from the CDTV remote
 -- -----------------------------------------------------------------------
 
+-- AMR - before jump button amendments (in HWTest core): 163 LEs
+-- AMR - after jump button amendments: 169 LEs
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.numeric_std.all;
@@ -71,7 +74,7 @@ entity chameleon_cdtv_remote is
 		clk : in std_logic;
 		ena_1mhz : in std_logic;
 		ir : in std_logic := '1';
-		
+
 		trigger : out std_logic;
 
 		key_1 : out std_logic;
@@ -97,7 +100,7 @@ entity chameleon_cdtv_remote is
 		key_vol_dn : out std_logic;
 		joystick_a : out unsigned(5 downto 0);
 		joystick_b : out unsigned(5 downto 0);
-		
+
 		debug_code : out unsigned(11 downto 0)
 	);
 end entity;
@@ -116,7 +119,14 @@ architecture rtl of chameleon_cdtv_remote is
 		STATE_HIGH          -- receive ir signal is high
 		);
 	signal state : state_t := STATE_IDLE;
+
+	signal jumpmode_a : std_logic;
+	signal jumpmode_b : std_logic;
+	signal prevb_a : std_logic;
+	signal prevb_b : std_logic;
 	
+	signal ir_sync_reg : std_logic := '1';
+	signal ir_reg : std_logic := '1';
 	signal pre_trigger : std_logic := '0'; -- trigger out 1 clock later to sync with decoding logic
 	signal timer : integer range 0 to long_timeout := 0;
 	signal bitlength : integer range 0 to 16000 := 0;
@@ -129,11 +139,19 @@ begin
 	process(clk)
 	begin
 		if rising_edge(clk) then
+			ir_sync_reg <= ir;
+			ir_reg <= ir_sync_reg;
+		end if;
+	end process;
+
+	process(clk)
+	begin
+		if rising_edge(clk) then
 			pre_trigger <= '0';
 		-- State machine
 			case state is
 			when STATE_IDLE =>
-				if (ir = '1') and (bitlength > 8500) then
+				if (ir_reg = '1') and (bitlength > 8500) then
 					state <= STATE_START;
 				end if;
 				bitcount <= 0;
@@ -143,21 +161,21 @@ begin
 				state <= STATE_WAIT_REPEAT;
 				bitcount <= 0;
 			when STATE_WAIT_REPEAT =>
-				if (ir = '1') and (bitlength > 8500) then
+				if (ir_reg = '1') and (bitlength > 8500) then
 					state <= STATE_START;
 				end if;
 				bitcount <= 0;
 			when STATE_START =>
-				if (ir = '0') and (bitlength > 1500) and (bitlength < 3000) then
+				if (ir_reg = '0') and (bitlength > 1500) and (bitlength < 3000) then
 					-- It is a key-held code. No further processing.
 					state <= STATE_END_CODE;
 				end if;
-				if (ir = '0') and (bitlength >= 3000) then
+				if (ir_reg = '0') and (bitlength >= 3000) then
 					state <= STATE_LOW;
 				end if;
 				bitcount <= 0;
 			when STATE_LOW =>
-				if ir = '1' then
+				if ir_reg = '1' then
 					state <= STATE_HIGH;
 				end if;
 				if bitcount = 24 then
@@ -169,7 +187,7 @@ begin
 					end if;
 				end if;
 			when STATE_HIGH =>
-				if ir = '0' then
+				if ir_reg = '0' then
 					state <= STATE_LOW;
 					bitcount <= bitcount + 1;
 					if bitlength > 800 then
@@ -183,8 +201,8 @@ begin
 			end case;
 
 		-- Determine bit-length
-			if (ir = '1' and ((state = STATE_IDLE) or (state = STATE_WAIT_REPEAT) or (state = STATE_LOW)))
-			or (ir = '0' and ((state = STATE_START) or (state = STATE_HIGH))) then
+			if (ir_reg = '1' and ((state = STATE_IDLE) or (state = STATE_WAIT_REPEAT) or (state = STATE_LOW)))
+			or (ir_reg = '0' and ((state = STATE_START) or (state = STATE_HIGH))) then
 				bitlength <= 0;
 			elsif ena_1mhz = '1' then
 				bitlength <= bitlength + 1;
@@ -236,7 +254,10 @@ begin
 			key_vol_dn <= '0';
 			joystick_a <= (others => '1');
 			joystick_b <= (others => '1');
-			
+
+			prevb_a <= '0';
+			prevb_b <= '0';
+
 			case current_code(5 downto 0) is
 			when "000001" => key_1 <= '1';
 			when "100001" => key_2 <= '1';
@@ -262,19 +283,21 @@ begin
 			when others =>
 				null;
 			end case;
-			
+
 			if (current_code(11) = '0') and (current_code(1 downto 0) = "00") then
-				joystick_a <= not (current_code(6) & current_code(7) & current_code(2) & current_code(3) & current_code(4) & current_code(5));
+				joystick_a <= not ((current_code(6) and not jumpmode_a) & current_code(7)  -- Buttons
+					& current_code(2) & current_code(3) & current_code(4)  -- Directions
+						& (current_code(5) or (current_code(6) and jumpmode_a)));
+				prevb_a <= current_code(6);
+				jumpmode_a <= jumpmode_a xor ((current_code(6) xor prevb_a) and prevb_b);
 			end if;
 			if (current_code(11) = '1') and (current_code(1 downto 0) = "00") then
-				joystick_b <= not (current_code(6) & current_code(7) & current_code(2) & current_code(3) & current_code(4) & current_code(5));
+				joystick_b <= not ((current_code(6) and not jumpmode_b) & current_code(7)  -- Buttons
+					& current_code(2) & current_code(3) & current_code(4)  -- Directions
+						& (current_code(5) or (current_code(6) and jumpmode_b)));
+				prevb_b <= current_code(6);
+				jumpmode_b <= jumpmode_b xor ((current_code(6) xor prevb_b) and prevb_a);
 			end if;
-		end if;	
+		end if;
 	end process;
-
 end architecture;
-
-
-
-
-

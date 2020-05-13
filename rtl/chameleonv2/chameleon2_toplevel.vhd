@@ -5,6 +5,108 @@ use ieee.numeric_std.all;
 
 -- -----------------------------------------------------------------------
 
+entity chameleon2_toplevel is
+	port (
+-- Clocks
+		clk50m : in std_logic;
+		phi2_n : in std_logic;
+		dotclk_n : in std_logic;
+
+-- Buttons
+		usart_cts : in std_logic;  -- Left button
+		freeze_btn : in std_logic; -- Middle button
+		reset_btn : in std_logic;  -- Right
+
+-- PS/2, IEC, LEDs
+		iec_present : in std_logic;
+
+		ps2iec_sel : out std_logic;
+		ps2iec : in unsigned(3 downto 0);
+
+		ser_out_clk : out std_logic;
+		ser_out_dat : out std_logic;
+		ser_out_rclk : out std_logic;
+
+		iec_clk_out : out std_logic;
+		iec_srq_out : out std_logic;
+		iec_atn_out : out std_logic;
+		iec_dat_out : out std_logic;
+
+-- SPI, Flash and SD-Card
+		flash_cs : out std_logic;
+		rtc_cs : out std_logic;
+		mmc_cs : out std_logic;
+		mmc_cd : in std_logic;
+		mmc_wp : in std_logic;
+		spi_clk : out std_logic;
+		spi_miso : in std_logic;
+		spi_mosi : out std_logic;
+
+-- Clock port
+		clock_ior : out std_logic;
+		clock_iow : out std_logic;
+
+-- C64 bus
+		reset_in : in std_logic;
+
+		ioef : in std_logic;
+		romlh : in std_logic;
+
+		dma_out : out std_logic;
+		game_out : out std_logic;
+		exrom_out : out std_logic;
+
+		irq_in : in std_logic;
+		irq_out : out std_logic;
+		nmi_in : in std_logic;
+		nmi_out : out std_logic;
+		ba_in : in std_logic;
+		rw_in : in std_logic;
+		rw_out : out std_logic;
+
+		sa_dir : out std_logic;
+		sa_oe : out std_logic;
+		sa15_out : out std_logic;
+		low_a : inout unsigned(15 downto 0);
+
+		sd_dir : out std_logic;
+		sd_oe : out std_logic;
+		low_d : inout unsigned(7 downto 0);
+
+-- SDRAM
+		ram_clk : out std_logic;
+		ram_ldqm : out std_logic;
+		ram_udqm : out std_logic;
+		ram_ras : out std_logic;
+		ram_cas : out std_logic;
+		ram_we : out std_logic;
+		ram_ba : out unsigned(1 downto 0);
+		ram_a : out unsigned(12 downto 0);
+		ram_d : inout unsigned(15 downto 0);
+
+-- IR eye
+		ir_data : in std_logic;
+
+-- USB micro
+		usart_clk : in std_logic;
+		usart_rts : in std_logic;
+		usart_rx : out std_logic;
+		usart_tx : in std_logic;
+
+-- Video output
+		red : out unsigned(4 downto 0);
+		grn : out unsigned(4 downto 0);
+		blu : out unsigned(4 downto 0);
+		hsync_n : out std_logic;
+		vsync_n : out std_logic;
+
+-- Audio output
+		sigma_l : out std_logic;
+		sigma_r : out std_logic
+	);
+end entity;
+
+
 architecture rtl of chameleon2_toplevel is
    constant reset_cycles : integer := 131071;
 	
@@ -74,16 +176,21 @@ architecture rtl of chameleon2_toplevel is
 
 -- IO
 	signal button_reset_n : std_logic;
+	
+	signal power_button : std_logic;
+	signal play_button : std_logic;
 
 	signal c64_keys : unsigned(63 downto 0);
 	signal c64_restore_key_n : std_logic;
 	signal c64_nmi_n : std_logic;
-	signal c64_joy1 : unsigned(5 downto 0);
-	signal c64_joy2 : unsigned(5 downto 0);
-	signal joystick3 : unsigned(5 downto 0);
-	signal joystick4 : unsigned(5 downto 0);
+	signal c64_joy1 : unsigned(6 downto 0);
+	signal c64_joy2 : unsigned(6 downto 0);
+	signal joystick3 : unsigned(6 downto 0);
+	signal joystick4 : unsigned(6 downto 0);
 	signal gp1_run : std_logic;
 	signal gp1_select : std_logic;
+	signal cdtv_joya : unsigned(5 downto 0);
+	signal cdtv_joyb : unsigned(5 downto 0);
 	signal joy1 : unsigned(7 downto 0);
 	signal joy2 : unsigned(7 downto 0);
 	signal joy3 : unsigned(7 downto 0);
@@ -263,6 +370,18 @@ begin
 			led_red => led_red
 		);
 
+	cdtv : entity work.chameleon_cdtv_remote
+	port map(
+		clk => clk_114,
+		ena_1mhz => ena_1mhz,
+		ir => ir,
+		key_power => power_button,
+		key_play => play_button,
+		joystick_a => cdtv_joya,
+		joystick_b => cdtv_joyb
+	);
+
+
 -- -----------------------------------------------------------------------
 -- Chameleon IO, docking station and cartridge port
 -- -----------------------------------------------------------------------
@@ -271,7 +390,7 @@ begin
 		chameleon2_io_inst : entity work.chameleon2_io
 			generic map (
 				enable_docking_station => true,
-				enable_cdtv_remote => true,
+				enable_cdtv_remote => false,
 				enable_c64_joykeyb => true,
 				enable_c64_4player => true
 			)
@@ -333,10 +452,10 @@ end process;
 --joy1<=not gp1_run & not gp1_select & (c64_joy1 and cdtv_joy1);
 gp1_run<=c64_keys(11) and c64_keys(56) when c64_joy1="111111" else '1';
 gp1_select<=c64_keys(60) when c64_joy1="111111" else '1';
-joy1<=gp1_run & gp1_select & c64_joy1;
-joy2<="11" & c64_joy2;
-joy3<="11" & joystick3;
-joy4<="11" & joystick4;
+joy1<=gp1_run & (gp1_select and c64_joy1(6)) & (c64_joy1(5 downto 0) and cdtv_joya);
+joy2<="1" & c64_joy2(6) & (c64_joy2(5 downto 0) and cdtv_joyb);
+joy3<="1" & joystick3;
+joy4<="1" & joystick4;
 	
 
 vga_window<='1';
@@ -384,14 +503,10 @@ PORT map
 		PS2_MDAT_O => ps2_mouse_dat_out,
 		PS2_MCLK_O => ps2_mouse_clk_out,
 
-		JOYA(6) => '1',
-		JOYB(6) => '1',
-		JOYC(6) => '1',
-		JOYD(6) => '1',
-		JOYA(5 downto 0) => std_logic_vector(c64_joy1),
-		JOYB(5 downto 0) => std_logic_vector(c64_joy2),
-		JOYC(5 downto 0) => std_logic_vector(joystick3),
-		JOYD(5 downto 0) => std_logic_vector(joystick4),
+		JOYA => std_logic_vector(joy1(6 downto 4))&joy1(0)&joy1(1)&joy1(2)&joy1(3),
+		JOYB => std_logic_vector(joy2(6 downto 4))&joy2(0)&joy2(1)&joy2(2)&joy2(3),
+		JOYC => std_logic_vector(joy3(6 downto 4))&joy3(0)&joy3(1)&joy3(2)&joy3(3),
+		JOYD => std_logic_vector(joy4(6 downto 4))&joy4(0)&joy4(1)&joy4(2)&joy4(3),
 
 		SD_MISO => spi_miso,
 		SD_MOSI => spi_mosi,

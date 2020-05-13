@@ -63,13 +63,9 @@
 #endif
 
 #define PLATFORM (*(volatile unsigned short *)0xDEE014)
-#define PLATFORM_TURBOCHIP 4
-#define PLATFORM_RECONFIG 5
-#define PLATFORM_ACTIONREPLAY 6
-#define PLATFORM_MENUBUTTON 13
-#define PLATFORM_SCANDOUBLER 14
-
-#define PLATFORM_TURBOCHIP_ENABLE 15
+#define PLATFORM_MENUBUTTON 0
+#define PLATFORM_32MEG 1
+#define PLATFORM_RECONFIG 256
 
 // Write to this register to reconfigure the FPGA on devices which support such operations.
 #define RECONFIGURE (*(volatile unsigned short *)0xDEE016)
