@@ -268,9 +268,9 @@ char UploadActionReplay()
 void SetConfigurationFilename(int config)
 {
 	if(config)
-		sprintf(configfilename,"MINIMIG%dCFG",config);
+		sprintf(configfilename,"MINMGAA%dCFG",config);
 	else
-		strcpy(configfilename,"MINIMIG CFG");
+		strcpy(configfilename,"MINMGAA CFG");
 }
 
 
@@ -289,7 +289,7 @@ unsigned char ConfigurationExists(char *filename)
 
 unsigned char LoadConfiguration(char *filename)
 {
-    static const char config_id[] = "MNMGCFG0";
+    static const char config_id[] = "MNMGCFGA"; /* New signature for AGA core */
 	int updatekickstart=0;
 	int result=0;
     unsigned int key;
@@ -327,20 +327,16 @@ unsigned char LoadConfiguration(char *filename)
             else
                 BootPrint("Wrong configuration file format!\n");
         }
-        else
-            printf("Wrong configuration file size: %lu (expected: %lu)\r", file.size, sizeof(config));
     }
     if(!result)
 	{
-        BootPrint("Can not open configuration file!\n");
-
-		BootPrint("Setting config defaults\n");
+        BootPrint("Config loading failed - using defaults\n");
 
 		// set default configuration
 		memset((void*)&config, 0, sizeof(config));	// Finally found default config bug - params were reversed!
 		strncpy(config.id, config_id, sizeof(config.id));
 		strncpy(config.kickstart.name, "KICK    ", sizeof(config.kickstart.name));
-		config.misc = 1<<(PLATFORM_SCANDOUBLER-8);  // High byte of platform register - enable scandoubler by default
+		config.misc = 1<<(PLATFORM_SCANDOUBLER);  // platform register - enable scandoubler by default
 		config.kickstart.long_name[0] = 0;
 		config.memory = 0x15;
 		config.cpu = 0;
@@ -368,10 +364,11 @@ unsigned char LoadConfiguration(char *filename)
     if ((key == KEY_F2) || (key == KEY_F4))
        config.chipset &= ~CONFIG_NTSC; // force PAL mode if F2 or F4 pressed
 
+	// FIXME - new interface for scandoubler?
 	if ((key == KEY_F3) || (key == KEY_F4))
-		config.misc &= ~(1<<(PLATFORM_SCANDOUBLER-8));	// High byte of platform register
+		config.misc &= ~(1<<(PLATFORM_SCANDOUBLER));	// High byte of platform register
 	if ((key == KEY_F1) || (key == KEY_F2))
-		config.misc |= 1<<(PLATFORM_SCANDOUBLER-8);  // High byte of platform register
+		config.misc |= 1<<(PLATFORM_SCANDOUBLER);  // High byte of platform register
 
 	ApplyConfiguration(updatekickstart);
 
@@ -382,41 +379,6 @@ unsigned char LoadConfiguration(char *filename)
 void ApplyConfiguration(char reloadkickstart)
 {
 	int rstval=0;
-    ConfigCPU(config.cpu);
-	ConfigFastRAM((config.misc<<8)|config.fastram);
-    ConfigChipset(config.chipset);
-    ConfigFloppy(config.floppy.drives, config.floppy.speed);
-
-#if 0
-	if(reloadkickstart)
-	{
-		ConfigChipset(config.chipset | CONFIG_TURBO); // set CPU in turbo mode
-		ConfigFloppy(1, CONFIG_FLOPPY2X); // set floppy speed
-		OsdReset(RESET_BOOTLOADER);
-
-		if (!UploadKickstart(config.kickstart.name))
-		{
-		    strcpy(config.kickstart.name, "KICK    ");
-		    if (!UploadKickstart(config.kickstart.name))
-		        FatalError(6);
-		}
-
-		if (!CheckButton() && !config.disable_ar3) // if menu button pressed don't load Action Replay
-		{
-#ifndef ACTIONREPLAY_BROKEN
-			if(config.memory & 0x20)
-				BootPrint("More than 2MB of Fast RAM configured - disabling Action Replay!");
-			else
-				UploadActionReplay();
-#endif
-		}
-	}
-	else
-	{
-	    ConfigChipset(config.chipset);
-	    ConfigFloppy(config.floppy.drives, config.floppy.speed);
-	}
-#endif
 
 	// Whether or not we uploaded a kickstart image we now need to set various parameters from the config.
 
@@ -471,7 +433,8 @@ void ApplyConfiguration(char reloadkickstart)
         BootPrint(s);
 	}
 
-    ConfigIDE(config.enable_ide, config.hardfile[0].present && config.hardfile[0].enabled, config.hardfile[1].present && config.hardfile[1].enabled);
+    ConfigIDE(config.enable_ide, config.hardfile[0].present && config.hardfile[0].enabled,
+		config.hardfile[1].present && config.hardfile[1].enabled);
 
     sprintf(s, "CPU clock     : %s", config.chipset & 0x01 ? "turbo" : "normal");
     BootPrint(s);
@@ -506,30 +469,7 @@ void ApplyConfiguration(char reloadkickstart)
     printf("Bootloading is complete.\r");
 #endif
 
-    BootPrint("\nExiting bootloader...");
-#if 0
-
-    ConfigMemory(config.memory);
-    ConfigCPU(config.cpu);
-    ConfigFilter(config.filter.lores, config.filter.hires);
-    ConfigScanlines(config.scanlines);
-
-	if(reloadkickstart)
-	{
-	    WaitTimer(5000);
-	    BootExit();
-	}
-	else
-		OsdReset(RESET_NORMAL);
-
-    ConfigChipset(config.chipset);
-    ConfigFloppy(config.floppy.drives, config.floppy.speed);
-
-#endif
-
-    ConfigVideo(config.filter.hires, config.filter.lores, config.scanlines);
-    ConfigChipset(config.chipset);
-    ConfigFloppy(config.floppy.drives, config.floppy.speed);
+//    BootPrintEx("\nExiting bootloader...");
 
     if(reloadkickstart) {
       printf("Reloading kickstart ...\r");
@@ -548,6 +488,14 @@ void ApplyConfiguration(char reloadkickstart)
         }
       }
     }
+
+    ConfigCPU(config.cpu);
+    ConfigMemory(config.memory);
+    ConfigChipset(config.chipset);
+    ConfigFloppy(config.floppy.drives, config.floppy.speed);
+    ConfigVideo(config.filter.hires, config.filter.lores, config.scanlines);
+    ConfigMisc(config.misc);
+
     printf("Resetting ...\r");
     EnableOsd();
     SPI(OSD_CMD_RST);

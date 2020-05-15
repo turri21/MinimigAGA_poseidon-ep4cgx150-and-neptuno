@@ -136,7 +136,10 @@ architecture RTL of DE10liteToplevel is
 	(
 		CLK_IN		:	 IN STD_LOGIC;
 		CLK_114		:	 OUT STD_LOGIC;
-		LED		:	 OUT STD_LOGIC;
+		RESET_N     :   IN STD_LOGIC;
+		LED_POWER	:	 OUT STD_LOGIC;
+		LED_DISK    :   OUT STD_LOGIC;
+		MENU_BUTTON :   IN STD_LOGIC;
 		UART_TX		:	 OUT STD_LOGIC;
 		UART_RX		:	 IN STD_LOGIC;
 		VGA_HS		:	 OUT STD_LOGIC;
@@ -214,7 +217,10 @@ PORT map
 	(
 		CLK_IN => MAX10_CLK1_50,
 		CLK_114 => sysclk,
-		LED => LEDR(0),
+		RESET_N => KEY(0),
+		LED_POWER => LEDR(0),
+		LED_DISK => LEDR(1),
+		MENU_BUTTON => KEY(1),
 		UART_TX => rs232_txd,
 		UART_RX => rs232_rxd,
 		VGA_HS => vga_hsync,

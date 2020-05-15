@@ -19,8 +19,12 @@ module minimig_virtual_top
   output wire           CLK_114,
   input wire            RESET_N,
   
+  // Button inputs
+  input						MENU_BUTTON,
+  
   // LED outputs
-  output wire           LED,        // LED Yellow
+  output wire           LED_POWER,  // LED green
+  output wire           LED_DISK,   // LED red
   
   // UART
   output wire           UART_TX,    // UART Transmitter
@@ -142,7 +146,6 @@ wire           _ram_ble;      // sram lower byte select
 wire           _ram_we;       // sram write enable
 wire           _ram_oe;       // sram output enable
 wire           _15khz;        // scandoubler disable
-wire           joy_emu_en;    // joystick emulation enable
 wire           sdo;           // SPI data output
 wire           vs;
 wire           hs;
@@ -178,7 +181,6 @@ wire           kbd_mouse_strobe;
 wire           kms_level;
 wire [  2-1:0] kbd_mouse_type;
 wire [  3-1:0] mouse_buttons;
-wire [  4-1:0] core_config;
 
 // UART
 wire minimig_rxd;
@@ -202,12 +204,6 @@ assign SDRAM_BA         = sdram_ba;
 // reset
 assign pll_rst          = 1'b0;
 assign sdctl_rst        = pll_locked;
-
-// minimig
-assign _15khz           = ~core_config[0];
-assign joy_emu_en       = 1'b1;
-
-assign LED              = ~led;
 
 // VGA data
 always @ (posedge clk_28) begin
@@ -403,7 +399,7 @@ minimig minimig (
   ._ram_oe      (_ram_oe          ), // SRAM output enable
   .chip48       (chip48           ), // big chipram read
   //system  pins
-  .rst_ext      (rst_minimig      ), // reset from ctrl block
+  .rst_ext      (!RESET_N         ), // reset from ctrl block
   .rst_out      (                 ), // minimig reset status
   .clk          (clk_28           ), // output clock c1 ( 28.687500MHz)
   .clk7_en      (clk7_en          ), // 7MHz clock enable
@@ -430,7 +426,8 @@ minimig minimig (
   .kbd_mouse_strobe (1'b0         ), // kbd_mouse_strobe), // kbd/mouse data strobe
   .kms_level    (1'b0             ), // kms_level        ),
   ._15khz       (_15khz           ), // scandoubler disable
-  .pwrled       (led              ), // power led
+  .pwr_led      (LED_POWER        ), // power led
+  .disk_led     (LED_DISK         ), // power led
   .msdat_i      (PS2_MDAT_I       ), // PS2 mouse data
   .msclk_i      (PS2_MCLK_I       ), // PS2 mouse clk
   .kbddat_i     (PS2_DAT_I        ), // PS2 keyboard data
@@ -522,7 +519,9 @@ cfide mycfide
 		.enaWRreg(enaWRreg), // or enaWRreg_d,
 
 		.debugTxD(debug_txd),
-		.debugRxD(debug_rxd)
+		.debugRxD(debug_rxd),
+		.menu_button(MENU_BUTTON),
+		.scandoubler(_15khz)
    );
 	
 assign debug_rxd = UART_RX;

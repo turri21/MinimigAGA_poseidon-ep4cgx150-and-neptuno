@@ -427,7 +427,7 @@ void BootPrintEx(char * str)
   unsigned char len;
   
   printf(str);
-  printf("\r");
+  printf("\n");
   
   len = strlen(str);
   len = (len>80) ? 80 : len;

@@ -39,33 +39,24 @@
 #define SPIN {char v=*(volatile unsigned short * volatile)0xDEE010;}	// Waste a few cycles to let the FPGA catch up
 
 // A 16-bit register for platform-specific config.
-// On read:
-//   Bits 3:0 -> memory size.  (1<<memsize gives the size in megabytes.)
-//   Bit 4 -> Turbo chipram supported
-//   Bit 5 -> Reconfig supportred 
-//   Bit 6 -> Action Replay supported
-//   Bit 14 -> Scandoubler selectable in software
-
-// On write:
-//   Bits 1:0 -> Zorro II Fast ram memory config:  00-> off, 01->2mb, 10->4mb, 11->8mb
-//   Bit 14 -> Scandoubler enable
-//   Bit 15 -> Turbo chipram enable/disable
-
-// static inline unsigned char SPI(unsigned char o)
-//{	
-//	volatile unsigned char *ptr = (volatile unsigned char *)0xda4000;
-//	*ptr = o;
-//	return *ptr;
-//}
-#if 0
-#define SPI  *(unsigned char *)0xda4000=
-#define SPIN
-#endif
 
 #define PLATFORM (*(volatile unsigned short *)0xDEE014)
+
+// On read:
+//   Bits 0 -> menu button
+//   Bit 1 -> 32meg supported
+//   Bit 8 -> Reconfig supportred 
+
 #define PLATFORM_MENUBUTTON 0
 #define PLATFORM_32MEG 1
-#define PLATFORM_RECONFIG 256
+#define PLATFORM_RECONFIG 8
+
+// On write:
+//   Bit 0 -> Scandoubler enable
+//   Bit 8 -> Reconfig, if supported.
+
+
+#define PLATFORM_SCANDOUBLER 0
 
 // Write to this register to reconfigure the FPGA on devices which support such operations.
 #define RECONFIGURE (*(volatile unsigned short *)0xDEE016)
@@ -99,7 +90,7 @@ void Timer_Init(void);
 unsigned long GetTimer(unsigned long offset);
 unsigned long CheckTimer(unsigned long t);
 void WaitTimer(unsigned long time);
-void ConfigFastRAM(unsigned short memory);
+void ConfigMisc(unsigned short misc);
 void Reconfigure();
 
 

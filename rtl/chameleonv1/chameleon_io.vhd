@@ -5,7 +5,7 @@
 -- Multi purpose FPGA expansion for the Commodore 64 computer
 --
 -- -----------------------------------------------------------------------
--- Copyright 2005-2013 by Peter Wendrich (pwsoft@syntiac.com)
+-- Copyright 2005-2019 by Peter Wendrich (pwsoft@syntiac.com)
 -- http://www.syntiac.com
 --
 -- This source file is free software: you can redistribute it and/or modify
@@ -40,6 +40,12 @@
 --
 -- -----------------------------------------------------------------------
 -- enable_docking_station - Enable support for the docking-station.
+-- enable_docking_irq     - Drive IRQ line for docking-station communication to control LED on Amiga keyboard.
+-- enable_vga_id_read     - Enable reading of the VGA id lines (scl,id2,sca,id1) for debugging purposes.
+--                          Best to keep this disabled unless VGA id status is needed as it uses CPLD multiplexer time.
+-- enable_cdtv_remove     - Enable support for the cdtv remote. CDTV will be mapped to first
+--                          two joysticks and the "keys" array when set to true. Otherwise
+--                          the raw ir signal is also available for external decoding.
 -- enable_c64_joykeyb     - Automatically read joystick and keyboard on the C64 bus.
 --                          Take note this disables the C64 bus access feature on this entity.
 -- enable_c64_4player     - Enable 4player support on the user-port of the C64.
@@ -60,6 +66,11 @@
 --                   '1' when in standalone mode or docking-station connected.
 -- docking_station - '0' standalone/cartrdige mode
 --                   '1' when docking-station is connected.
+-- docking_version - '0' first version, supports 2 fire buttons on each port
+--                   '1' second version, 3 fire buttons on each port and midi in/out
+-- vga_id          - State of the VGA identifier pins. bit3=scl, bit2=id2, bit1=sca, bit0=id1
+--                   Only gets updated if enable_vga_id_read flag is true.
+--                   Only enable this feature if the state of these lines is really needed in the design.
 --
 -- to_usb_rx
 --
@@ -75,6 +86,9 @@
 -- phi_post_3      - Triggers two cycles phi changed
 -- phi_post_4      - Triggers three cycles phi changed
 --
+-- c64_reset       - When set the reset is pending (line is pulled low) on the cartridge port.
+--                   As "reset_ext" is masked to prevent endless reset.
+--                   This signal can be used for RRNET pull-up detection instead.
 -- c64_irq_n       - Status of the C64 IRQ line (cartridge mode only)
 -- c64_nmi_n       - Status of the C64 NMI line
 -- c64_ba          - status of the C64 BA line
@@ -101,12 +115,25 @@
 --
 -- ps2_*           - PS2 signals for both keyboard and mouse.
 -- button_reset_n  - Status of blue reset button (right button) on the Chameleon. Low active.
--- joystick*       - Joystick ports of both docking-station and C64.  Bits: fire2, fire1, right, left, down, up
---                   The C64 only supports one button fire1. The signals are low active
+-- joystick*       - Joystick ports of both docking-station and C64.
+--                   Bits: fire3, fire2, fire1, right, left, down, up
+--
 -- keys            - C64 keyboard. One bit for each key on the keyboard. Low active.
+--          63..56 -  RUN/S   /     ,     N    V    X     LSHFT     UPDN
+--          55..48 -  Q       ^     @     O    U    T     E         F5
+--          47..40 -  C=                                            F3
+--          39..32 -  SPACE   RSHFT                                 F1
+--          31..24 -  2       HOME  -                               F7
+--          23..16 -  CTRL    ;                                     LEFT/RIGHT
+--          15.. 8 -                                                Return
+--           7.. 0 -  1             +                               Inst/Del
 -- restore_key_n   - Trigger for restore key on docking-station.
 --                   On a C64 the restore key is wired to the NMI line instead.
+--
 -- iec_*           - IEC signals. Only valid when enable_iec_access is set to true.
+--
+-- midi_txd        - Midi transmit data ('1' at rest, '0' drives output)
+-- midi_rxd        - Midi receive data ('1' at rest, '0' when current flows through opto)
 -- -----------------------------------------------------------------------
 
 library IEEE;
@@ -118,6 +145,9 @@ use IEEE.numeric_std.all;
 entity chameleon_io is
 	generic (
 		enable_docking_station : boolean := true;
+		enable_docking_irq : boolean := false;
+		enable_vga_id_read : boolean := false;
+		enable_cdtv_remote : boolean := false;
 		enable_c64_joykeyb : boolean := false;
 		enable_c64_4player : boolean := false;
 		enable_raw_spi : boolean := false;
@@ -134,6 +164,8 @@ entity chameleon_io is
 -- Config
 		no_clock : out std_logic;
 		docking_station : out std_logic;
+		docking_version : out std_logic;
+		vga_id : out unsigned(3 downto 0);
 
 -- Chameleon FPGA pins
 		-- C64 Clocks
@@ -165,6 +197,7 @@ entity chameleon_io is
 		phi_post_4 : out std_logic;
 
 -- C64 bus
+		c64_reset : out std_logic;
 		c64_irq_n : out std_logic;
 		c64_nmi_n : out std_logic;
 		c64_ba : out std_logic;
@@ -194,7 +227,7 @@ entity chameleon_io is
 		spi_raw_clk : in std_logic := '1';
 		spi_raw_mosi : in std_logic := '1';
 		spi_raw_ack : out std_logic;  -- Added by AMR
-		
+
 -- LEDs
 		led_green : in std_logic := '0';
 		led_red : in std_logic := '0';
@@ -214,12 +247,12 @@ entity chameleon_io is
 
 -- Buttons
 		button_reset_n : out std_logic;
-		
+
 -- Joysticks
-		joystick1 : out unsigned(5 downto 0);
-		joystick2 : out unsigned(5 downto 0);
-		joystick3 : out unsigned(5 downto 0);
-		joystick4 : out unsigned(5 downto 0);
+		joystick1 : out unsigned(6 downto 0);
+		joystick2 : out unsigned(6 downto 0);
+		joystick3 : out unsigned(6 downto 0);
+		joystick4 : out unsigned(6 downto 0);
 
 -- Keyboards
 		--  0 = col0, row0
@@ -240,7 +273,11 @@ entity chameleon_io is
 		iec_clk_in : out std_logic;
 		iec_dat_in : out std_logic;
 		iec_atn_in : out std_logic;
-		iec_srq_in : out std_logic
+		iec_srq_in : out std_logic;
+
+-- MIDI (only available on Docking-station V2)
+		midi_txd : in std_logic := '1';
+		midi_rxd : out std_logic
 	);
 end entity;
 -- -----------------------------------------------------------------------
@@ -251,10 +288,14 @@ architecture rtl of chameleon_io is
 	signal phi : std_logic;
 	signal end_of_phi_0 : std_logic;
 	signal end_of_phi_1 : std_logic;
-	
+
 -- State
+	signal vga_id_reg : unsigned(3 downto 0) := (others => '0');
 	signal reset_pending : std_logic := '0';
 	signal reset_in : std_logic := '0';
+
+-- Button
+	signal button_reset_n_reg : std_logic := '1';
 
 -- MUX
 	type muxstate_t is (
@@ -298,32 +339,60 @@ architecture rtl of chameleon_io is
 	signal c64_data_reg : unsigned(7 downto 0) := (others => '1');
 	signal c64_addr : unsigned(15 downto 0) := (others => '0');
 	signal c64_to_io : unsigned(7 downto 0) := (others => '0');
-	
+
 	signal c64_we_loc : std_logic := '0';
 	signal c64_vic_loc : std_logic := '0';
 	signal c64_cs_loc : std_logic := '0';
 	signal c64_roms_loc : std_logic := '0';
 	signal c64_clockport_loc : std_logic := '0';
-	
+
 -- C64 joystick/keyboard
 	signal c64_kb_req : std_logic := '0';
 	signal c64_kb_ack : std_logic := '0';
 	signal c64_kb_we : std_logic := '1';
 	signal c64_kb_a : unsigned(15 downto 0) := (others => '0');
 	signal c64_kb_q : unsigned(7 downto 0) := (others => '1');
-	signal c64_joystick1 : unsigned(4 downto 0);
-	signal c64_joystick2 : unsigned(4 downto 0);
-	signal c64_joystick3 : unsigned(4 downto 0);
-	signal c64_joystick4 : unsigned(4 downto 0);
+	signal c64_joystick1 : unsigned(6 downto 0);
+	signal c64_joystick2 : unsigned(6 downto 0);
+	signal c64_joystick3 : unsigned(6 downto 0);
+	signal c64_joystick4 : unsigned(6 downto 0);
 	signal c64_keys : unsigned(63 downto 0);
+
+-- CDTV remote
+	signal ir_reg : std_logic := '0';
+	signal ir_up : std_logic := '0';
+	signal ir_down : std_logic := '0';
+	signal ir_left : std_logic := '0';
+	signal ir_right : std_logic := '0';
+	signal ir_f1 : std_logic := '0';
+	signal ir_f2 : std_logic := '0';
+	signal ir_f3 : std_logic := '0';
+	signal ir_f4 : std_logic := '0';
+	signal ir_f5 : std_logic := '0';
+	signal ir_f6 : std_logic := '0';
+	signal ir_f7 : std_logic := '0';
+	signal ir_f8 : std_logic := '0';
+	signal ir_space : std_logic := '0';
+	signal ir_enter : std_logic := '0';
+	signal ir_left_button : std_logic := '0';
+	signal ir_middle_button : std_logic := '0';
+	signal ir_right_button : std_logic := '0';
+	signal ir_arrowleft : std_logic := '0';
+	signal ir_y : std_logic := '0';
+	signal ir_n : std_logic := '0';
+	signal ir_runstop : std_logic := '0';
+	signal ir_keys : unsigned(63 downto 0);
+	signal ir_joystick1 : unsigned(6 downto 0) := (others => '1');
+	signal ir_joystick2 : unsigned(6 downto 0) := (others => '1');
 
 -- Docking-station
 	signal docking_station_loc : std_logic;
+	signal docking_version_loc : std_logic;
 	signal docking_irq : std_logic;
-	signal docking_joystick1 : unsigned(5 downto 0);
-	signal docking_joystick2 : unsigned(5 downto 0);
-	signal docking_joystick3 : unsigned(5 downto 0);
-	signal docking_joystick4 : unsigned(5 downto 0);
+	signal docking_joystick1 : unsigned(6 downto 0);
+	signal docking_joystick2 : unsigned(6 downto 0);
+	signal docking_joystick3 : unsigned(6 downto 0);
+	signal docking_joystick4 : unsigned(6 downto 0);
 	signal docking_keys : unsigned(63 downto 0);
 	signal docking_amiga_reset_n : std_logic;
 	signal docking_amiga_scancode : unsigned(7 downto 0);
@@ -331,6 +400,7 @@ architecture rtl of chameleon_io is
 -- MMC
 	signal mmc_state : unsigned(5 downto 0) := (others => '0');
 	signal spi_q_reg : unsigned(7 downto 0) := (others => '1');
+	signal spi_ack_reg : std_logic := '0';
 	signal spi_run : std_logic := '0';
 	signal spi_sample : std_logic := '0';
 	signal mmc_shift_req : std_logic;
@@ -341,25 +411,39 @@ architecture rtl of chameleon_io is
 	signal iec_dat_reg : std_logic := '1';
 	signal iec_atn_reg : std_logic := '1';
 	signal iec_srq_reg : std_logic := '1';
+
+-- MIDI
+	signal midi_txd_reg : std_logic := '1';
+	signal midi_rxd_reg : std_logic := '1';
 begin
 	reset_ext <= reset_in;
 	no_clock <= no_clock_loc;
 	docking_station <= docking_station_loc;
+	docking_version <= docking_version_loc;
+	vga_id <= vga_id_reg;
+	--
+	button_reset_n <= button_reset_n_reg;
 	--
 	phi_out <= phi;
 	phi_end_0 <= end_of_phi_0;
 	phi_end_1 <= end_of_phi_1;
 	--
+	c64_reset <= c64_reset_reg;
 	c64_ba <= c64_ba_reg;
 	c64_q <= c64_data_reg;
 	--
+	spi_ack <= spi_ack_reg;
 	spi_q <= spi_q_reg;
 	--
-	joystick1 <= docking_joystick1 and ("1" & c64_joystick1);
-	joystick2 <= docking_joystick2 and ("1" & c64_joystick2);
-	joystick3 <= docking_joystick3 and ("1" & c64_joystick3);
-	joystick4 <= docking_joystick4 and ("1" & c64_joystick4);
-	keys <= docking_keys and c64_keys;
+	ir <= ir_reg;
+	--
+	joystick1 <= docking_joystick1 and ir_joystick1 and (c64_joystick1);
+	joystick2 <= docking_joystick2 and ir_joystick2 and (c64_joystick2);
+	joystick3 <= docking_joystick3 and (c64_joystick3);
+	joystick4 <= docking_joystick4 and (c64_joystick4);
+	keys <= docking_keys and c64_keys and ir_keys;
+	--
+	midi_rxd <= midi_rxd_reg;
 
 -- -----------------------------------------------------------------------
 -- PHI2 clock sync
@@ -391,21 +475,22 @@ begin
 		myDockingStation : entity work.chameleon_docking_station
 			port map (
 				clk => clk,
-				
+
 				docking_station => docking_station_loc,
-				
+				docking_version => docking_version_loc,
+
 				dotclock_n => dotclock_n,
 				io_ef_n => io_ef_n,
 				rom_lh_n => rom_lh_n,
 				irq_q => docking_irq,
-				
+
 				joystick1 => docking_joystick1,
 				joystick2 => docking_joystick2,
 				joystick3 => docking_joystick3,
 				joystick4 => docking_joystick4,
 				keys => docking_keys,
 				restore_key_n => restore_key_n,
-				
+
 				amiga_power_led => led_green,
 				amiga_drive_led => led_red,
 				amiga_reset_n => amiga_reset_n,
@@ -415,11 +500,69 @@ begin
 	end generate;
 
 	noDockingStation : if not enable_docking_station generate
+		docking_version <= '0';
 		docking_joystick1 <= (others => '1');
 		docking_joystick2 <= (others => '1');
 		docking_joystick3 <= (others => '1');
 		docking_joystick4 <= (others => '1');
 		docking_keys <= (others => '1');
+	end generate;
+
+-- -----------------------------------------------------------------------
+-- CDTV remote support
+-- To enable set enable_cdtv_remote to true.
+-- -----------------------------------------------------------------------
+	genCdtvRemote : if enable_cdtv_remote generate
+		myCdtvRemote : entity work.chameleon_cdtv_remote
+			port map (
+				clk => clk,
+				ena_1mhz => ena_1mhz,
+				ir => ir_reg,
+
+				key_1 => ir_f1,
+				key_2 => ir_f2,
+				key_3 => ir_f3,
+				key_4 => ir_f4,
+				key_5 => ir_f5,
+				key_6 => ir_f6,
+				key_7 => ir_f7,
+				key_8 => ir_f8,
+				key_9 => ir_runstop,
+				key_0 => ir_space,
+				key_escape => ir_arrowleft,
+				key_enter => ir_enter,
+				key_genlock => ir_left_button,
+				key_cdtv => ir_middle_button,
+				key_power => ir_right_button,
+				key_rew => ir_left,
+				key_play => ir_up,
+				key_ff => ir_right,
+				key_stop => ir_down,
+				key_vol_up => ir_y,
+				key_vol_dn => ir_n,
+
+				joystick_a => ir_joystick1(5 downto 0),
+				joystick_b => ir_joystick2(5 downto 0)
+			);
+
+			-- IR remote doesn't have thrid fire button
+			ir_joystick1(6) <= '1';
+			ir_joystick2(6) <= '1';
+
+			ir_keys <= (not ir_runstop) & "11" & (not ir_n) & "111" & (not (ir_up or ir_down)) &
+					"1111111" & (not (ir_f5 or ir_f6)) &
+					"1111111" & (not (ir_f3 or ir_f4)) &
+					(not ir_space) & (not (ir_left or ir_up or ir_f2 or ir_f4 or ir_f6 or ir_f8)) & "11111" & (not (ir_f1 or ir_f2)) &
+					"1111111" & (not (ir_f7 or ir_f8)) &
+					"1111111" & (not (ir_left or ir_right)) &
+					(not ir_arrowleft) & "111" & (not ir_y) & "11" & (not ir_enter) &
+					"11111111";
+	end generate;
+
+	noCdtvRemote : if not enable_cdtv_remote generate
+		ir_keys <= (others => '1');
+		ir_joystick1 <= (others => '1');
+		ir_joystick2 <= (others => '1');
 	end generate;
 
 -- -----------------------------------------------------------------------
@@ -436,7 +579,7 @@ begin
 				ena_1mhz => ena_1mhz,
 				no_clock => no_clock_loc,
 				reset => reset,
-				
+
 				ba => c64_ba_reg,
 				req => c64_kb_req,
 				ack => c64_kb_ack,
@@ -444,7 +587,7 @@ begin
 				a => c64_kb_a,
 				d => c64_data_reg,
 				q => c64_kb_q,
-				
+
 				joystick1 => c64_joystick1,
 				joystick2 => c64_joystick2,
 				joystick3 => c64_joystick3,
@@ -475,14 +618,14 @@ begin
 			end if;
 		end process;
 	end generate;
-	
+
 	noC64JoyKeyb : if not enable_c64_joykeyb generate
 		c64_joystick1 <= (others => '1');
 		c64_joystick2 <= (others => '1');
 		c64_joystick3 <= (others => '1');
 		c64_joystick4 <= (others => '1');
 		c64_keys <= (others => '1');
-		
+
 		c64_addr <= c64_a;
 		c64_to_io <= c64_d;
 
@@ -609,12 +752,18 @@ begin
 					end if;
 				when X"7" =>
 					c64_ba_reg <= mux_q(1);
+					midi_rxd_reg <= '1';
 					if no_clock_loc = '1' then
 						c64_ba_reg <= '1';
+						if (docking_station_loc = '1') and (docking_version_loc = '1') then
+							midi_rxd_reg <= mux_q(1);
+						end if;
 					end if;
+				when X"A" =>
+					vga_id_reg <= mux_q;
 				when X"B" =>
-					button_reset_n <= mux_q(1);
-					ir <= mux_q(3);
+					button_reset_n_reg <= mux_q(1);
+					ir_reg <= mux_q(3);
 				when X"D" =>
 					iec_dat_reg <= mux_q(0);
 					iec_clk_reg <= mux_q(1);
@@ -630,6 +779,9 @@ begin
 				end case;
 				if spi_sample = '1' then
 					spi_q_reg <= spi_q_reg(6 downto 0) & spi_miso;
+					if mmc_state(5) = '0' then
+						spi_ack_reg <= spi_run;
+					end if;
 				end if;
 			end if;
 			iec_dat_in <= iec_dat_reg;
@@ -644,6 +796,8 @@ begin
 	begin
 		if rising_edge(clk_mux) then
 			spi_raw_ack <= '0';
+			midi_txd_reg <= midi_txd;
+
 			if mux_clk_reg = '1' then
 				spi_sample <= '0';
 				case mux_state is
@@ -663,7 +817,7 @@ begin
 					-- Update register
 					mux_d_reg(0) <= mmc_state(1) or (not mmc_state(5));
 					mux_d_reg(1) <= spi_d(7 - to_integer(mmc_state(4 downto 2)));
-					mux_d_reg(2) <= mmc_cs_n; 
+					mux_d_reg(2) <= mmc_cs_n;
 					mux_d_reg(3) <= to_usb_rx;
 					mux_reg <= X"C";
 					if mmc_state(5) = '1' then
@@ -684,7 +838,7 @@ begin
 					if enable_raw_spi then
 						mux_d_reg(0) <= spi_raw_clk;
 						mux_d_reg(1) <= spi_raw_mosi;
-						mux_d_reg(2) <= mmc_cs_n; 
+						mux_d_reg(2) <= mmc_cs_n;
 						mux_d_reg(3) <= to_usb_rx;
 						mux_reg <= X"C";
 						spi_raw_ack <= '1';
@@ -693,7 +847,7 @@ begin
 				   | MUX_MMC4L | MUX_MMC5L | MUX_MMC6L | MUX_MMC7L =>
 					mux_d_reg(0) <= mux_d_mmc(0);
 					mux_d_reg(1) <= mux_d_mmc(1);
-					mux_d_reg(2) <= mmc_cs_n; 
+					mux_d_reg(2) <= mmc_cs_n;
 					mux_d_reg(3) <= to_usb_rx;
 					mux_reg <= X"C";
 					-- Only update register on when running at fast speed (8Mhz).
@@ -750,7 +904,7 @@ begin
 				when MUX_NMIIRQ1 | MUX_NMIIRQ2=>
 					mux_d_reg <= "110" & (not reset);
 					mux_reg <= X"6";
-					if docking_station_loc = '1' then
+					if enable_docking_irq and (docking_station_loc = '1') then
 						mux_d_reg(2) <= docking_irq;
 					end if;
 --
@@ -761,6 +915,9 @@ begin
 					mux_d_reg(2) <= iec_srq_out;
 					mux_d_reg(3) <= iec_atn_out;
 					mux_reg <= X"D";
+					if enable_vga_id_read and (mux_state = MUX_IEC4) then
+						mux_reg <= X"A";
+					end if;
 --
 -- USART, LEDs and IR
 				when MUX_LED =>
@@ -797,6 +954,7 @@ begin
 					end if;
 				when MUX_WAIT1 =>
 					-- Continue BUSVIC output at end of phi2=0, so we sample BA a few times.
+					-- A15..12 driven, A11..0 not driven, Data driven, no write.
 					mux_d_reg <= "0101";
 					if docking_station_loc = '1' then
 						mux_d_reg <= "1111";
@@ -817,7 +975,7 @@ begin
 							mux_d_reg(2) <= mmc_cs_n;
 							mux_d_reg(3) <= to_usb_rx;
 							mux_reg <= X"C";
-							spi_raw_ack <= '1';
+						spi_raw_ack <= '1';
 						end if;
 					end if;
 --
@@ -826,6 +984,7 @@ begin
 					mux_d_reg <= X"C";
 					mux_reg <= X"5";
 				when MUX_BUSVIC =>
+					-- A15..12 driven, A11..0 not driven, Data driven, no write.
 					mux_d_reg <= "0101";
 					if docking_station_loc = '1' then
 						mux_d_reg <= "1111";
@@ -833,6 +992,10 @@ begin
 					mux_reg <= X"7";
 				when MUX_ULTIMAX =>
 					mux_d_reg <= "1011";
+					if (no_clock_loc = '1') and (docking_station_loc = '1') and (docking_version_loc = '1') then
+						-- MIDI output on Docking-station V2
+						mux_d_reg(2) <= midi_txd_reg;
+					end if;
 					mux_reg <= X"8";
 				when MUX_D0VIC =>
 					mux_d_reg <= c64_to_io(3 downto 0);
@@ -841,7 +1004,8 @@ begin
 					mux_d_reg <= c64_to_io(7 downto 4);
 					mux_reg <= X"1";
 				when MUX_END0 =>
-					mux_d_reg <= "0111";
+					-- A15..12 driven, A11..0 not driven, Data driven, no write.
+					mux_d_reg <= "0101";
 					if docking_station_loc = '1' then
 						mux_d_reg <= "1111";
 					end if;
@@ -880,6 +1044,10 @@ begin
 							mux_d_reg <= "1001";
 						end if;
 					end if;
+					if (no_clock_loc = '1') and (docking_station_loc = '1') and (docking_version_loc = '1') then
+						-- MIDI output on Docking-station V2
+						mux_d_reg(2) <= midi_txd_reg;
+					end if;
 					mux_reg <= X"8";
 				when MUX_A3 =>
 					if c64_vic_loc = '0' then
@@ -899,15 +1067,6 @@ begin
 				when others =>
 					null;
 				end case;
-			end if;
-		end if;
-	end process;
-
-	process(clk_mux)
-	begin
-		if rising_edge(clk_mux) then
-			if mmc_state(5) = '0' then
-				spi_ack <= spi_run;
 			end if;
 		end if;
 	end process;

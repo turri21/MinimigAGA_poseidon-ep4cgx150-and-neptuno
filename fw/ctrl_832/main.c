@@ -55,7 +55,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 
-const char version[] = {"$VER:AYQ100818_RB2"};
+const char version[] = "$VER:AYQ200515_832";
 
 extern adfTYPE df[4];
 
@@ -67,8 +67,7 @@ void FatalError(unsigned long error)
     unsigned long i;
 
     sprintf(s,"Fatal error: %lu\n", error);
-    BootPrint("FatalError...\n");
-	BootPrint(s);
+	BootPrintEx(s);
 
     while (1)
     {
@@ -113,81 +112,31 @@ __geta4 void main(void)
 	setstack();
 	debugmsg[0]=0;
 	debugmsg2[0]=0;
-//    unsigned long time;
-//    unsigned short spiclk;
-
-//	printf("Minimig firmware loaded - showing splash screen\n");
-
-//	ShowSplash();
-
-    BootPrint("Enabling disk LED...\n");
 
     DISKLED_ON;
 
-//    Timer_Init();
-//
-//    USART_Init(115200);
-
-    printf("\rMinimig by Dennis van Weeren");
-    printf("\rARM Controller by Jakub Bednarski\r\r");
-    printf("Version %s\r\r", version+5);
-
-    sprintf(s, "** ARM firmware %s **\n", version + 5);
+    sprintf(s, "Firmware %s **\n", version + 5);
 	printf(s);
-    BootPrint(s);
-
-//	OsdDisable();
-
-//    SPI_Init();
-
-//    if (CheckButton()) // if menu button pressed fall back to slow SPI mode
-//       SetSPIMode(SPIMODE_NORMAL);
+    BootPrintEx(s);
 
     if (!MMC_Init())
        FatalError(1);
 
-//    BootPrint("Init done again - hunting for drive...\n");
-
-//    spiclk = 7;//MCLK / ((AT91C_SPI_CSR[0] & AT91C_SPI_SCBR) >> 8) / 1000000;
-//    printf("spiclk: %u MHz\r", spiclk);
-
-    BootPrint("hunting for drive...\n");
+//    BootPrint("hunting for drive...\n");
 
     if (!FindDrive())
         FatalError(2);
-        
-    BootPrint("found DRIVE...\n");
+
+//    BootPrint("found DRIVE...\n");
 
     ChangeDirectory(DIRECTORY_ROOT);
 
 	fpga_init();
 
-//    time = GetTimer(0);
-//    if (ConfigureFpga())
-//    {
-//        time = GetTimer(0) - time;
-//        printf("FPGA configured in %lu ms\r", time >> 20);
-//    }
-//    else
-//    {
-//        printf("FPGA configuration failed\r");
-//        FatalError(3);
-//    }
-
-//    WaitTimer(100); // let's wait some time till reset is inactive so we can get a valid keycode
-//eject all disk
-	df[0].status = 0;
-	df[1].status = 0;
-	df[2].status = 0;
-	df[3].status = 0;
-
 	config.kickstart.name[0]=0;
+	BootPrintEx("Loading kickstart ROM...");
 	SetConfigurationFilename(0); // Use default config
     LoadConfiguration(0);	// Use slot-based config filename
-
-//    sprintf(s, "SPI clock: %u MHz\n", spiclk);
-//    BootPrint(s);
-// 	HideSplash();
 
     while (1)
     {

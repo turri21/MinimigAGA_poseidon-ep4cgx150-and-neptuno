@@ -127,15 +127,26 @@ architecture rtl of chameleon_toplevel is
 	signal ena_1mhz : std_logic;
 	signal button_reset_n : std_logic;
 
+	signal power_button : std_logic;
+	signal play_button : std_logic;
+
 	signal no_clock : std_logic;
 	signal docking_station : std_logic;
 	signal c64_keys : unsigned(63 downto 0);
 	signal c64_restore_key_n : std_logic;
 	signal c64_nmi_n : std_logic;
-	signal c64_joy1 : unsigned(5 downto 0);
-	signal c64_joy2 : unsigned(5 downto 0);
-	signal joystick3 : unsigned(5 downto 0);
-	signal joystick4 : unsigned(5 downto 0);
+	signal c64_joy1 : unsigned(6 downto 0);
+	signal c64_joy2 : unsigned(6 downto 0);
+	signal joystick3 : unsigned(6 downto 0);
+	signal joystick4 : unsigned(6 downto 0);
+	signal gp1_run : std_logic;
+	signal gp1_select : std_logic;
+	signal cdtv_joya : unsigned(5 downto 0);
+	signal cdtv_joyb : unsigned(5 downto 0);
+	signal joy1 : unsigned(7 downto 0);
+	signal joy2 : unsigned(7 downto 0);
+	signal joy3 : unsigned(7 downto 0);
+	signal joy4 : unsigned(7 downto 0);
 	signal usart_rx : std_logic:='1'; -- Safe default
 	signal ir : std_logic;
 
@@ -331,6 +342,26 @@ myReset : entity work.gen_reset
 	
 		);
 
+	cdtv : entity work.chameleon_cdtv_remote
+	port map(
+		clk => clk_114,
+		ena_1mhz => ena_1mhz,
+		ir => ir,
+		key_power => power_button,
+		key_play => play_button,
+		joystick_a => cdtv_joya,
+		joystick_b => cdtv_joyb
+	);
+
+
+		
+gp1_run<=c64_keys(11) and c64_keys(56) when c64_joy1="111111" else '1';
+gp1_select<=c64_keys(60) when c64_joy1="111111" else '1';
+joy1<=gp1_run & (gp1_select and c64_joy1(6)) & (c64_joy1(5 downto 0) and cdtv_joya);
+joy2<="1" & c64_joy2(6) & (c64_joy2(5 downto 0) and cdtv_joyb);
+joy3<="1" & joystick3;
+joy4<="1" & joystick4;
+
 
 virtual_top : COMPONENT minimig_virtual_top
 generic map
@@ -375,14 +406,10 @@ PORT map
 		PS2_MDAT_O => ps2_mouse_dat_out,
 		PS2_MCLK_O => ps2_mouse_clk_out,
 
-		JOYA(6) => '1',
-		JOYB(6) => '1',
-		JOYC(6) => '1',
-		JOYD(6) => '1',
-		JOYA(5 downto 0) => std_logic_vector(c64_joy1),
-		JOYB(5 downto 0) => std_logic_vector(c64_joy2),
-		JOYC(5 downto 0) => std_logic_vector(joystick3),
-		JOYD(5 downto 0) => std_logic_vector(joystick4),
+		JOYA => std_logic_vector(joy1(6 downto 4))&joy1(0)&joy1(1)&joy1(2)&joy1(3),
+		JOYB => std_logic_vector(joy2(6 downto 4))&joy2(0)&joy2(1)&joy2(2)&joy2(3),
+		JOYC => std_logic_vector(joy3(6 downto 4))&joy3(0)&joy3(1)&joy3(2)&joy3(3),
+		JOYD => std_logic_vector(joy4(6 downto 4))&joy4(0)&joy4(1)&joy4(2)&joy4(3),
 
 		SD_MISO => spi_miso,
 		SD_MOSI => spi_mosi,

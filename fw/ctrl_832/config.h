@@ -38,7 +38,7 @@ typedef struct
     unsigned char disable_ar3;
     unsigned char enable_ide;
     unsigned char scanlines;
-	unsigned char misc; // Contains extra settings, such as scandoubler, (turbo kickstart? turbo slowram?)
+	unsigned char misc; // Contains extra settings, such as scandoubler
     hardfileTYPE  hardfile[2];
     unsigned char cpu;
 	unsigned char fastram;	// Contains fast mem (bit 0 & 1) and turbo chipram (bit 7) settings.

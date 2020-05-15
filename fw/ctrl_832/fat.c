@@ -47,6 +47,8 @@ JB:
 
 #include <stdio.h>
 
+#define DEBUG 0
+
 int tolower(int c);
 
 unsigned short directory_cluster;       // first cluster of directory (0 if root)
@@ -118,132 +120,9 @@ void bprintfl(const char *fmt,unsigned long l)
 {
 	char s[64];
 	sprintf(s,fmt,l);
-	BootPrint(s);
+	if(DEBUG)
+		BootPrint(s);
 }
-
-/*
-unsigned char FindDrive(void)
-{
-    buffered_fat_index = -1;
-
-    if (!MMC_Read(0, sector_buffer)) // read MBR
-        return(0);
-
-    printf("partition type: 0x%02X (", sector_buffer[450]);
-    switch (sector_buffer[450])
-    {
-    case 0x00:
-        printf("NONE");
-        break;
-    case 0x01:
-        printf("FAT12");
-        break;
-    case 0x04:
-    case 0x06:
-        printf("FAT16");
-        break;
-    case 0x0B:
-    case 0x0C:
-        printf("FAT32");
-        break;
-    default:
-        printf("UNKNOWN");
-        break;
-    }
-    printf(")\r");
-
-    if (sector_buffer[450] != 0x04 && sector_buffer[450] != 0x06 && sector_buffer[450] != 0x0B && sector_buffer[450] != 0x0C) // first partition filesystem type: FAT16
-    {
-        printf("Unsupported partition type!\r");
-        return(0);
-    }
-
-    if (sector_buffer[450] == 0x0B || sector_buffer[450] == 0x0C)
-       fat32 = 1;
-
-    if (sector_buffer[510] != 0x55 || sector_buffer[511] != 0xaa)  // check signature
-        return(0);
-
-    // get start of first partition
-    boot_sector = sector_buffer[467];
-    boot_sector <<= 8;
-    boot_sector |= sector_buffer[466];
-    boot_sector <<= 8;
-    boot_sector |= sector_buffer[455];
-    boot_sector <<= 8;
-    boot_sector |= sector_buffer[454];
-
-    if (!MMC_Read(boot_sector, sector_buffer)) // read boot sector
-        return(0);
-
-    // check for near-jump or short-jump opcode
-    if (sector_buffer[0] != 0xe9 && sector_buffer[0] != 0xeb)
-        return(0);
-
-    // check if blocksize is really 512 bytes
-    if (sector_buffer[11] != 0x00 || sector_buffer[12] != 0x02)
-        return(0);
-
-    // check medium descriptor byte, must be 0xf8 for hard drive
-    if (sector_buffer[21] != 0xf8)
-        return(0);
-
-    if (fat32)
-    {
-        if (strncmp((const char*)&sector_buffer[0x52], "FAT32   ", 8) != 0) // check file system type
-            return(0);
-
-        cluster_size = sector_buffer[0x0D]; // get cluster_size in sectors
-        cluster_mask = ~(cluster_size - 1); // calculate cluster mask
-        dir_entries = cluster_size << 4; // total number of dir entries (16 entries per sector)
-        root_directory_size = cluster_size; // root directory size in sectors
-        fat_start = boot_sector + sector_buffer[0x0E] + (sector_buffer[0x0F] << 8); // reserved sector count before FAT table (usually 32 for FAT32)
-        fat_number = sector_buffer[0x10];
-        fat_size = sector_buffer[0x24] + (sector_buffer[0x25] << 8) + (sector_buffer[0x26] << 16) + (sector_buffer[0x27] << 24);
-        data_start = fat_start + (fat_number * fat_size);
-        root_directory_cluster = sector_buffer[0x2C] + (sector_buffer[0x2D] << 8) + (sector_buffer[0x2E] << 16) + ((sector_buffer[0x2F] & 0x0F) << 24);
-        root_directory_start = (root_directory_cluster - 2) * cluster_size + data_start;
-    }
-    else
-    {
-        // calculate drive's parameters from bootsector, first up is size of directory
-        dir_entries = sector_buffer[17] + (sector_buffer[18] << 8);
-        root_directory_size = ((dir_entries << 5) + 511) >> 9;
-
-        // calculate start of FAT,size of FAT and number of FAT's
-        fat_start = boot_sector + sector_buffer[14] + (sector_buffer[15] << 8);
-        fat_size = sector_buffer[22] + (sector_buffer[23] << 8);
-        fat_number = sector_buffer[16];
-
-        // calculate start of directory
-        root_directory_start = fat_start + (fat_number * fat_size);
-        root_directory_cluster = 0; // unused
-
-        // get cluster_size
-        cluster_size = sector_buffer[13];
-
-        // calculate cluster mask
-        cluster_mask = ~(cluster_size - 1);
-
-        // calculate start of data
-        data_start = root_directory_start + root_directory_size;
-    }
-
-
-    // some debug output
-    printf("fat_size: %lu\r", fat_size);
-    printf("fat_number: %u\r", fat_number);
-    printf("fat_start: %lu\r", fat_start);
-    printf("root_directory_start: %lu\r", root_directory_start);
-    printf("dir_entries: %u\r", dir_entries);
-    printf("data_start: %lu\r", data_start);
-    printf("cluster_size: %u\r", cluster_size);
-    printf("cluster_mask: %08lX\r", cluster_mask);
-
-    return(1);
-}
-*/
-
 
 
 // FindDrive() checks if a card is present and contains FAT formatted primary partition
@@ -269,7 +148,8 @@ unsigned char FindDrive(void)
 	{
 		// We have at least one partition, parse the MBR.
 		struct MasterBootRecord *mbr=(struct MasterBootRecord *)sector_buffer;
-		BootPrint("Copying partitions");
+		if(DEBUG)
+			BootPrint("Copying partitions");
 		memcpy(&partitions[0],&mbr->Partition[0],sizeof(struct PartitionEntry));
 		memcpy(&partitions[1],&mbr->Partition[1],sizeof(struct PartitionEntry));
 		memcpy(&partitions[2],&mbr->Partition[2],sizeof(struct PartitionEntry));
@@ -278,7 +158,8 @@ unsigned char FindDrive(void)
 		switch(mbr->Signature)
 		{
 			case 0x55aa:	// Little-endian MBR on a big-endian system
-				BootPrint("Swapping byte order of partition entries");
+				if(DEBUG)
+					BootPrint("Swapping byte order of partition entries");
 				SwapPartitionBytes(0);
 				SwapPartitionBytes(1);
 				SwapPartitionBytes(2);
@@ -301,10 +182,12 @@ unsigned char FindDrive(void)
 //				WaitTimer(5000);
 				if (!MMC_Read(boot_sector, sector_buffer)) // read discriptor
 				    return(0);
-				BootPrint("Read boot sector from first partition\n");
+				if(DEBUG)
+					BootPrint("Read boot sector from first partition\n");
 				break;
 			default:
-				BootPrint("No partition signature found\n");
+				if(DEBUG)
+					BootPrintEx("No partition signature found\n");
 				break;
 		}
 	}
@@ -339,7 +222,7 @@ unsigned char FindDrive(void)
 
     if (fattype != 32 && fattype != 16) // first partition filesystem type: FAT16 or FAT32
     {
-        printf("Unsupported partition type!\r");
+        BootPrintEx("Unsupported partition type!");
         return(0);
     }
 
@@ -404,14 +287,17 @@ unsigned char FindDrive(void)
 
 
     // some debug output
-    printf("fat_size: %lu\r", fat_size);
-    printf("fat_number: %u\r", fat_number);
-    printf("fat_start: %lu\r", fat_start);
-    printf("root_directory_start: %lu\r", root_directory_start);
-    printf("dir_entries: %u\r", dir_entries);
-    printf("data_start: %lu\r", data_start);
-    printf("cluster_size: %u\r", cluster_size);
-    printf("cluster_mask: %08lX\r", cluster_mask);
+	if(DEBUG)
+	{
+		printf("fat_size: %lu\r", fat_size);
+		printf("fat_number: %u\r", fat_number);
+		printf("fat_start: %lu\r", fat_start);
+		printf("root_directory_start: %lu\r", root_directory_start);
+		printf("dir_entries: %u\r", dir_entries);
+		printf("data_start: %lu\r", data_start);
+		printf("cluster_size: %u\r", cluster_size);
+		printf("cluster_mask: %08lX\r", cluster_mask);
+	}
 
     return(1);
 }

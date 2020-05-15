@@ -199,7 +199,8 @@ module minimig
   input [1:0] kbd_mouse_type,
   input [7:0] kbd_mouse_data,
 	input	_15khz,				//scandoubler disable
-	output pwrled,				//power led
+	output pwr_led,				//power led
+	output disk_led,				//fdd led
 	input		msdat_i,				//PS2 mouse data
 	input		msclk_i,				//PS2 mouse clk
 	input		kbddat_i,				//PS2 keyboard data
@@ -407,7 +408,7 @@ wire	hdd_data_rd;			//data port read strobe
 wire	[7:0] bank;				//memory bank select
 
 wire	keyboard_disabled;		//disables Amiga keyboard while OSD is active
-wire	disk_led;				//floppy disk activity LED
+//wire	disk_led;				//floppy disk activity LED
 
 reg		ntsc = NTSC;			//PAL/NTSC video mode selection
 
@@ -442,8 +443,8 @@ always @ (posedge clk) begin
   end
 end
 
-assign pwrled = (_led & (led_dim | ~turbo)) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
-
+//assign pwrled = (_led & (led_dim | ~turbo)) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
+assign pwr_led = (_led & led_dim) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
 
 
 assign memcfg = memory_config[5:0];

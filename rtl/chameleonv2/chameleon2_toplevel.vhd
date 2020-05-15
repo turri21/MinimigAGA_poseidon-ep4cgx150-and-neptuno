@@ -233,8 +233,10 @@ architecture rtl of chameleon2_toplevel is
 	(
 		CLK_114		:	 out STD_LOGIC;
 		CLK_IN : in std_logic;
---		RESET_N : in STD_LOGIC;
-		LED		:	 OUT STD_LOGIC;
+		RESET_N : in STD_LOGIC;
+		MENU_BUTTON : IN STD_LOGIC;
+		LED_POWER	:	 OUT STD_LOGIC;
+		LED_DISK		:	 OUT STD_LOGIC;
 		UART_TX		:	 OUT STD_LOGIC;
 		UART_RX		:	 IN STD_LOGIC;
 		VGA_HS		:	 OUT STD_LOGIC;
@@ -469,7 +471,10 @@ PORT map
 	(
 		CLK_IN => clk50m,
 		CLK_114 => clk_114,
-		LED => led_red,
+		RESET_N => n_reset,
+		MENU_BUTTON => (not power_button) and freeze_btn,
+		LED_POWER => led_green,
+		LED_DISK => led_red,
 		UART_TX => rs232_txd,
 		UART_RX => rs232_rxd,
 		VGA_HS => vga_hsync,
