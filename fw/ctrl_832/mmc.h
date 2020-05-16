@@ -81,5 +81,7 @@ unsigned long MMC_GetCapacity(); // Returns the capacity in 512 byte blocks
 
 extern unsigned char CSDData[16];
 
+extern unsigned char MMCErr;
+
 #endif
 

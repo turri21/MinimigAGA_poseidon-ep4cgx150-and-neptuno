@@ -29,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //#include "AT91SAM7S256.h"
 #include "stdio.h"
 //#include "string.h"
+#include "errors.h"
 #include "hardware.h"
 #include "mmc.h"
 #include "fat.h"
@@ -216,6 +217,7 @@ unsigned char MMC_Read(unsigned long lba, unsigned char *pReadBuffer)
     {
         DisableCard();
         printf("CMD17 (READ_BLOCK): invalid response 0x%02X (lba=%lu)\r", response, lba);
+		Error=ERROR_SDCARD;
         return(0);
     }
 
@@ -227,6 +229,7 @@ unsigned char MMC_Read(unsigned long lba, unsigned char *pReadBuffer)
         {
             DisableCard();
             printf("CMD17 (READ_BLOCK): no data token! (lba=%lu)\r", lba);
+			Error=ERROR_SDCARD;
             return(0);
         }
     }
@@ -268,6 +271,7 @@ unsigned char MMC_GetCSD()
     {
         printf("CMD9 (GET_CSD): invalid response 0x%02X \r", response);
         DisableCard();
+		Error=ERROR_SDCARD;
         return(0);
     }
 
@@ -279,6 +283,7 @@ unsigned char MMC_GetCSD()
         {
             printf("CMD9 (READ_BLOCK): no data token!\r");
             DisableCard();
+			Error=ERROR_SDCARD;
             return(0);
         }
     }
@@ -339,6 +344,7 @@ unsigned char MMC_ReadMultiple(unsigned long lba, unsigned char *pReadBuffer, un
     {
         printf("CMD18 (READ_MULTIPLE_BLOCK): invalid response 0x%02X (lba=%lu)\r", response, lba);
         DisableCard();
+		Error=ERROR_SDCARD;
         return(0);
     }
 
@@ -352,6 +358,7 @@ unsigned char MMC_ReadMultiple(unsigned long lba, unsigned char *pReadBuffer, un
             {
                 printf("CMD18 (READ_MULTIPLE_BLOCK): no data token! (lba=%lu)\r", lba);
                 DisableCard();
+				Error=ERROR_SDCARD;
                 return(0);
             }
         }
@@ -401,6 +408,7 @@ unsigned char MMC_Write(unsigned long lba, unsigned char *pWriteBuffer)
     {
         printf("CMD24 (WRITE_BLOCK): invalid response 0x%02X (lba=%lu)\r", response, lba);
         DisableCard();
+		Error=ERROR_SDCARD;
         return(0);
     }
 
@@ -424,6 +432,7 @@ unsigned char MMC_Write(unsigned long lba, unsigned char *pWriteBuffer)
     {
         printf("CMD24 (WRITE_BLOCK): invalid status 0x%02X (lba=%lu)\r", response, lba);
         DisableCard();
+		Error=ERROR_SDCARD;
         return(0);
     }
 
@@ -434,6 +443,7 @@ unsigned char MMC_Write(unsigned long lba, unsigned char *pWriteBuffer)
         {
             printf("CMD24 (WRITE_BLOCK): busy wait timeout! (lba=%lu)\r", lba);
             DisableCard();
+			Error=ERROR_SDCARD;
             return(0);
         }
     }
@@ -527,23 +537,4 @@ void MMC_CRC(unsigned char c)
     }
 }
 #pragma section_no_code_init
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

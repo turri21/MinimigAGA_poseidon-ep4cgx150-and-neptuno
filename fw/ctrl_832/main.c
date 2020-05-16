@@ -62,6 +62,7 @@ extern adfTYPE df[4];
 unsigned char Error;
 char s[40];
 
+#if 0
 void FatalError(unsigned long error)
 {
     unsigned long i;
@@ -81,6 +82,7 @@ void FatalError(unsigned long error)
         WaitTimer(1000);
     }
 }
+#endif
 
 
 void HandleFpga(void)
@@ -102,6 +104,36 @@ void HandleFpga(void)
     UpdateDriveStatus();
 }
 
+
+void ColdBoot()
+{
+	Error=ERROR_SDCARD;
+    if (MMC_Init())
+	{
+		Error=ERROR_FILESYSTEM;
+	    if (FindDrive())
+		{
+		    ChangeDirectory(DIRECTORY_ROOT);
+
+			fpga_init();
+
+			config.kickstart.name[0]=0;
+			BootPrintEx("Loading kickstart ROM...");
+			SetConfigurationFilename(0); // Use default config
+		    LoadConfiguration(0);	// Use slot-based config filename
+			Error=0;
+		}
+	}
+}
+
+static char *errormessages[]=
+{
+	"SD Card error!",
+	"No filesystem found!",
+	"File not found!"
+};
+
+
 void setstack();
 #ifdef __GNUC__
 void c_entry(void)
@@ -119,30 +151,18 @@ __geta4 void main(void)
 	printf(s);
     BootPrintEx(s);
 
-    if (!MMC_Init())
-       FatalError(1);
-
-//    BootPrint("hunting for drive...\n");
-
-    if (!FindDrive())
-        FatalError(2);
-
-//    BootPrint("found DRIVE...\n");
-
-    ChangeDirectory(DIRECTORY_ROOT);
-
-	fpga_init();
-
-	config.kickstart.name[0]=0;
-	BootPrintEx("Loading kickstart ROM...");
-	SetConfigurationFilename(0); // Use default config
-    LoadConfiguration(0);	// Use slot-based config filename
+	ColdBoot();
 
     while (1)
     {
         HandleFpga();
         HandleUI();
+		if(Error && Error<=ERROR_MAX)
+		{
+			ErrorMessage(errormessages[Error-1],0);
+			while(Error)
+		        HandleUI();
+		}
     }
-
 }
 

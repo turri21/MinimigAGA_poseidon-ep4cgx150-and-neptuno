@@ -339,6 +339,8 @@ void fpga_init() {
 	BootInit();
 	WaitTimer(500);
 
+	BootHome();
+
 	printf(rtl_ver, "MINIMIG AGA%s version %d.%d.%d", ver_beta ? " BETA" : "", ver_major, ver_minor, ver_minion);
 	BootPrintEx(rtl_ver);
 	BootPrintEx(" ");

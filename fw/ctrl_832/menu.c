@@ -91,15 +91,18 @@ const char *helptexts[]={
 	0,
 	"                                Welcome to Minimig!  Use the cursor keys to navigate the menus.  Use space bar or enter to select an item.  Press Esc or F12 to exit the menus.  Joystick emulation on the numeric keypad can be toggled with the numlock key, while pressing Ctrl-Alt-0 (numeric keypad) toggles autofire mode.",
 	"                                Minimig can emulate an A600 IDE harddisk interface.  The emulation can make use of Minimig-style hardfiles (complete disk images) or UAE-style hardfiles (filesystem images with no partition table).  It is also possible to use either the entire SD card or an individual partition as an emulated harddisk.",
-	"                                Minimig's processor core can emulate a 68000 or 68020 processor (though the 68020 mode is still experimental.)  If you're running software built for 68000, there's no advantage to using the 68020 mode, since the 68000 emulation runs just as fast.",
+	"                                Minimig's processor core can emulate a 68000 or 68020 processor.  Access to both Chip RAM and Kickstart ROM can be sped up with the Turbo function.  The emulated chipset can be either A500 or A1000 OCS, ECS or AGA.  Joyst",
 #ifdef ACTIONREPLAY_BROKEN
 	"                                Minimig can make use of up to 2 megabytes of Chip RAM, up to 1.5 megabytes of Slow RAM (A500 Trapdoor RAM), and up to 24 megabytes of true Fast RAM.",
 #else
-	"                                Minimig can make use of up to 2 megabytes of Chip RAM, up to 1.5 megabytes of Slow RAM (A500 Trapdoor RAM), and up to 24 megabytes of true Fast RAM.  To use the Action Replay feature you will need an Action Replay 3 ROM file on the SD card, named AR3.ROM.  You will also need to set Fast RAM to no more than 2 megabytes.",
+	"                                Minimig can make use of up to 2 megabytes of Chip RAM, up to 1.5 megabytes of Slow RAM (A500 Trapdoor RAM), and up to 24 megabytes of true Fast RAM.  To use the HRTMon feature you will need an appropriate ROM file on the SD card.  To activate the monitor hold Ctrl and press the Pause key.",
 #endif
 	"                                Minimig's video features include a blur filter, to simulate the poorer picture quality on older monitors, and also scanline generation to simulate the appearance of a screen with low vertical resolution.",
 	0
 };
+
+void ColdBoot();
+void (*confirmfunc)();
 
 extern unsigned char DEBUG;
 
@@ -564,23 +567,23 @@ void HandleUI(void)
     case MENU_MISC1 :
         OsdColor(OSDCOLOR_TOPLEVEL);
 		helptext=helptexts[HELPTEXT_MAIN];
-		menumask=0x0f;	// Reset, about and exit.
+		menumask=0x1f;	// Reset, about and exit.
  		OsdSetTitle("Misc",OSD_ARROW_LEFT);
         OsdWrite(0, "    Reset", menusub == 0,0);
-        OsdWrite(1, "", 0,0);
+        OsdWrite(1, "    Reboot", menusub == 1,0);
+        OsdWrite(2, "", 0,0);
 		if(PLATFORM&(1<<PLATFORM_RECONFIG))
-	        OsdWrite(2, "    Return to Chameleon", menusub == 1,0);
+	        OsdWrite(3, "    Return to Chameleon", menusub == 2,0);
 		else
 		{
-	        OsdWrite(2, "", 0,0);
+	        OsdWrite(3, "", 0,0);
 			menumask&=~0x02;	// Remove the Reconfigure option from the menu
 		}
 //        OsdWrite(3, "    (Not yet implemented)", 0,1);
-        OsdWrite(3, "", 0,0);
-        OsdWrite(4, "    About", menusub == 2,0);
+        OsdWrite(4, "    About", menusub == 3,0);
         OsdWrite(5, "", 0,0);
         OsdWrite(6, "", 0,0);
-        OsdWrite(7, STD_EXIT, menusub == 3,0);
+        OsdWrite(7, STD_EXIT, menusub == 4,0);
 
 		parentstate = menustate;
         menustate = MENU_MISC2;
@@ -597,19 +600,30 @@ void HandleUI(void)
             if (menusub == 0)	// Reset
             {
                 menusub = 0;
-				menustate=MENU_RESET1;
+				strcpy(s,"         Reset Minimig?");
+				confirmfunc=OsdReset;
+				menustate=MENU_CONFIRM1;
 			}
-            if (menusub == 1)	// Reconfig
+            if (menusub == 1)	// Reboot
+            {
+                menusub = 0;
+				strcpy(s,"         Reboot Minimig?");
+				confirmfunc=ColdBoot;
+				menustate=MENU_CONFIRM1;
+			}
+            if (menusub == 2)	// Reconfig
             {
 				menusub=0;
-				menustate=MENU_RECONF1;
+				strcpy(s,"     Return to Chameleon?");
+				confirmfunc=Reconfigure;
+				menustate=MENU_CONFIRM1;
 			}
-            if (menusub == 2)	// About
+            if (menusub == 3)	// About
             {
 				menusub=0;
 				menustate=MENU_ABOUT1;
 			}
-            if (menusub == 3)	// Exit
+            if (menusub == 4)	// Exit
             {
 				menustate=MENU_NONE1;
 			}
@@ -887,7 +901,7 @@ void HandleUI(void)
         /******************************************************************/
         /* reset menu                                                     */
         /******************************************************************/
-    case MENU_RESET1 :
+    case MENU_CONFIRM1 :
         OsdColor(OSDCOLOR_WARNING);
 		helptext=helptexts[HELPTEXT_NONE];
 		OsdSetTitle("Reset",0);
@@ -895,7 +909,7 @@ void HandleUI(void)
 		parentstate=menustate;
 
         OsdWrite(0, "", 0,0);
-        OsdWrite(1, "         Reset Minimig?", 0,0);
+        OsdWrite(1, s, 0,0);
         OsdWrite(2, "", 0,0);
         OsdWrite(3, "               yes", menusub == 0,0);
         OsdWrite(4, "               no", menusub == 1,0);
@@ -903,15 +917,15 @@ void HandleUI(void)
         OsdWrite(6, "", 0,0);
         OsdWrite(7, "", 0,0);
 
-        menustate = MENU_RESET2;
+        menustate = MENU_CONFIRM2;
         break;
 
-    case MENU_RESET2 :
+    case MENU_CONFIRM2 :
 
         if (select && menusub == 0)
         {
             menustate = MENU_NONE1;
-            OsdReset(RESET_NORMAL);
+            confirmfunc();
         }
 
         if (menu || (select && (menusub == 1))) // exit menu
@@ -924,6 +938,7 @@ void HandleUI(void)
         /******************************************************************/
         /* reconfigure confirmation                                       */
         /******************************************************************/
+#if 0
     case MENU_RECONF1 :
         OsdColor(OSDCOLOR_WARNING);
 		helptext=helptexts[HELPTEXT_NONE];
@@ -956,7 +971,7 @@ void HandleUI(void)
             menusub = 1;
         }
         break;
-
+#endif
         /******************************************************************/
         /* settings menu                                                  */
         /******************************************************************/
@@ -1179,32 +1194,32 @@ void HandleUI(void)
 
  		OsdSetTitle("Memory",OSD_ARROW_LEFT|OSD_ARROW_RIGHT);
 
-		OsdWrite(0, "", 0,0);
 		strcpy(s, "      CHIP  : ");
 		strcat(s, config_memory_chip_msg[config.memory & 0x03]);
-		OsdWrite(1, s, menusub == 0,0);
+		OsdWrite(0, s, menusub == 0,0);
 		strcpy(s, "      SLOW  : ");
 		strcat(s, config_memory_slow_msg[config.memory >> 2 & 0x03]);
-		OsdWrite(2, s, menusub == 1,0);
+		OsdWrite(1, s, menusub == 1,0);
 		strcpy(s, "      FAST  : ");
 		if (!(((config.cpu & 0x02) == 0x02) && ((config.memory >> 4 & 0x03) == 0x03)))
 			strcat(s, config_memory_fast_msg[config.memory >> 4 & 0x03]);
 		else
 			strcat(s, config_memory_fast_msg[(config.memory >> 4 & 0x03) + 1]);
-		OsdWrite(3, s, menusub == 2,0);
+		OsdWrite(2, s, menusub == 2,0);
 
-		OsdWrite(4, "", 0,0);
+		OsdWrite(3, "", 0,0);
 
         strcpy(s, "        ROM  : ");
         if (config.kickstart.long_name[0])
             strncat(s, config.kickstart.long_name, sizeof(config.kickstart.long_name));
         else
             strncat(s, config.kickstart.name, sizeof(config.kickstart.name));
-        OsdWrite(5, s, menusub == 3,0);
+        OsdWrite(4, s, menusub == 3,0);
 
 		strcpy(s, "      HRTmon: ");
 		strcat(s, (config.memory&0x40) ? "enabled " : "disabled");
-		OsdWrite(6, s, menusub == 4,0);
+		OsdWrite(5, s, menusub == 4,0);
+		OsdWrite(6, "", 0,0);
 
         OsdWrite(7, STD_BACK, menusub == 5,0);
 
@@ -1214,29 +1229,29 @@ void HandleUI(void)
     case MENU_SETTINGS_MEMORY2 :
         if (select)
         {
-			if (menusub == 0)
+			if (menusub == 0) /* Chip RAM */
 			{
 				config.memory = ((config.memory + 1) & 0x03) | (config.memory & ~0x03);
 				menustate = MENU_SETTINGS_MEMORY1;
 				ConfigMemory(config.memory);
 			}
-			else if (menusub == 1)
+			else if (menusub == 1) /* Slow RAM */
 			{
 				config.memory = ((config.memory + 4) & 0x0C) | (config.memory & ~0x0C);
 				menustate = MENU_SETTINGS_MEMORY1;
 				ConfigMemory(config.memory);
 			}
-			else if (menusub == 2)
+			else if (menusub == 2) /* Fast RAM */
 			{
 				config.memory = ((config.memory + 0x10) & 0x30) | (config.memory & ~0x30);
 				menustate = MENU_SETTINGS_MEMORY1;
 				ConfigMemory(config.memory);
 			}
-            else if (menusub == 3)
+            else if (menusub == 3) /* Kickstart ROM */
             {
                 SelectFile("ROM", SCAN_LFN, MENU_ROMFILE_SELECTED, MENU_SETTINGS_MEMORY1);
             }
-            else if (menusub == 4)
+            else if (menusub == 4) /* HRTMon */
             {
 				config.memory ^= 0x40;
 				ConfigMemory(config.memory);
@@ -1273,98 +1288,6 @@ void HandleUI(void)
         /******************************************************************/
         /* drive settings menu                                            */
         /******************************************************************/
-/*
-    case MENU_SETTINGS_DRIVES1 :
-		menumask=0;
- 
-		OsdSetTitle("Drives",OSD_ARROW_LEFT|OSD_ARROW_RIGHT);
-
-        OsdWrite(0, "", 0,0);
-        sprintf(s, "        drives : %d", config.floppy.drives + 1,0);
-        OsdWrite(1, s, menusub == 0,0);
-        strcpy(s, "         speed : ");
-        strcat(s, config.floppy.speed ? "fast " : "normal");
-        OsdWrite(2, s, menusub == 1,0);
-        OsdWrite(3, "", 0,0);
-        strcpy(s, "      A600 IDE : ");
-        strcat(s, config.enable_ide ? "on " : "off");
-        OsdWrite(4, s, menusub == 2,0);
-        sprintf(s, "     hardfiles : %d", (config.hardfile[0].present & config.hardfile[0].enabled) + (config.hardfile[1].present & config.hardfile[1].enabled));
-        OsdWrite(5,s, menusub == 3,0);
-        OsdWrite(6, "", 0,0);
-        OsdWrite(7, STD_EXIT, menusub == 4,0);
-
-        menustate = MENU_SETTINGS_DRIVES2;
-        break;
-
-    case MENU_SETTINGS_DRIVES2 :
-
-        if (down && menusub < 4)
-        {
-            menusub++;
-            menustate = MENU_SETTINGS_DRIVES1;
-        }
-
-        if (up && menusub > 0)
-        {
-            menusub--;
-            menustate = MENU_SETTINGS_DRIVES1;
-        }
-
-        if (select)
-        {
-            if (menusub == 0)
-            {
-                config.floppy.drives++;
-                config.floppy.drives &= 0x03;
-                menustate = MENU_SETTINGS_DRIVES1;
-                ConfigFloppy(config.floppy.drives, config.floppy.speed);
-            }
-            else if (menusub == 1)
-            {
-                config.floppy.speed++;
-                config.floppy.speed &= 0x01;
-                menustate = MENU_SETTINGS_DRIVES1;
-                ConfigFloppy(config.floppy.drives, config.floppy.speed);
-            }
-            else if (menusub == 2)
-            {
-                config.enable_ide ^= 0x01;
-                menustate = MENU_SETTINGS_DRIVES1;
-                ConfigIDE(config.enable_ide, config.hardfile[0].present && config.hardfile[0].enabled, config.hardfile[1].present && config.hardfile[1].enabled);
-            }
-            else if (menusub == 3)
-            {
-                t_hardfile[0] = config.hardfile[0];
-                t_hardfile[1] = config.hardfile[1];
-                menustate = MENU_SETTINGS_HARDFILE1;
-                menusub = 4;
-            }
-            else if (menusub == 4)
-            {
-                menustate = MENU_SETTINGS1;
-                menusub = 2;
-            }
-        }
-
-        if (menu)
-        {
-            menustate = MENU_SETTINGS1;
-            menusub = 2;
-        }
-        else if (right)
-        {
-            menustate = MENU_SETTINGS_VIDEO1;
-            menusub = 0;
-        }
-        else if (left)
-        {
-            menustate = MENU_SETTINGS_MEMORY1;
-            menusub = 0;
-        }
-        break;
-
-*/
 
         /******************************************************************/
         /* hardfile settings menu                                         */
@@ -1374,6 +1297,7 @@ void HandleUI(void)
 		// which could be disastrous if the user's writing to the drive at the time!
 		// Make the menu work on the copy, not the original, and copy on acceptance,
 		// not on rejection.
+
     case MENU_SETTINGS_HARDFILE1 :
         OsdColor(OSDCOLOR_SUBMENU);
 		helptext=helptexts[HELPTEXT_HARDFILE];
@@ -1741,14 +1665,14 @@ void HandleUI(void)
                 config.filter.lores++;
                 config.filter.lores &= 0x03;
                 menustate = MENU_SETTINGS_VIDEO1;
-                ConfigVideo(config.filter.lores, config.filter.hires,config.scanlines);
+                ConfigVideo(config.filter.hires, config.filter.lores,config.scanlines);
             }
             else if (menusub == 1)
             {
                 config.filter.hires++;
                 config.filter.hires &= 0x03;
                 menustate = MENU_SETTINGS_VIDEO1;
-                ConfigVideo(config.filter.lores, config.filter.hires,config.scanlines);
+                ConfigVideo(config.filter.hires, config.filter.lores,config.scanlines);
 //                ConfigFilter(config.filter.lores, config.filter.hires);
             }
             else if (menusub == 2)
@@ -1758,7 +1682,7 @@ void HandleUI(void)
 					tmp=0;
                 config.scanlines=(config.scanlines&0xfc)|(tmp&3);
                 menustate = MENU_SETTINGS_VIDEO1;
-                ConfigVideo(config.filter.lores, config.filter.hires,config.scanlines);
+                ConfigVideo(config.filter.hires, config.filter.lores,config.scanlines);
 //                ConfigScanlines(config.scanlines);
             }
             else if (menusub == 3)
@@ -1768,7 +1692,7 @@ void HandleUI(void)
 					tmp=0;
                 config.scanlines=(config.scanlines&0xf3)|(tmp&0xc);
                 menustate = MENU_SETTINGS_VIDEO1;
-                ConfigVideo(config.filter.lores, config.filter.hires,config.scanlines);
+                ConfigVideo(config.filter.hires, config.filter.lores,config.scanlines);
 //                ConfigScanlines(config.scanlines);
             }
 
@@ -1870,308 +1794,34 @@ void HandleUI(void)
         }
         break;
 
-//        /******************************************************************/
-//        /* firmware menu */
-//        /******************************************************************/
-//    case MENU_FIRMWARE1 :
-//
-//        OsdWrite(0, "        *** Firmware ***", 0);
-//        OsdWrite(1, "", 0);
-//        sprintf(s, "     ARM s/w ver. %s", version + 5);
-//        OsdWrite(2, s, 0);
-//        OsdWrite(3, "", 0);
-//        OsdWrite(4, "             update", menusub == 0);
-//        OsdWrite(5, "             options", menusub == 1);
-//        OsdWrite(6, "", 0);
-//        OsdWrite(7, "              exit", menusub == 2);
-//
-//        menustate = MENU_FIRMWARE2;
-//        break;
-//
-//    case MENU_FIRMWARE2 :
-//
-//        if (menu)
-//        {
-//            menusub = 2;
-//            menustate = MENU_MAIN2_1;
-//        }
-//        else if (up)
-//        {
-//            if (menusub > 0)
-//                menusub--;
-//            menustate = MENU_FIRMWARE1;
-//        }
-//        else if (down)
-//        {
-//            if (menusub < 2)
-//                menusub++;
-//            menustate = MENU_FIRMWARE1;
-//        }
-//        else if (select)
-//        {
-//            if (menusub == 0)
-//            {
-////                if (CheckFirmware(&file, "FIRMWAREUPG"))
-////                    menustate = MENU_FIRMWARE_UPDATE1;
-////                else
-//                    menustate = MENU_FIRMWARE_UPDATE_ERROR1;
-//                menusub = 1;
-//                OsdClear();
-//            }
-//            else if (menusub == 1)
-//            {
-//                menustate = MENU_FIRMWARE_OPTIONS1;
-//                menusub = 1;
-//                OsdClear();
-//            }
-//            else if (menusub == 2)
-//            {
-//                menustate = MENU_MAIN2_1;
-//                menusub = 2;
-//            }
-//        }
-//        break;
-//
-//        /******************************************************************/
-//        /* firmware update message menu */
-//        /******************************************************************/
-//    case MENU_FIRMWARE_UPDATE1 :
-//
-//        OsdWrite(2, "          Are you sure?", 0);
-//
-//        OsdWrite(6, "               yes", menusub == 0);
-//        OsdWrite(7, "               no", menusub == 1);
-//
-//        menustate = MENU_FIRMWARE_UPDATE2;
-
-//        break;
-//
-//    case MENU_FIRMWARE_UPDATE2 :
-//
-//        if (down && menusub < 1)
-//        {
-//            menusub++;
-//            menustate = MENU_FIRMWARE_UPDATE1;
-//        }
-//
-//        if (up && menusub > 0)
-//        {
-//            menusub--;
-//            menustate = MENU_FIRMWARE_UPDATE1;
-//        }
-//
-//        if (select)
-//        {
-//            if (menusub == 0)
-//            {
-//                menustate = MENU_FIRMWARE_UPDATING1;
-//                menusub = 0;
-//                OsdClear();
-//            }
-//            else if (menusub == 1)
-//            {
-//                menustate = MENU_FIRMWARE1;
-//                menusub = 2;
-//            }
-//        }
-//        break;
-//
-//        /******************************************************************/
-//        /* firmware update in progress message menu*/
-//        /******************************************************************/
-//    case MENU_FIRMWARE_UPDATING1 :
-//
-//        OsdWrite(1, "        Updating firmware", 0);
-//        OsdWrite(3, "           Please wait", 0);
-//        menustate = MENU_FIRMWARE_UPDATING2;
-//        break;
-//
-//    case MENU_FIRMWARE_UPDATING2 :
-//
-////        WriteFirmware(&file);
-//        Error = ERROR_UPDATE_FAILED;
-//        menustate = MENU_FIRMWARE_UPDATE_ERROR1;
-//        menusub = 0;
-//        OsdClear();
-//        break;
-//
-//        /******************************************************************/
-//        /* firmware update error message menu*/
-//        /******************************************************************/
-//    case MENU_FIRMWARE_UPDATE_ERROR1 :
-//
-//        switch (Error)
-//        {
-//        case ERROR_FILE_NOT_FOUND :
-//            OsdWrite(1, "          Update file", 0);
-//            OsdWrite(2, "           not found!", 0);
-//            break;
-//        case ERROR_INVALID_DATA :
-//            OsdWrite(1, "            Invalid ", 0);
-//            OsdWrite(2, "          update file!", 0);
-//            break;
-//        case ERROR_UPDATE_FAILED :
-//            OsdWrite(2, "         Update failed!", 0);
-//            break;
-//        }
-//        OsdWrite(7, "               OK", 1);
-//        menustate = MENU_FIRMWARE_UPDATE_ERROR2;
-//        break;
-//
-//    case MENU_FIRMWARE_UPDATE_ERROR2 :
-//
-//        if (select)
-//        {
-//            menustate = MENU_FIRMWARE1;
-//            menusub = 2;
-//        }
-//        break;
-//
-//        /******************************************************************/
-//        /* firmware options menu */
-//        /******************************************************************/
-//    case MENU_FIRMWARE_OPTIONS1 :
-//
-//        OsdWrite(0, "          ** Options **", 0);
-//
-////        if (GetSPIMode() == SPIMODE_FAST)
-////            OsdWrite(2, "        Fast SPI enabled", menusub == 0);
-////        else
-//            OsdWrite(2, "        Enable Fast SPI ", menusub == 0);
-//
-//        OsdWrite(7, "              exit", menusub == 1);
-//
-//        menustate = MENU_FIRMWARE_OPTIONS2;
-//        break;
-//
-//    case MENU_FIRMWARE_OPTIONS2 :
-//
-//        if (c == KEY_F8)
-//        {
-//            if (DEBUG)
-//            {
-//                DEBUG = 0;
-//                printf("DEBUG OFF\r");
-//            }
-//            else
-//            {
-//                DEBUG = 1;
-//                printf("DEBUG ON\r");
-//            }
-//        }
-//        else if (menu)
-//        {
-//            menusub = 1;
-//            menustate = MENU_FIRMWARE1;
-//        }
-//        else if (up)
-//        {
-////            if (menusub > 0  && GetSPIMode() != SPIMODE_FAST)
-//                menusub--;
-//
-//            menustate = MENU_FIRMWARE_OPTIONS1;
-//        }
-//        else if (down)
-//        {
-//            if (menusub < 1)
-//                menusub++;
-//            menustate = MENU_FIRMWARE_OPTIONS1;
-//        }
-//        else if (select)
-//        {
-//            if (menusub == 0)
-//            {
-//                menusub = 1;
-//                menustate = MENU_FIRMWARE_OPTIONS_ENABLE1;
-//                OsdClear();
-//            }
-//            else if (menusub == 1)
-//            {
-//                menusub = 1;
-//                menustate = MENU_FIRMWARE1;
-//            }
-//        }
-//        break;
-//
-//        /******************************************************************/
-//        /* SPI high speed mode enable message menu*/
-//        /******************************************************************/
-//    case MENU_FIRMWARE_OPTIONS_ENABLE1 :
-//
-//        OsdWrite(0, "    Enabling fast SPI without", 0);
-//        OsdWrite(1, "      hardware modification", 0);
-//        OsdWrite(2, "          will be fatal!", 0);
-//        OsdWrite(4, "             Enable?", 0);
-//        OsdWrite(6, "               yes", menusub == 0);
-//        OsdWrite(7, "               no", menusub == 1);
-//
-//        menustate = MENU_FIRMWARE_OPTIONS_ENABLE2;
-//        break;
-//
-//    case MENU_FIRMWARE_OPTIONS_ENABLE2 :
-//
-//        if (down && menusub < 1)
-//        {
-//            menusub++;
-//            menustate = MENU_FIRMWARE_OPTIONS_ENABLE1;
-//        }
-//
-//        if (up && menusub > 0)
-//        {
-//            menusub--;
-//            menustate = MENU_FIRMWARE_OPTIONS_ENABLE1;
-//        }
-//
-//        if (select)
-//        {
-//            if (menusub == 0)
-//            {
-////                SetSPIMode(SPIMODE_FAST);
-//                menustate = MENU_FIRMWARE_OPTIONS_ENABLED1;
-//                menusub = 0;
-//                OsdClear();
-//            }
-//            else if (menusub == 1)
-//            {
-//                menustate = MENU_FIRMWARE_OPTIONS1;
-//                menusub = 0;
-//                OsdClear();
-//            }
-//        }
-//        break;
-//
-//        /******************************************************************/
-//        /* SPI high speed mode enabled message menu*/
-//        /******************************************************************/
-//    case MENU_FIRMWARE_OPTIONS_ENABLED1 :
-//
-//        OsdWrite(1, "    Fast SPI mode will be", 0);
-//        OsdWrite(2, "    activated after restart.", 0);
-//        OsdWrite(3, "    Hold MENU button while", 0);
-//        OsdWrite(4, "    powering-on to disable it.", 0);
-//
-//        OsdWrite(7, "               OK", menusub == 0);
-//
-//        menustate = MENU_FIRMWARE_OPTIONS_ENABLED2;
-//        break;
-//
-//    case MENU_FIRMWARE_OPTIONS_ENABLED2 :
-//
-//        if (select)
-//        {
-//            menustate = MENU_NONE1;
-//            menusub = 0;
-//            OsdClear();
-//        }
-//        break;
 
         /******************************************************************/
         /* error message menu                                             */
         /******************************************************************/
     case MENU_ERROR :
+		menumask=0x01;
+		parentstate=MENU_ERROR;
 
-        if (menu)
-            menustate = MENU_MAIN1;
+ 		OsdSetTitle("Error",0);
+        OsdWrite(0, "         *** ERROR ***", 1,0);
+	    OsdWrite(1, "", 0,0);
+        OsdWrite(2, s, 0,0);
+	    OsdWrite(3, "", 0,0);
+	    OsdWrite(4, "", 0,0);
+	    OsdWrite(5, "", 0,0);
+	    OsdWrite(6, "Reboot", 1,0);
+	    OsdWrite(7, "", 0,0);
+
+		menustate = MENU_ERROR2;
+		break;
+
+	case MENU_ERROR2 :
+        if (select)
+		{
+			OsdHide();
+            ColdBoot();
+			menustate = MENU_NONE1;
+		}
 
         break;
 
@@ -2450,33 +2100,10 @@ void InsertFloppy(adfTYPE *drive)
 /*  Error Message */
 void ErrorMessage(char *message, unsigned char code)
 {
-    if (menustate == MENU_NONE2)
-        menustate = MENU_ERROR;
-
-    if (menustate == MENU_ERROR)
-    {
-//        OsdClear();
- 		OsdSetTitle("Error",0);
-        OsdWrite(0, "         *** ERROR ***", 1,0);
-	    OsdWrite(1, "", 0,0);
-        strncpy(s, message, 32);
-        s[32] = 0;
-        OsdWrite(2, s, 0,0);
-
-        s[0] = 0;
-        if (code)
-            sprintf(s, "    #%d", code);
-
-	    OsdWrite(3, "", 0,0);
-        OsdWrite(4, s, 0,0);
-
-	    OsdWrite(5, "", 0,0);
-	    OsdWrite(6, "", 0,0);
-	    OsdWrite(7, "", 0,0);
-
-		OsdShow(0);
-        OsdColor(OSDCOLOR_WARNING); // do not disable KEYBOARD
-    }
+    menustate = MENU_ERROR;
+    snprintf(s,32," %s: %d",message,code);
+	OsdShow(DISABLE_KEYBOARD); // do not disable KEYBOARD
+    OsdColor(OSDCOLOR_WARNING);
 }
 
 void InfoMessage(char *message)

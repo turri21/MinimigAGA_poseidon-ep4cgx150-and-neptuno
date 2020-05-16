@@ -689,7 +689,7 @@ void OsdHide(void)
 }
 
 
-void OsdReset(unsigned char boot)
+void OsdReset()
 {
     EnableOsd();
     //SPI(OSDCMDRST | (boot & 0x01));

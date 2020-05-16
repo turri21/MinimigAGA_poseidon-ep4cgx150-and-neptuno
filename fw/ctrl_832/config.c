@@ -37,8 +37,9 @@ static char filename[12];
 
 void ClearKickstartMirrorE0(void)
 {
+  int i;
   spi_osd_cmd32le_cont(OSD_CMD_WR, 0x00e00000);
-  for (int i = 0; i < (0x80000 / 4); i++) {
+  for (i = 0; i < (0x80000 / 4); i++) {
     SPI(0x00);
     SPI(0x00);
     SPIN; SPIN; SPIN; SPIN;
@@ -52,8 +53,9 @@ void ClearKickstartMirrorE0(void)
 
 void ClearVectorTable(void)
 {
+  int i;
   spi_osd_cmd32le_cont(OSD_CMD_WR, 0x00000000);
-  for (int i = 0; i < 256; i++) {
+  for (i = 0; i < 256; i++) {
     SPI(0x00);
     SPI(0x00);
     SPIN; SPIN; SPIN; SPIN;
@@ -435,7 +437,7 @@ void ApplyConfiguration(char reloadkickstart)
 
     ConfigIDE(config.enable_ide, config.hardfile[0].present && config.hardfile[0].enabled,
 		config.hardfile[1].present && config.hardfile[1].enabled);
-
+#if 0
     sprintf(s, "CPU clock     : %s", config.chipset & 0x01 ? "turbo" : "normal");
     BootPrint(s);
     sprintf(s, "Chip RAM size : %s", config_memory_chip_msg[config.memory & 0x03]);
@@ -456,7 +458,7 @@ void ApplyConfiguration(char reloadkickstart)
     BootPrint(s);
     sprintf(s, "Slave HDD is %s.", config.hardfile[1].present ? config.hardfile[1].enabled ? "enabled" : "disabled" : "not present");
     BootPrint(s);
-
+#endif
 #if 0
     if (cluster_size < 64)
     {
@@ -469,10 +471,8 @@ void ApplyConfiguration(char reloadkickstart)
     printf("Bootloading is complete.\r");
 #endif
 
-//    BootPrintEx("\nExiting bootloader...");
-
     if(reloadkickstart) {
-      printf("Reloading kickstart ...\r");
+//      printf("Reloading kickstart ...\r");
       WaitTimer(1000);
       EnableOsd();
       SPI(OSD_CMD_RST);
@@ -484,7 +484,8 @@ void ApplyConfiguration(char reloadkickstart)
       if (!UploadKickstart(config.kickstart.name)) {
         strcpy(config.kickstart.name, "KICK    ");
         if (!UploadKickstart(config.kickstart.name)) {
-          FatalError(6);
+          BootPrintEx("\nKickstart loading failed.");
+          Error=ERROR_FILE_NOT_FOUND;
         }
       }
     }
@@ -496,7 +497,7 @@ void ApplyConfiguration(char reloadkickstart)
     ConfigVideo(config.filter.hires, config.filter.lores, config.scanlines);
     ConfigMisc(config.misc);
 
-    printf("Resetting ...\r");
+//    printf("Resetting ...\r");
     EnableOsd();
     SPI(OSD_CMD_RST);
     rstval |= (SPI_RST_USR | SPI_RST_CPU);
@@ -520,7 +521,6 @@ unsigned char SaveConfiguration(char *filename)
     // save configuration data
     if (FileOpen(&file, filename))
     {
-        printf("Configuration file size: %lu\r", file.size);
         if (file.size != sizeof(config))
         {
             file.size = sizeof(config);
@@ -547,8 +547,6 @@ unsigned char SaveConfiguration(char *filename)
             printf("Trying to write new data...\r");
             memset((void*)sector_buffer, 0, sizeof(sector_buffer));
             memcpy((void*)sector_buffer, (void*)&config, sizeof(config));
-
-			hexdump(sector_buffer,sizeof(config));
 
             if (FileWrite(&file, sector_buffer))
             {

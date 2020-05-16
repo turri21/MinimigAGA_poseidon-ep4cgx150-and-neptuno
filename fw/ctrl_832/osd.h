@@ -107,7 +107,7 @@ void OsdClear(void);
 void OsdShow(unsigned char mode);
 void OsdHide(void);
 void OsdWaitVBL(void);
-void OsdReset(unsigned char boot);
+void OsdReset();
 //void ConfigFilter(unsigned char lores, unsigned char hires);
 void OsdReconfig(); // Reset to Chameleon core.
 // deprecated functions from Minimig 1
@@ -138,6 +138,7 @@ unsigned char OsdKeyGet();
 // get/set core currently loaded
 void OsdCoreNameSet(const char* str);
 char* OsdCoreName();
+void OsdColor(unsigned char color);
 
 #endif
 

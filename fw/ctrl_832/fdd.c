@@ -219,7 +219,8 @@ void ReadTrack(adfTYPE *drive)
 
     while (1)
     {
-        FileRead(&file, sector_buffer);
+        if(!(FileRead(&file, sector_buffer)))
+			Error=ERROR_SDCARD;
 
         EnableFpga();
 
@@ -643,7 +644,10 @@ void WriteTrack(adfTYPE *drive)
                 if (GetData())
                 {
                     if (drive->status & DSK_WRITABLE)
-                        FileWrite(&file, sector_buffer);
+					{
+                        if(!(FileWrite(&file, sector_buffer)))
+							Error=ERROR_SDCARD;
+					}
                     else
                     {
                         Error = 30;
