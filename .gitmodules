@@ -4,6 +4,3 @@
 [submodule "EightThirtyTwo"]
 	path = EightThirtyTwo
 	url = https://github.com/robinsonb5/EightThirtyTwo
-[submodule "Minimig_Firmware"]
-	path = Minimig_Firmware
-	url = https://github.com/robinsonb5/Minimig_Firmware.git
