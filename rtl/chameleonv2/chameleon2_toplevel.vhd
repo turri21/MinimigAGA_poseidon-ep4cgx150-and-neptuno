@@ -472,7 +472,7 @@ PORT map
 		CLK_IN => clk50m,
 		CLK_114 => clk_114,
 		RESET_N => n_reset,
-		MENU_BUTTON => (not power_button) and freeze_btn,
+		MENU_BUTTON => (not power_button) and usart_cts,
 		LED_POWER => led_green,
 		LED_DISK => led_red,
 		UART_TX => rs232_txd,
