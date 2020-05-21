@@ -140,8 +140,10 @@ architecture RTL of DE10liteToplevel is
 		LED_POWER	:	 OUT STD_LOGIC;
 		LED_DISK    :   OUT STD_LOGIC;
 		MENU_BUTTON :   IN STD_LOGIC;
-		UART_TX		:	 OUT STD_LOGIC;
-		UART_RX		:	 IN STD_LOGIC;
+		CTRL_TX		:	 OUT STD_LOGIC;
+		CTRL_RX		:	 IN STD_LOGIC;
+		AMIGA_TX		:	 OUT STD_LOGIC;
+		AMIGA_RX		:	 IN STD_LOGIC;
 		VGA_HS		:	 OUT STD_LOGIC;
 		VGA_VS		:	 OUT STD_LOGIC;
 		VGA_R		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
@@ -221,8 +223,10 @@ PORT map
 		LED_POWER => LEDR(0),
 		LED_DISK => LEDR(1),
 		MENU_BUTTON => KEY(1),
-		UART_TX => rs232_txd,
-		UART_RX => rs232_rxd,
+		CTRL_TX => rs232_txd,
+		CTRL_RX => rs232_rxd,
+		AMIGA_TX => open,
+		AMIGA_RX => '1',
 		VGA_HS => vga_hsync,
 		VGA_VS => vga_vsync,
 		VGA_R	=> vga_red,
@@ -269,11 +273,11 @@ PORT map
 audio_l(0)<='0';
 audio_r(0)<='0';
 
-VGA_HS<=vga_hsync;
-VGA_VS<=vga_vsync;
-VGA_R<=unsigned(vga_red(7 downto 4));
-VGA_G<=unsigned(vga_green(7 downto 4));
-VGA_B<=unsigned(vga_blue(7 downto 4));
+--VGA_HS<=not vga_hsync;
+--VGA_VS<=not vga_vsync;
+--VGA_R<=unsigned(vga_red(7 downto 4));
+--VGA_G<=unsigned(vga_green(7 downto 4));
+--VGA_B<=unsigned(vga_blue(7 downto 4));
 	
 GPIO(0)<=rs232_txd;
 rs232_rxd<=GPIO(1);
@@ -282,6 +286,27 @@ joya<=(others=>'1');
 joyb<=(others=>'1');
 joyc<=(others=>'1');
 joyd<=(others=>'1');
+
+mydither : entity work.video_vga_dither
+	generic map(
+		outbits => 4
+	)
+	port map(
+		clk=>sysclk,
+		vidEna=>vga_window,
+		invertSync=>'1',
+		iHsync=>vga_hsync,
+		iVsync=>vga_vsync,
+		iRed => unsigned(vga_red),
+		iGreen => unsigned(vga_green),
+		iBlue => unsigned(vga_blue),
+		oHsync=>VGA_HS,
+		oVsync=>VGA_VS,
+		oRed => VGA_R,
+		oGreen => VGA_G,
+		oBlue => VGA_B
+	);
+
 
 left_sd : COMPONENT hybrid_pwm_sd
 	PORT map

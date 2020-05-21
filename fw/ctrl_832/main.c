@@ -108,6 +108,17 @@ void HandleFpga(void)
 void ColdBoot()
 {
 	Error=ERROR_SDCARD;
+
+	/* Reset the chipset briefly to cancel AGA display modes, then Put the CPU in reset while we initialise */
+    EnableOsd();
+    SPI(OSD_CMD_RST);
+    SPI(SPI_RST_USR);
+    DisableOsd();
+    EnableOsd();
+    SPI(OSD_CMD_RST);
+    SPI(SPI_CPU_HLT | SPI_RST_CPU);
+    DisableOsd();
+
     if (MMC_Init())
 	{
 		Error=ERROR_FILESYSTEM;
@@ -115,12 +126,14 @@ void ColdBoot()
 		{
 		    ChangeDirectory(DIRECTORY_ROOT);
 
-			fpga_init();
-
 			config.kickstart.name[0]=0;
-			BootPrintEx("Loading kickstart ROM...");
 			SetConfigurationFilename(0); // Use default config
 		    LoadConfiguration(0);	// Use slot-based config filename
+
+			fpga_init();
+
+			BootPrintEx("Loading kickstart ROM...");
+			ApplyConfiguration(1);
 			Error=0;
 		}
 	}
@@ -147,11 +160,11 @@ __geta4 void main(void)
 
     DISKLED_ON;
 
+	ColdBoot();
+
     sprintf(s, "Firmware %s **\n", version + 5);
 	printf(s);
     BootPrintEx(s);
-
-	ColdBoot();
 
     while (1)
     {

@@ -150,11 +150,11 @@ void BootEnableMem()
   // TEMP enable 1MB memory
   spi_osd_cmd8(OSD_CMD_MEM, 0x5);
   SPIN; SPIN; SPIN; SPIN;
-  //EnableOsd();
-  //SPI(OSD_CMD_RST);
-  //rstval = (SPI_CPU_HLT | SPI_RST_CPU);
-  //SPI(rstval);
-  //DisableOsd();
+  // Put the CPU in reset while we upload init data.
+  EnableOsd();
+  SPI(OSD_CMD_RST);
+  SPI(SPI_CPU_HLT | SPI_RST_CPU);
+  DisableOsd();
   //SPIN; SPIN; SPIN; SPIN;
   //while ((read32(REG_SYS_STAT_ADR) & 0x2));
 }
@@ -408,14 +408,6 @@ void BootInit()
   BootUploadBall();
   BootUploadCopper();
   BootCustomInit();
-  //int i;
-  //char s[3];
-  //s[1] = 'A';
-  //s[2] = 0;
-  //for (i=0; i<16; i++) {
-  //  s[0] = 49+i;
-  //  BootPrintEx(s);
-  //}
 }
 
 

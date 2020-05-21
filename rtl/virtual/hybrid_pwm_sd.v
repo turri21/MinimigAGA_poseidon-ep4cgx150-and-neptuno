@@ -18,6 +18,16 @@ reg [15:0] sigma;
 reg out;
 reg reset_d;
 
+// Periodic dumping of the accumulator to kill standing tones.
+reg [9:0] dumpcounter;
+reg dump;
+
+always @(posedge clk)
+begin
+	dumpcounter<=dumpcounter+1;
+	dump<=dumpcounter==0 ? 1'b1 : 1'b0;
+end
+
 assign dout=out;
 
 always @(posedge clk)
@@ -46,8 +56,8 @@ begin
 		out<=1'b1;
 	end
 
-	if(reset_d && !n_reset)	// Falling edge of reset, dump the accumulator
-		sigma[10:0]<=11'b010_00000000;
+	if(dump)	// Falling edge of reset, dump the accumulator
+		sigma[10:0]<=11'b100_00000000;
 
 //	end
 end

@@ -343,7 +343,7 @@ unsigned char FindSync(adfTYPE *drive)
     return 0;
 }
 
-unsigned char GetHeader(unsigned char *pTrack, unsigned char *pSector)
+unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
 // this function reads data from fifo till it finds sync word or dma is inactive
 {
     unsigned int c, c1, c2, c3, c4;

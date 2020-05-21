@@ -118,6 +118,8 @@ architecture rtl of chameleon_toplevel is
 -- RS232 serial
 	signal rs232_rxd : std_logic;
 	signal rs232_txd : std_logic;
+	signal midi_rxd : std_logic;
+	signal midi_txd : std_logic;
 
 -- Sound
 	signal audio_l : std_logic_vector(15 downto 0);
@@ -328,8 +330,10 @@ myReset : entity work.gen_reset
 		-- Keyboards
 			keys => c64_keys,
 			restore_key_n => c64_restore_key_n,
-			c64_nmi_n => c64_nmi_n
+			c64_nmi_n => c64_nmi_n,
 
+			midi_txd => midi_txd,
+			midi_rxd => midi_rxd
 --
 --			iec_atn_out => rs232_txd,
 --			iec_clk_in => rs232_rxd
@@ -373,8 +377,10 @@ PORT map
 		CLK_IN => clk8,
 		CLK_114 => clk_114,
 		LED => led_red,
-		UART_TX => rs232_txd,
-		UART_RX => rs232_rxd,
+		CTRL_TX => rs232_txd,
+		CTRL_RX => rs232_rxd,
+		AMIGA_TX => midi_txd,
+		AMIGA_RX => midi_rxd,
 		VGA_HS => vga_hsync,
 		VGA_VS => vga_vsync,
 		VGA_R	=> vga_red,

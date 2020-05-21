@@ -212,7 +212,13 @@ assign vi_r = vi_r_tmp[8+2-1:2];
 assign vi_g = vi_g_tmp[8+2-1:2];
 assign vi_b = vi_b_tmp[8+2-1:2];
 
+`ifdef MINIMIG_TOPLEVEL_DITHER
 
+assign dither_r = vi_r;
+assign dither_g = vi_g;
+assign dither_b = vi_b;
+
+`else
 //// dither ////
 reg  [24-1:0] seed=0;
 reg  [24-1:0] randval=0;
@@ -296,6 +302,7 @@ assign dither_r = r_dither_rnd;
 assign dither_g = g_dither_rnd;
 assign dither_b = b_dither_rnd;
 
+`endif
 
 //// scanlines ////
 reg            sl_en=0;                 // scanline enable

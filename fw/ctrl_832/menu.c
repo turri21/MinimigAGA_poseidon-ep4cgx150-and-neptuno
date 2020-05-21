@@ -925,6 +925,7 @@ void HandleUI(void)
         if (select && menusub == 0)
         {
             menustate = MENU_NONE1;
+			OsdHide();
             confirmfunc();
         }
 
@@ -1560,7 +1561,7 @@ void HandleUI(void)
 				if(menustate==MENU_HARDFILE_CHANGED2)
 				{
 	                ConfigIDE(config.enable_ide, config.hardfile[0].present && config.hardfile[0].enabled, config.hardfile[1].present && config.hardfile[1].enabled);
-    	            OsdReset(RESET_NORMAL);
+    	            OsdReset();
 				
 	                menustate = MENU_NONE1;
 				}

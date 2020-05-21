@@ -818,9 +818,9 @@ void ConfigAutofire(unsigned char autofire)
 unsigned char OsdGetCtrl(void)
 {
     static unsigned char c2;
-    static unsigned long delay;
-    static unsigned long repeat;
-    static unsigned char repeat2;
+    static unsigned long delay=0;
+    static unsigned long repeat=0;
+    static unsigned char repeat2=0;
     unsigned char c1,c;
 
     // send command and get current ctrl status

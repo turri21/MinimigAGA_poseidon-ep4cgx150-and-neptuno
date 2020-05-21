@@ -372,8 +372,6 @@ unsigned char LoadConfiguration(char *filename)
 	if ((key == KEY_F1) || (key == KEY_F2))
 		config.misc |= 1<<(PLATFORM_SCANDOUBLER);  // High byte of platform register
 
-	ApplyConfiguration(updatekickstart);
-
     return(result);
 }
 

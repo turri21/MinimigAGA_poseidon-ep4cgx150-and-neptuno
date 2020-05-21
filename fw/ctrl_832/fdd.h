@@ -30,7 +30,7 @@ void SectorHeaderToFpga(unsigned char n, unsigned char dsksynch, unsigned char d
 //unsigned short SectorToFpga(unsigned char sector, unsigned char track, unsigned char dsksynch, unsigned char dsksyncl);
 void ReadTrack(adfTYPE *drive);
 unsigned char FindSync(adfTYPE *drive);
-unsigned char GetHeader(unsigned char *pTrack, unsigned char *pSector);
+unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector);
 unsigned char GetData(void);
 void WriteTrack(adfTYPE *drive);
 void UpdateDriveStatus(void);

@@ -27,8 +27,10 @@ module minimig_virtual_top
   output wire           LED_DISK,   // LED red
   
   // UART
-  output wire           UART_TX,    // UART Transmitter
-  input wire            UART_RX,    // UART Receiver
+  output wire           CTRL_TX,    // UART Transmitter
+  input wire            CTRL_RX,    // UART Receiver
+  output wire           AMIGA_TX,    // UART Transmitter
+  input wire            AMIGA_RX,    // UART Receiver
   
   // VGA
   output wire           VGA_HS,     // VGA H_SYNC
@@ -409,8 +411,8 @@ minimig minimig (
   .cck          (cck              ), // colour clock output (3.54 MHz)
   .eclk         (eclk             ), // 0.709379 MHz clock enable output (clk domain pulse)
   //rs232 pins
-  .rxd          (minimig_rx       ),  // RS232 receive
-  .txd          (minimig_tx       ),  // RS232 send
+  .rxd          (AMIGA_RX         ),  // RS232 receive
+  .txd          (AMIGA_TX         ),  // RS232 send
   .cts          (1'b0             ),  // RS232 clear to send
   .rts          (                 ),  // RS232 request to send
   //I/O
@@ -518,15 +520,11 @@ cfide mycfide
 
 		.enaWRreg(enaWRreg), // or enaWRreg_d,
 
-		.debugTxD(debug_txd),
-		.debugRxD(debug_rxd),
+		.debugTxD(CTRL_TX),
+		.debugRxD(CTRL_RX),
 		.menu_button(MENU_BUTTON),
 		.scandoubler(_15khz)
    );
 	
-assign debug_rxd = UART_RX;
-assign minimig_rxd = UART_RX;
-assign UART_TX = debug_txd;
-
 endmodule
 

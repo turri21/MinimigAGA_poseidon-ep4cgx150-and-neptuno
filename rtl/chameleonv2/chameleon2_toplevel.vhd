@@ -169,6 +169,8 @@ architecture rtl of chameleon2_toplevel is
 -- RS232 serial
 	signal rs232_rxd : std_logic;
 	signal rs232_txd : std_logic;
+	signal amiser_rxd : std_logic;
+	signal amiser_txd : std_logic;
 
 -- Sound
 	signal audio_l : std_logic_vector(15 downto 0);
@@ -179,7 +181,7 @@ architecture rtl of chameleon2_toplevel is
 	
 	signal power_button : std_logic;
 	signal play_button : std_logic;
-
+	signal runstop : std_logic;
 	signal c64_keys : unsigned(63 downto 0);
 	signal c64_restore_key_n : std_logic;
 	signal c64_nmi_n : std_logic;
@@ -187,8 +189,6 @@ architecture rtl of chameleon2_toplevel is
 	signal c64_joy2 : unsigned(6 downto 0);
 	signal joystick3 : unsigned(6 downto 0);
 	signal joystick4 : unsigned(6 downto 0);
-	signal gp1_run : std_logic;
-	signal gp1_select : std_logic;
 	signal cdtv_joya : unsigned(5 downto 0);
 	signal cdtv_joyb : unsigned(5 downto 0);
 	signal joy1 : unsigned(7 downto 0);
@@ -209,23 +209,6 @@ architecture rtl of chameleon2_toplevel is
 	);
 	END COMPONENT;
 
-	COMPONENT video_vga_dither
-	GENERIC ( outbits : INTEGER := 4 );
-	PORT
-	(
-		clk	:	IN STD_LOGIC;
-		hsync	:	IN STD_LOGIC;
-		vsync	:	IN STD_LOGIC;
-		vid_ena	:	IN STD_LOGIC;
-		iRed	:	IN UNSIGNED(7 DOWNTO 0);
-		iGreen	:	IN UNSIGNED(7 DOWNTO 0);
-		iBlue	:	IN UNSIGNED(7 DOWNTO 0);
-		oRed	:	OUT UNSIGNED(outbits-1 DOWNTO 0);
-		oGreen	:	OUT UNSIGNED(outbits-1 DOWNTO 0);
-		oBlue	:	OUT UNSIGNED(outbits-1 DOWNTO 0)
-	);
-	END COMPONENT;
-
 	COMPONENT minimig_virtual_top
 	generic
 	( debug : integer := 0 );
@@ -237,8 +220,10 @@ architecture rtl of chameleon2_toplevel is
 		MENU_BUTTON : IN STD_LOGIC;
 		LED_POWER	:	 OUT STD_LOGIC;
 		LED_DISK		:	 OUT STD_LOGIC;
-		UART_TX		:	 OUT STD_LOGIC;
-		UART_RX		:	 IN STD_LOGIC;
+		CTRL_TX		:	 OUT STD_LOGIC;
+		CTRL_RX		:	 IN STD_LOGIC;
+		AMIGA_TX		:	 OUT STD_LOGIC;
+		AMIGA_RX		:	 IN STD_LOGIC;
 		VGA_HS		:	 OUT STD_LOGIC;
 		VGA_VS		:	 OUT STD_LOGIC;
 		VGA_R		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
@@ -437,7 +422,9 @@ begin
 				joystick4 => joystick4,
 				keys => c64_keys,
 --				restore_key_n => restore_n
-				restore_key_n => open
+				restore_key_n => open,
+				midi_rxd => amiser_rxd,
+				midi_txd => amiser_txd
 			);
 	end block;
 
@@ -452,9 +439,10 @@ end process;
 
 		
 --joy1<=not gp1_run & not gp1_select & (c64_joy1 and cdtv_joy1);
-gp1_run<=c64_keys(11) and c64_keys(56) when c64_joy1="111111" else '1';
-gp1_select<=c64_keys(60) when c64_joy1="111111" else '1';
-joy1<=gp1_run & (gp1_select and c64_joy1(6)) & (c64_joy1(5 downto 0) and cdtv_joya);
+runstop<='0' when c64_keys(63)='0' and c64_joy1="111111" else '1';
+-- gp1_run<=c64_keys(11) and c64_keys(56) when c64_joy1="111111" else '1';
+-- gp1_select<=c64_keys(60) when c64_joy1="111111" else '1';
+joy1<='1' & c64_joy1(6) & (c64_joy1(5 downto 0) and cdtv_joya);
 joy2<="1" & c64_joy2(6) & (c64_joy2(5 downto 0) and cdtv_joyb);
 joy3<="1" & joystick3;
 joy4<="1" & joystick4;
@@ -472,11 +460,13 @@ PORT map
 		CLK_IN => clk50m,
 		CLK_114 => clk_114,
 		RESET_N => n_reset,
-		MENU_BUTTON => (not power_button) and usart_cts,
+		MENU_BUTTON => runstop and (not power_button) and usart_cts,
 		LED_POWER => led_green,
 		LED_DISK => led_red,
-		UART_TX => rs232_txd,
-		UART_RX => rs232_rxd,
+		CTRL_TX => rs232_txd,
+		CTRL_RX => rs232_rxd,
+		AMIGA_TX => amiser_txd,
+		AMIGA_RX => amiser_rxd,
 		VGA_HS => vga_hsync,
 		VGA_VS => vga_vsync,
 		VGA_R	=> vga_r,
@@ -524,27 +514,31 @@ audio_r(0)<='0';
 	
 -- Dither the video down to 5 bits per gun.
 	vga_window<='1';
-	hsync_n<= not vga_hsync;
-	vsync_n<= not vga_vsync;	
-	red<=unsigned(vga_r(7 downto 3));
-	grn<=unsigned(vga_g(7 downto 3));
-	blu<=unsigned(vga_b(7 downto 3));
---	mydither : component video_vga_dither
---		generic map(
---			outbits => 5
---		)
---		port map(
---			clk=>clk_114,
---			hsync=>vga_hsync,
---			vsync=>vga_vsync,
---			vid_ena=>vga_window,
---			iRed => unsigned(vga_r),
---			iGreen => unsigned(vga_g),
---			iBlue => unsigned(vga_b),
---			oRed => red,
---			oGreen => grn,
---			oBlue => blu
---		);
+--	hsync_n<= not vga_hsync;
+--	vsync_n<= not vga_vsync;
+--	red<=unsigned(vga_r(7 downto 3));
+--	grn<=unsigned(vga_g(7 downto 3));
+--	blu<=unsigned(vga_b(7 downto 3));
+	
+	mydither : entity work.video_vga_dither
+		generic map(
+			outbits => 5
+		)
+		port map(
+			clk=>clk_114,
+			invertSync=>'1',
+			iHsync=>vga_hsync,
+			iVsync=>vga_vsync,
+			vidEna=>vga_window,
+			iRed => unsigned(vga_r),
+			iGreen => unsigned(vga_g),
+			iBlue => unsigned(vga_b),
+			oHsync=>hsync_n,
+			oVsync=>vsync_n,
+			oRed => red,
+			oGreen => grn,
+			oBlue => blu
+		);
 	
 leftsd: component hybrid_pwm_sd
 	port map
