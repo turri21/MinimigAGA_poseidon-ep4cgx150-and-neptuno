@@ -112,6 +112,7 @@ architecture rtl of chameleon2_toplevel is
 	
 -- System clocks
 
+	signal clk_28 : std_logic;
 	signal clk_114 : std_logic;
 	signal pll_locked : std_logic;
 	signal ena_1mhz : std_logic;
@@ -151,12 +152,6 @@ architecture rtl of chameleon2_toplevel is
 	signal sdram_d : unsigned(7 downto 0);
 	signal sdram_q : unsigned(7 downto 0);
 
-	signal hsync : std_logic;
-	signal vsync : std_logic;	
-	signal wred : unsigned(7 downto 0);
-	signal wgrn : unsigned(7 downto 0);
-	signal wblu : unsigned(7 downto 0);
-
 	-- Video
 	signal vga_r: std_logic_vector(7 downto 0);
 	signal vga_g: std_logic_vector(7 downto 0);
@@ -164,6 +159,8 @@ architecture rtl of chameleon2_toplevel is
 	signal vga_window : std_logic;
 	signal vga_hsync : std_logic;
 	signal vga_vsync : std_logic;
+	signal vga_csync : std_logic;
+	signal vga_selcsync : std_logic;
 	
 	
 -- RS232 serial
@@ -203,9 +200,10 @@ architecture rtl of chameleon2_toplevel is
 	PORT
 	(
 		clk	:	IN STD_LOGIC;
-		n_reset	:	IN STD_LOGIC;
-		din	:	IN STD_LOGIC_VECTOR(15 DOWNTO 0);
-		dout	:	OUT STD_LOGIC
+		d_l	:	IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+		q_l	:	OUT STD_LOGIC;
+		d_r	:	IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+		q_r	:	OUT STD_LOGIC
 	);
 	END COMPONENT;
 
@@ -214,6 +212,7 @@ architecture rtl of chameleon2_toplevel is
 	( debug : integer := 0 );
 	PORT
 	(
+		CLK_28		:	 out STD_LOGIC;
 		CLK_114		:	 out STD_LOGIC;
 		CLK_IN : in std_logic;
 		RESET_N : in STD_LOGIC;
@@ -224,6 +223,8 @@ architecture rtl of chameleon2_toplevel is
 		CTRL_RX		:	 IN STD_LOGIC;
 		AMIGA_TX		:	 OUT STD_LOGIC;
 		AMIGA_RX		:	 IN STD_LOGIC;
+		VGA_SELCS   :   OUT STD_LOGIC;
+		VGA_CS		:	 OUT STD_LOGIC;
 		VGA_HS		:	 OUT STD_LOGIC;
 		VGA_VS		:	 OUT STD_LOGIC;
 		VGA_R		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
@@ -437,9 +438,9 @@ begin
 	end if;
 end process;
 
-		
+
 --joy1<=not gp1_run & not gp1_select & (c64_joy1 and cdtv_joy1);
-runstop<='0' when c64_keys(63)='0' and c64_joy1="111111" else '1';
+runstop<='0' when c64_keys(63)='0' and c64_joy1="1111111" else '1';
 -- gp1_run<=c64_keys(11) and c64_keys(56) when c64_joy1="111111" else '1';
 -- gp1_select<=c64_keys(60) when c64_joy1="111111" else '1';
 joy1<='1' & c64_joy1(6) & (c64_joy1(5 downto 0) and cdtv_joya);
@@ -458,6 +459,7 @@ generic map
 PORT map
 	(
 		CLK_IN => clk50m,
+		CLK_28 => clk_28,
 		CLK_114 => clk_114,
 		RESET_N => n_reset,
 		MENU_BUTTON => runstop and (not power_button) and usart_cts,
@@ -467,6 +469,8 @@ PORT map
 		CTRL_RX => rs232_rxd,
 		AMIGA_TX => amiser_txd,
 		AMIGA_RX => amiser_rxd,
+		VGA_SELCS => vga_selcsync,
+		VGA_CS => vga_csync,
 		VGA_HS => vga_hsync,
 		VGA_VS => vga_vsync,
 		VGA_R	=> vga_r,
@@ -525,8 +529,10 @@ audio_r(0)<='0';
 			outbits => 5
 		)
 		port map(
-			clk=>clk_114,
+			clk=>clk_28,
 			invertSync=>'1',
+			iSelcsync=>vga_selcsync,
+			iCsync=>vga_csync,
 			iHsync=>vga_hsync,
 			iVsync=>vga_vsync,
 			vidEna=>vga_window,
@@ -540,26 +546,17 @@ audio_r(0)<='0';
 			oBlue => blu
 		);
 	
-leftsd: component hybrid_pwm_sd
+sdaudio: component hybrid_pwm_sd
 	port map
 	(
 		clk => clk_114,
-		n_reset => n_reset,
-		din(15) => not audio_l(15),
-		din(14 downto 0) => std_logic_vector(audio_l(14 downto 0)),
-		dout => sigma_l
+		d_l(15) => not audio_l(15),
+		d_l(14 downto 0) => std_logic_vector(audio_l(14 downto 0)),
+		q_l => sigma_l,
+		d_r(15) => not audio_r(15),
+		d_r(14 downto 0) => std_logic_vector(audio_r(14 downto 0)),
+		q_r => sigma_r
 	);
-	
-rightsd: component hybrid_pwm_sd
-	port map
-	(
-		clk => clk_114,
-		n_reset => n_reset,
-		din(15) => not audio_r(15),
-		din(14 downto 0) => std_logic_vector(audio_r(14 downto 0)),
-		dout => sigma_r
-	);
-
 
 end architecture;
 

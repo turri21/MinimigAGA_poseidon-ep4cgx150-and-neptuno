@@ -10,8 +10,10 @@ entity video_vga_dither is
 		clk : in std_logic;
 		invertSync : in std_logic :='0';
 		vidEna : in std_logic :='1';
+		iCsync : in std_logic;
 		iHsync : in std_logic;
 		iVsync : in std_logic;
+		iSelcsync : in std_logic;		
 		iRed : in unsigned(7 downto 0);
 		iGreen : in unsigned(7 downto 0);
 		iBlue : in unsigned(7 downto 0);
@@ -24,7 +26,7 @@ entity video_vga_dither is
 end entity;
 
 architecture rtl of video_vga_dither is
-	signal field : std_logic := '0';
+	signal field : std_logic;
 	signal row : std_logic := '0';
 	signal red : unsigned(7 downto 0);
 	signal green : unsigned(7 downto 0);
@@ -34,26 +36,33 @@ architecture rtl of video_vga_dither is
 	signal bdither : unsigned(7 downto 0);
 	signal ctr : unsigned(2 downto 0);
 	signal prevhsync : std_logic :='0';
-	signal prevvsync : std_logic :='0';
+	signal prevvbl : std_logic :='0';
 	signal vid_ena_d : std_logic :='0';
 	signal vid_ena_d2 : std_logic :='0';
 	signal lfsr_reg : unsigned(24 downto 0) := X"A5A5A5"&"0";
-	signal kernelidx : unsigned(1 downto 0);
 	signal selkernel : std_logic_vector(1 downto 0);
 	signal kernel : unsigned(7 downto 0);
 
 	constant vidmax : unsigned(7 downto 0) := "11111111";
 begin
 
-	oHsync<=not iHsync when invertSync='1' else iHsync;
-	oVsync<=not iVsync when invertSync='1' else iVsync;
+	oHsync<=iCsync when iSelcsync='1' else not iHsync when invertSync='1' else iHsync;
+	oVsync<='1' when iSelcsync='1' else not iVsync when invertSync='1' else iVsync;
 
 	oRed <= red(7 downto (8-outbits)) when vid_ena_d='1' else (others=>'0');
 	oGreen <= green(7 downto (8-outbits)) when vid_ena_d='1' else (others=>'0');
 	oBlue <= blue(7 downto (8-outbits)) when vid_ena_d='1' else (others=>'0');
 
+-- Ordered dithering kernel, four-pixel clusters, two bits per pixel:
+-- 0, 3,
+-- 1, 2
 kernel<="00110110";
-selkernel<=(ctr(2) xor field) & (row xor field);
+
+-- We reflect the kernel both horizontally and vertically each field
+selkernel<=(ctr(0) xor field) & (row xor field);
+
+-- Invert the kernel for green, so that we're not boosting the intensity of all three guns
+-- at the same time - the overall effect is the same but flicker is reduced.
 
 rdither(7 downto 8-outbits)<=(others=>'0');
 with selkernel select rdither(7-outbits downto 6-outbits) <=
@@ -61,7 +70,7 @@ with selkernel select rdither(7-outbits downto 6-outbits) <=
 	kernel(5 downto 4) when "01",
 	kernel(3 downto 2) when "10",
 	kernel(1 downto 0) when "11";
-		
+
 gdither(7 downto 8-outbits)<=(others=>'0');
 with selkernel select gdither(7-outbits downto 6-outbits) <=
 	not kernel(7 downto 6) when "00",
@@ -75,13 +84,20 @@ with selkernel select bdither(7-outbits downto 6-outbits) <=
 	kernel(5 downto 4) when "01",
 	kernel(3 downto 2) when "10",
 	kernel(1 downto 0) when "11";
+
+-- If we need more than 2 bits of dithering we make up any shortfall with LFSR-based random
+-- dithering.
+
+LSBs:
+if outbits<6 generate
+	rdither(5-outbits downto 0)<=lfsr_reg(5-outbits downto 0);
+	gdither(5-outbits downto 0)<=lfsr_reg(5-outbits downto 0);
+	bdither(5-outbits downto 0)<=lfsr_reg(5-outbits downto 0);
+end generate;
 	
 	process(clk)
 	begin
 		if rising_edge(clk) then
-		
-			ctr <= ctr+1;
-
 			vid_ena_d2<=vidEna; -- Delay by the same amount as the video itself.
 			vid_ena_d<=vid_ena_d2; -- Delay by the same amount as the video itself.
 		
@@ -109,18 +125,18 @@ with selkernel select bdither(7-outbits downto 6-outbits) <=
 			
 			prevhsync<=iHsync;
 			
-			if prevvsync='0' and iVsync='1' then
-				lfsr_reg<=lfsr_reg(23 downto 0) & (lfsr_reg(24) xor lfsr_reg(21));
-				if kernelidx=23 then
-					kernelidx<="00000";
-				else
-					kernelidx<=kernelidx+1;
-				end if;
---				kernelidx<=lfsr_reg+lfsr_reg+lfsr_reg;
+--			ctr <= ctr+1;
+--			if ctr=0 then
+			ctr(0) <= not ctr(0);
+			if ctr(0)='0' then
+				lfsr_reg<=lfsr_reg(23 downto 0) & (lfsr_reg(24) xor lfsr_reg(21));	
+			end if;
+			if prevvbl='1' and iVsync='0' then
 				field<=not field;
 				row<='0';
+				ctr<=(others=>'0');
 			end if;
-			prevvsync<=iVsync;
+			prevvbl<=iVsync;
 			
 		end if;
 	end process;

@@ -12,8 +12,8 @@
 #define EnableCard()  HW_SPI(HW_SPI_CS)=0x02
 #define DisableCard() HW_SPI(HW_SPI_CS)=0x03
 
-#define SPI_slow()  HW_SPI(HW_SPI_SPEED)=0x20
-#define SPI_fast()  HW_SPI(HW_SPI_SPEED)=0x01   //14MHz/2
+#define SPI_slow()  HW_SPI(HW_SPI_SPEED)=0xef
+#define SPI_fast()  HW_SPI(HW_SPI_SPEED)=0x07
 
 int spi_init();
 int sd_read_sector(unsigned long lba,unsigned char *buf);

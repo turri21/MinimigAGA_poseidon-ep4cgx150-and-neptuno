@@ -75,8 +75,10 @@ end entity;
 -- -----------------------------------------------------------------------
 
 architecture rtl of chameleon_toplevel is
+   constant reset_cycles : integer := 131071;
 	
 -- System clocks
+	signal clk_28 : std_logic;
 	signal clk_114 : std_logic;
 	signal reset_button_n : std_logic;
 	signal pll_locked : std_logic;
@@ -134,6 +136,7 @@ architecture rtl of chameleon_toplevel is
 
 	signal no_clock : std_logic;
 	signal docking_station : std_logic;
+	signal runstop : std_logic;
 	signal c64_keys : unsigned(63 downto 0);
 	signal c64_restore_key_n : std_logic;
 	signal c64_nmi_n : std_logic;
@@ -141,8 +144,6 @@ architecture rtl of chameleon_toplevel is
 	signal c64_joy2 : unsigned(6 downto 0);
 	signal joystick3 : unsigned(6 downto 0);
 	signal joystick4 : unsigned(6 downto 0);
-	signal gp1_run : std_logic;
-	signal gp1_select : std_logic;
 	signal cdtv_joya : unsigned(5 downto 0);
 	signal cdtv_joyb : unsigned(5 downto 0);
 	signal joy1 : unsigned(7 downto 0);
@@ -152,6 +153,9 @@ architecture rtl of chameleon_toplevel is
 	signal usart_rx : std_logic:='1'; -- Safe default
 	signal ir : std_logic;
 
+	signal vga_window : std_logic;
+	signal vga_selcsync : std_logic;
+	signal vga_csync : std_logic;
 	signal vga_hsync : std_logic;
 	signal vga_vsync : std_logic;
 	signal vga_red : std_logic_vector(7 downto 0);
@@ -174,23 +178,33 @@ architecture rtl of chameleon_toplevel is
 		PORT
 		(
 			clk		:	 IN STD_LOGIC;
-			n_reset	:	 IN STD_LOGIC;
-			din		:	 IN STD_LOGIC_VECTOR(15 DOWNTO 0);
-			dout		:	 OUT STD_LOGIC
+			d_l		:	 IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+			q_l		:	 OUT STD_LOGIC;
+			d_r		:	 IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+			q_r		:	 OUT STD_LOGIC
 		);
 	END COMPONENT;
 
 	COMPONENT minimig_virtual_top
 	generic
-	( debug : integer := 0 );
+	( debug : integer := 0;
+	  spimux : integer := 0
+	);
 	PORT
 	(
 		CLK_114		:	 out STD_LOGIC;
-		CLK_IN : in std_logic;
---		RESET_N : in STD_LOGIC;
-		LED		:	 OUT STD_LOGIC;
-		UART_TX		:	 OUT STD_LOGIC;
-		UART_RX		:	 IN STD_LOGIC;
+		CLK_28		:	 out STD_LOGIC;
+		CLK_IN 		:   in std_logic;
+		RESET_N 		:   in STD_LOGIC;
+		MENU_BUTTON :   IN STD_LOGIC;
+		LED_POWER	:	 OUT STD_LOGIC;
+		LED_DISK		:	 OUT STD_LOGIC;
+		CTRL_TX		:	 OUT STD_LOGIC;
+		CTRL_RX		:	 IN STD_LOGIC;
+		AMIGA_TX		:	 OUT STD_LOGIC;
+		AMIGA_RX		:	 IN STD_LOGIC;
+		VGA_SELCS	:	 OUT STD_LOGIC;
+		VGA_CS		:	 OUT STD_LOGIC;
 		VGA_HS		:	 OUT STD_LOGIC;
 		VGA_VS		:	 OUT STD_LOGIC;
 		VGA_R		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
@@ -250,12 +264,12 @@ my1mhz : entity work.chameleon_1mhz
 
 myReset : entity work.gen_reset
 	generic map (
-		resetCycles => 15
+		resetCycles => reset_cycles
 	)
 	port map (
 		clk => clk8,	-- Shouldn't run this from a PLL generated clock since it needs to run while the PLLs aren't yet stable.
 		enable => '1',
-		button => not (button_reset_n and pll_locked),
+		button => not button_reset_n, -- not (button_reset_n and pll_locked),
 		reset => reset,
 		nreset => reset_n
 	);
@@ -333,10 +347,10 @@ myReset : entity work.gen_reset
 			c64_nmi_n => c64_nmi_n,
 
 			midi_txd => midi_txd,
-			midi_rxd => midi_rxd
+			midi_rxd => midi_rxd,
 --
---			iec_atn_out => rs232_txd,
---			iec_clk_in => rs232_rxd
+			iec_atn_out => rs232_txd,
+			iec_clk_in => rs232_rxd
 --			iec_clk_out : in std_logic := '1';
 --			iec_dat_out : in std_logic := '1';
 --			iec_srq_out : in std_logic := '1';
@@ -359,9 +373,8 @@ myReset : entity work.gen_reset
 
 
 		
-gp1_run<=c64_keys(11) and c64_keys(56) when c64_joy1="111111" else '1';
-gp1_select<=c64_keys(60) when c64_joy1="111111" else '1';
-joy1<=gp1_run & (gp1_select and c64_joy1(6)) & (c64_joy1(5 downto 0) and cdtv_joya);
+runstop<='0' when c64_keys(63)='0' and c64_joy1="1111111" else '1';
+joy1<="1" & c64_joy1(6) & (c64_joy1(5 downto 0) and cdtv_joya);
 joy2<="1" & c64_joy2(6) & (c64_joy2(5 downto 0) and cdtv_joyb);
 joy3<="1" & joystick3;
 joy4<="1" & joystick4;
@@ -370,17 +383,24 @@ joy4<="1" & joystick4;
 virtual_top : COMPONENT minimig_virtual_top
 generic map
 	(
-		debug => 0
+		debug => 0,
+		spimux => 1
 	)
 PORT map
 	(
 		CLK_IN => clk8,
+		CLK_28 => clk_28,
 		CLK_114 => clk_114,
-		LED => led_red,
+		LED_DISK => led_green,
+		LED_POWER => led_red,
+		RESET_N => reset_n,
+		MENU_BUTTON => runstop and (not power_button) and usart_cts,
 		CTRL_TX => rs232_txd,
 		CTRL_RX => rs232_rxd,
 		AMIGA_TX => midi_txd,
 		AMIGA_RX => midi_rxd,
+		VGA_SELCS => vga_selcsync,
+		VGA_CS => vga_csync,
 		VGA_HS => vga_hsync,
 		VGA_VS => vga_vsync,
 		VGA_R	=> vga_red,
@@ -426,30 +446,46 @@ PORT map
 audio_l(0)<='0';
 audio_r(0)<='0';
 
-nHSync<=vga_hsync;
-nVSync<=vga_vsync;
-red<=unsigned(vga_red(7 downto 3));
-grn<=unsigned(vga_green(7 downto 3));
-blu<=unsigned(vga_blue(7 downto 3));
+vga_window<='1';
+--nHSync<=vga_hsync;
+--nVSync<=vga_vsync;
+--red<=unsigned(vga_red(7 downto 3));
+--grn<=unsigned(vga_green(7 downto 3));
+--blu<=unsigned(vga_blue(7 downto 3));
 
-left_sd : COMPONENT hybrid_pwm_sd
+	mydither : entity work.video_vga_dither
+		generic map(
+			outbits => 5
+		)
+		port map(
+			clk=>clk_28,
+			invertSync=>'1',
+			iSelcsync=>vga_selcsync,
+			iCsync=>vga_csync,
+			iHsync=>vga_hsync,
+			iVsync=>vga_vsync,
+			vidEna=>vga_window,
+			iRed => unsigned(vga_red),
+			iGreen => unsigned(vga_green),
+			iBlue => unsigned(vga_blue),
+			oHsync=>nHSync,
+			oVsync=>nVSync,
+			oRed => red,
+			oGreen => grn,
+			oBlue => blu
+		);
+
+
+audio_sd : COMPONENT hybrid_pwm_sd
 	PORT map
 	(
 		clk => clk_114,
-		n_reset => vga_hsync,
-		din(15) => not audio_l(15),
-		din(14 downto 0) => audio_l(14 downto 0),
-		dout => sigmaL
-	);
-
-right_sd : COMPONENT hybrid_pwm_sd
-	PORT map
-	(
-		clk => clk_114,
-		n_reset => vga_hsync,
-		din(15) => not audio_r(15),
-		din(14 downto 0) => audio_r(14 downto 0),
-		dout => sigmaR
+		d_l(15) => not audio_l(15),
+		d_l(14 downto 0) => audio_l(14 downto 0),
+		q_l => sigmaL,
+		d_r(15) => not audio_r(15),
+		d_r(14 downto 0) => audio_r(14 downto 0),
+		q_r => sigmaR
 	);
 
 end architecture;

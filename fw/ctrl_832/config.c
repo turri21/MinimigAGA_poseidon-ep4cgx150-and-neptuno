@@ -357,21 +357,6 @@ unsigned char LoadConfiguration(char *filename)
 		BootPrint("Defaults set\n");
 	}
 
-    key = OsdGetCtrl();
-	sprintf(s,"Got key: %x\n",key);
-    BootPrint(s);
-    if ((key == KEY_F1) || (key == KEY_F3))
-       config.chipset |= CONFIG_NTSC; // force NTSC mode if F1 or F3 pressed
-
-    if ((key == KEY_F2) || (key == KEY_F4))
-       config.chipset &= ~CONFIG_NTSC; // force PAL mode if F2 or F4 pressed
-
-	// FIXME - new interface for scandoubler?
-	if ((key == KEY_F3) || (key == KEY_F4))
-		config.misc &= ~(1<<(PLATFORM_SCANDOUBLER));	// High byte of platform register
-	if ((key == KEY_F1) || (key == KEY_F2))
-		config.misc |= 1<<(PLATFORM_SCANDOUBLER);  // High byte of platform register
-
     return(result);
 }
 
@@ -469,6 +454,13 @@ void ApplyConfiguration(char reloadkickstart)
     printf("Bootloading is complete.\r");
 #endif
 
+    ConfigCPU(config.cpu);
+    ConfigMemory(config.memory);
+    ConfigChipset(config.chipset);
+    ConfigFloppy(config.floppy.drives, config.floppy.speed);
+    ConfigVideo(config.filter.hires, config.filter.lores, config.scanlines);
+    ConfigMisc(config.misc);
+
     if(reloadkickstart) {
 //      printf("Reloading kickstart ...\r");
       WaitTimer(1000);
@@ -486,28 +478,20 @@ void ApplyConfiguration(char reloadkickstart)
           Error=ERROR_FILE_NOT_FOUND;
         }
       }
-    }
-
-    ConfigCPU(config.cpu);
-    ConfigMemory(config.memory);
-    ConfigChipset(config.chipset);
-    ConfigFloppy(config.floppy.drives, config.floppy.speed);
-    ConfigVideo(config.filter.hires, config.filter.lores, config.scanlines);
-    ConfigMisc(config.misc);
-
 //    printf("Resetting ...\r");
-    EnableOsd();
-    SPI(OSD_CMD_RST);
-    rstval |= (SPI_RST_USR | SPI_RST_CPU);
-    SPI(rstval);
-    DisableOsd();
-    SPIN; SPIN; SPIN; SPIN;
-    EnableOsd();
-    SPI(OSD_CMD_RST);
-    rstval = 0;
-    SPI(rstval);
-    DisableOsd();
-    SPIN; SPIN; SPIN; SPIN;
+		EnableOsd();
+		SPI(OSD_CMD_RST);
+		rstval |= (SPI_RST_USR | SPI_RST_CPU);
+		SPI(rstval);
+		DisableOsd();
+		SPIN; SPIN; SPIN; SPIN;
+		EnableOsd();
+		SPI(OSD_CMD_RST);
+		rstval = 0;
+		SPI(rstval);
+		DisableOsd();
+		SPIN; SPIN; SPIN; SPIN;
+    }
 }
 
 

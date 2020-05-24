@@ -341,10 +341,10 @@ void fpga_init() {
 
 	BootHome();
 
-	printf(rtl_ver, "MINIMIG AGA%s version %d.%d.%d", ver_beta ? " BETA" : "", ver_major, ver_minor, ver_minion);
+	sprintf(rtl_ver, "Minimig AGA%s version %d.%d.%d for Turbo Chameleon 64", ver_beta ? " BETA" : "", ver_major, ver_minor, ver_minion);
 	BootPrintEx(rtl_ver);
 	BootPrintEx(" ");
-	BootPrintEx("MINIMIG-AGA by Rok Krajnc.  Original Minimig by Dennis van Weeren");
+	BootPrintEx("Minimig AGA by Rok Krajnc.  Original Minimig by Dennis van Weeren");
 	BootPrintEx("Updates by Jakub Bednarski, Tobias Gubener, Sascha Boing, A.M. Robinson & others");
 	BootPrintEx(" ");
 	BootPrintEx("Ported to Turbo Chameleon 64 by Alastair M. Robinson");

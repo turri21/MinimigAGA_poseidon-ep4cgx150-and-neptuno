@@ -124,13 +124,50 @@ void ColdBoot()
 		Error=ERROR_FILESYSTEM;
 	    if (FindDrive())
 		{
+			int key;
+			int override=0;
 		    ChangeDirectory(DIRECTORY_ROOT);
 
 			config.kickstart.name[0]=0;
 			SetConfigurationFilename(0); // Use default config
 		    LoadConfiguration(0);	// Use slot-based config filename
+			ApplyConfiguration(0);  // Setup screenmodes, etc before loading KickStart.
 
-			fpga_init();
+			fpga_init();	// Display splashscreen
+
+			key = OsdGetCtrl();
+			sprintf(s,"Got key: %x\n",key);
+			BootPrint(s);
+			if ((key == KEY_F1) || (key == KEY_F3))
+			{
+				override=1;
+				config.chipset |= CONFIG_NTSC; // force NTSC mode if F1 or F3 pressed
+			}
+
+			if ((key == KEY_F2) || (key == KEY_F4))
+			{
+				override=1;
+				config.chipset &= ~CONFIG_NTSC; // force PAL mode if F2 or F4 pressed
+			}
+
+			// FIXME - new interface for scandoubler?
+			if ((key == KEY_F3) || (key == KEY_F4))
+			{
+				override=1;
+				config.misc &= ~(1<<(PLATFORM_SCANDOUBLER));	// High byte of platform register
+			}
+
+			if ((key == KEY_F1) || (key == KEY_F2))
+			{
+				override=1;
+				config.misc |= 1<<(PLATFORM_SCANDOUBLER);  // High byte of platform register
+			}
+
+			if(override)
+			{
+				BootPrintEx("Overriding screenmode.");
+				ApplyConfiguration(0);
+			}
 
 			BootPrintEx("Loading kickstart ROM...");
 			ApplyConfiguration(1);

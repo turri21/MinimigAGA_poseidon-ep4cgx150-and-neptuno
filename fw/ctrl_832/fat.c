@@ -222,7 +222,7 @@ unsigned char FindDrive(void)
 
     if (fattype != 32 && fattype != 16) // first partition filesystem type: FAT16 or FAT32
     {
-        BootPrintEx("Unsupported partition type!");
+//        BootPrintEx("Unsupported partition type!");
         return(0);
     }
 

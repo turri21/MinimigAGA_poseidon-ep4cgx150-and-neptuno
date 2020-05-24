@@ -226,6 +226,8 @@ module minimig
 	//video
 	output	_hsync,				//horizontal sync
 	output	_vsync,				//vertical sync
+	output	_csync,				//composite sync (for _15khz mode)
+	output   selcsync,
 	output	[7:0] red,			//red
 	output	[7:0] green,		//green
 	output	[7:0] blue,			//blue
@@ -428,6 +430,8 @@ wire           host_ack;
 wire           sys_reset;    //reset output from minimig_syscontrol.v
 
 assign reset = sys_reset | ~_cpu_reset_in; // both tg68k and minimig_syscontrol hold the reset signal for some clicks
+
+assign _csync = _csync_i;
 
 //--------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------
@@ -735,7 +739,8 @@ amber AMBER1
 	.blue_out(blue),
 	.green_out(green),
 	._hsync_out(_hsync),
-	._vsync_out(_vsync)
+	._vsync_out(_vsync),
+	.selcsync(selcsync)
 );
 
 //instantiate cia A

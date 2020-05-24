@@ -72,15 +72,16 @@ module amber
   input  wire [  8-1:0] red_in,         // red componenent video in
   input  wire [  8-1:0] green_in,       // green component video in
   input  wire [  8-1:0] blue_in,        // blue component video in
+  input  wire           _csync_in,      // composite sync in
   input  wire           _hsync_in,      // horizontal synchronisation in
   input  wire           _vsync_in,      // vertical synchronisation in
-  input  wire           _csync_in,      // composite synchronization in
   // output
   output reg  [  8-1:0] red_out=0,      // red componenent video out
   output reg  [  8-1:0] green_out=0,    // green component video out
   output reg  [  8-1:0] blue_out=0,     // blue component video out
   output reg            _hsync_out=0,   // horizontal synchronisation out
-  output reg            _vsync_out=0    // vertical synchronisation out
+  output reg            _vsync_out=0,   // vertical synchronisation out
+  output wire            selcsync=0
 );
 
 
@@ -351,8 +352,11 @@ wire [  8-1:0] bm_b;
 wire           bm_osd_blank;
 wire           bm_osd_pixel;
 
-assign bm_hsync     = dblscan ? sd_lbuf_o_d[29] : varbeamen ? _hsync_in : ns_csync;
-assign bm_vsync     = dblscan ? _vsync_in       : varbeamen ? _vsync_in : 1'b1;
+assign selcsync     = dblscan ? 1'b0 : varbeamen ? 1'b0 : 1'b1;
+assign bm_hsync     = dblscan ? sd_lbuf_o_d[29] : _hsync_in;
+assign bm_vsync     = dblscan ? _vsync_in       : _vsync_in;
+//assign bm_hsync     = dblscan ? sd_lbuf_o_d[29] : varbeamen ? _hsync_in : ns_csync;
+//assign bm_vsync     = dblscan ? _vsync_in       : varbeamen ? _vsync_in : 1'b1;
 assign bm_r         = dblscan ? sl_r            : varbeamen ? red_in    : ns_r;
 assign bm_g         = dblscan ? sl_g            : varbeamen ? green_in  : ns_g;
 assign bm_b         = dblscan ? sl_b            : varbeamen ? blue_in   : ns_b;
