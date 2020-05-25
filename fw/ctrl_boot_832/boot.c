@@ -51,67 +51,66 @@ void cvx(int val,char *buf)
 }
 
 
+void ErrorCode(int error)
+{
+	int count;
+    unsigned long i;
+
+	EnableOsd();
+	HW_SPI(OSD_CMD_RST);
+	HW_SPI(SPI_RST_CPU|SPI_CPU_HLT);
+	DisableOsd();
+
+	EnableOsd();
+	HW_SPI(OSD_CMD_WR);
+	HW_SPI(0x80);	// $DFF180
+	HW_SPI(0xF1);
+	HW_SPI(0xDF);
+	HW_SPI(0x00);
+	HW_SPI((error>>8)&255);
+	HW_SPI(error&255);
+	DisableOsd();
+}
+
+
 int main(int argc,char **argv)
 {
 	int i;
+	int err=0;
 
-	puts("Initializing SD card\n");
-	BootPrint("Initializing SD card\n");
-	if(spi_init())
+	while(1)
 	{
-		puts("Hunting for partition\n");
-		if(FindDrive())
+		puts("Initializing SD card\n");
+		err=0xf00;
+		if(spi_init())
 		{
-			int romsize;
-			int *checksums;
-			if(romsize=LoadFile(OSDNAME,prg_start))
+			err=0xff0;
+			puts("Hunting for partition\n");
+			if(FindDrive())
 			{
-				int error=0;
-				char *sector=(char *)prg_start;
-				int offset=0;
-				romsize+=3;
-				romsize&=0xfffffffc;
-				checksums=(int *)(sector+romsize);
-				if(LoadFile("CHECKSUMBIN",(char*)checksums))
+				err=0xf0;
+				int romsize;
+				int *checksums;
+				if(romsize=LoadFile(OSDNAME,prg_start))
 				{
-					while(romsize>511)
-					{
-						int sum=checksum(sector+offset,512);
-						int sum2=*checksums++;
-						offset+=512;
-						romsize-=512;
-						if(sum!=sum2)
-						{
-							++error;
-							cvx(offset,&printbuf[0]);
-							printbuf[8]=' ';
-							cvx(sum,&printbuf[9]);
-							printbuf[17]=' ';
-							cvx(sum2,&printbuf[18]);
-							printbuf[26]=0;
-							BootPrint(printbuf);
-						}
-					}
-				}
-				if(!error)
-				{
-//					((void (*)(void))prg_start)();
+					int error=0;
+					char *sector=(char *)prg_start;
+					int offset=0;
 					_boot();
 				}
+				else
+					BootPrint("Can't load firmware\n");
 			}
 			else
-				BootPrint("Can't load firmware\n");
+			{
+				BootPrint("Unable to locate partition\n");
+				puts("Unable to locate partition\n");
+			}
 		}
 		else
-		{
-			BootPrint("Unable to locate partition\n");
-			puts("Unable to locate partition\n");
-		}
+			BootPrint("Failed to initialize SD card\n");
+		ErrorCode(err);
 	}
-	else
-		BootPrint("Failed to initialize SD card\n");
-	while(1)
-		;
 	return(0);
 }
 

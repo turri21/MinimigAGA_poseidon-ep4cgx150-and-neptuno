@@ -3,7 +3,7 @@
 
 // virtual
 `ifdef MINIMIG_VIRTUAL
-`define MINIMIG_TOPLEVELDITHER
+`define MINIMIG_TOPLEVELDITHER  // Use our own dithering since target boards have 4 or 5 bits per gun
 `define MINIMIG_ALTERA
 `define MINIMIG_CYCLONE3
 `define MINIMIG_VIDEO_FILTER

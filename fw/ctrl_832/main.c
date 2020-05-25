@@ -160,7 +160,7 @@ void ColdBoot()
 			{
 				BootPrintEx("Overriding screenmode.");
 				ApplyConfiguration(0);
-				OsdDoReset(SPI_RST_USR | SPI_RST_CPU | SPI_CPU_HLT,SPI_RST_CPU | SPI_CPU_HLT);
+//				OsdDoReset(SPI_RST_USR | SPI_RST_CPU | SPI_CPU_HLT,SPI_RST_CPU | SPI_CPU_HLT);
 			}
 
 			BootPrintEx("Loading kickstart ROM...");
