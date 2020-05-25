@@ -70,9 +70,6 @@ architecture RTL of DE10liteToplevel is
 	signal sd_mosi : std_logic;
 	signal sd_miso : std_logic;
 	
--- Global signals
-	signal reset_n : std_logic;
-	signal pll_locked : std_logic;
 
 -- PS/2 Keyboard socket - used for second mouse
 	alias ps2_keyboard_clk : std_logic is GPIO(10);
@@ -98,8 +95,11 @@ architecture RTL of DE10liteToplevel is
 	signal vga_green: std_logic_vector(7 downto 0);
 	signal vga_blue: std_logic_vector(7 downto 0);
 	signal vga_window : std_logic;
+	signal vga_selcsync : std_logic;
+	signal vga_csync : std_logic;
 	signal vga_hsync : std_logic;
 	signal vga_vsync : std_logic;
+	signal vbl : std_logic;
 	
 	
 -- RS232 serial
@@ -123,9 +123,10 @@ architecture RTL of DE10liteToplevel is
 		PORT
 		(
 			clk		:	 IN STD_LOGIC;
-			n_reset	:	 IN STD_LOGIC;
-			din		:	 IN STD_LOGIC_VECTOR(15 DOWNTO 0);
-			dout		:	 OUT STD_LOGIC
+			d_l		:	 IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+			q_l		:	 OUT STD_LOGIC;
+			d_r		:	 IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+			q_r		:	 OUT STD_LOGIC
 		);
 	END COMPONENT;
 	
@@ -135,6 +136,7 @@ architecture RTL of DE10liteToplevel is
 	PORT
 	(
 		CLK_IN		:	 IN STD_LOGIC;
+		CLK_28		:	 OUT STD_LOGIC;
 		CLK_114		:	 OUT STD_LOGIC;
 		RESET_N     :   IN STD_LOGIC;
 		LED_POWER	:	 OUT STD_LOGIC;
@@ -144,6 +146,8 @@ architecture RTL of DE10liteToplevel is
 		CTRL_RX		:	 IN STD_LOGIC;
 		AMIGA_TX		:	 OUT STD_LOGIC;
 		AMIGA_RX		:	 IN STD_LOGIC;
+		VGA_SELCS   : OUT STD_LOGIC;
+		VGA_CS		:	 OUT STD_LOGIC;
 		VGA_HS		:	 OUT STD_LOGIC;
 		VGA_VS		:	 OUT STD_LOGIC;
 		VGA_R		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
@@ -184,6 +188,13 @@ architecture RTL of DE10liteToplevel is
 
 begin
 
+HEX0<=(others=>'1');
+HEX1<=(others=>'1');
+HEX2<=(others=>'1');
+HEX3<=(others=>'1');
+HEX4<=(others=>'1');
+HEX5<=(others=>'1');
+
 -- SPI
 
 ARDUINO_IO(10)<=sd_cs;
@@ -193,8 +204,6 @@ sd_miso<=ARDUINO_IO(12);
 ARDUINO_IO(13)<=sd_clk;
 
 vga_window<='1';
-
-reset_n<=KEY(0) and pll_locked;
 
 
 -- External devices tied to GPIOs
@@ -227,6 +236,8 @@ PORT map
 		CTRL_RX => rs232_rxd,
 		AMIGA_TX => open,
 		AMIGA_RX => '1',
+		VGA_SELCS => vga_selcsync,
+		VGA_CS => vga_csync,
 		VGA_HS => vga_hsync,
 		VGA_VS => vga_vsync,
 		VGA_R	=> vga_red,
@@ -295,6 +306,8 @@ mydither : entity work.video_vga_dither
 		clk=>sysclk,
 		vidEna=>vga_window,
 		invertSync=>'1',
+		iSelcsync=>vga_selcsync,
+		iCsync=>vga_csync,
 		iHsync=>vga_hsync,
 		iVsync=>vga_vsync,
 		iRed => unsigned(vga_red),
@@ -308,24 +321,16 @@ mydither : entity work.video_vga_dither
 	);
 
 
-left_sd : COMPONENT hybrid_pwm_sd
+audiosd : COMPONENT hybrid_pwm_sd
 	PORT map
 	(
 		clk => sysclk,
-		n_reset => vga_hsync,
-		din(15) => not audio_l(15),
-		din(14 downto 0) => audio_l(14 downto 0),
-		dout => sigma_l
-	);
-
-right_sd : COMPONENT hybrid_pwm_sd
-	PORT map
-	(
-		clk => sysclk,
-		n_reset => vga_hsync,
-		din(15) => not audio_r(15),
-		din(14 downto 0) => audio_r(14 downto 0),
-		dout => sigma_r
+		d_l(15) => not audio_l(15),
+		d_l(14 downto 0) => audio_l(14 downto 0),
+		q_l => sigma_l,
+		d_r(15) => not audio_l(15),
+		d_r(14 downto 0) => audio_l(14 downto 0),
+		q_r => sigma_l
 	);
 
 end rtl;

@@ -38,7 +38,7 @@ JB:
 2012-07-24  - Major changes to fit the MiniSOC project - AMR
 */
 
-//#include <stdio.h>
+#include <stdio.h>
 //#include <string.h>
 //#include <ctype.h>
 

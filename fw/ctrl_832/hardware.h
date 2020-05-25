@@ -26,8 +26,8 @@
 #define EnableDMode() *(volatile unsigned short *)0xda4004=0x40
 #define DisableDMode() *(volatile unsigned short *)0xda4004=0x41
 
-#define SPI_slow()  *(volatile unsigned short *)0xda4008=0x20
-#define SPI_fast()  *(volatile unsigned short *)0xda4008=0x01   //14MHz/2
+#define SPI_slow()  *(volatile unsigned short *)0xda4008=0xef
+#define SPI_fast()  *(volatile unsigned short *)0xda4008=0x07   //14MHz/2
 
 // Yuk.  The following monstrosity does a dummy read from the timer register, writes, then reads from
 // the SPI register.  Doing it this way works around a timing issue with ADF writing when GCC optimisation is turned on.

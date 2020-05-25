@@ -131,6 +131,8 @@ void ScrollText(char n, const char *str, int len, int max_len, unsigned char inv
 void ScrollReset();
 void StarsInit();
 void StarsUpdate();
+void FireworksInit();
+void FireworksUpdate();
 
 void OsdKeySet(unsigned char);
 unsigned char OsdKeyGet();
@@ -139,6 +141,7 @@ unsigned char OsdKeyGet();
 void OsdCoreNameSet(const char* str);
 char* OsdCoreName();
 void OsdColor(unsigned char color);
+void OsdDoReset(int enter,int leave);
 
 #endif
 

@@ -12,11 +12,12 @@
 `include "minimig_defines.vh"
 
 module minimig_virtual_top
-	#(parameter debug = 0 )
+	#(parameter debug = 0, parameter spimux = 0 )
 (
   // clock inputs
   input wire            CLK_IN,
   output wire           CLK_114,
+  output wire           CLK_28,
   input wire            RESET_N,
   
   // Button inputs
@@ -33,6 +34,8 @@ module minimig_virtual_top
   input wire            AMIGA_RX,    // UART Receiver
   
   // VGA
+  output wire           VGA_SELCS,  // Select CSYNC
+  output wire           VGA_CS,     // VGA C_SYNC
   output wire           VGA_HS,     // VGA H_SYNC
   output wire           VGA_VS,     // VGA V_SYNC
   output wire [  8-1:0] VGA_R,      // VGA Red[5:0]
@@ -87,13 +90,13 @@ module minimig_virtual_top
 
 // clock
 wire           clk_sdram;
-wire           clk_28;
 wire           clk7_en;
 wire           clk7n_en;
 wire           c1;
 wire           c3;
 wire           cck;
 wire [ 10-1:0] eclk;
+wire pll_locked;
 
 // reset
 wire           pll_rst;
@@ -151,6 +154,7 @@ wire           _15khz;        // scandoubler disable
 wire           sdo;           // SPI data output
 wire           vs;
 wire           hs;
+wire           cs;
 wire [  8-1:0] red;
 wire [  8-1:0] green;
 wire [  8-1:0] blue;
@@ -159,6 +163,7 @@ wire [  6-1:0] mixer_green;
 wire [  6-1:0] mixer_blue;
 wire           mixer_vs;
 wire           mixer_hs;
+reg            cs_reg;
 reg            vs_reg;
 reg            hs_reg;
 reg  [  8-1:0] red_reg;
@@ -205,10 +210,11 @@ assign SDRAM_BA         = sdram_ba;
 
 // reset
 assign pll_rst          = 1'b0;
-assign sdctl_rst        = pll_locked;
+assign sdctl_rst        = pll_locked & RESET_N;
 
 // VGA data
-always @ (posedge clk_28) begin
+always @ (posedge CLK_28) begin
+  cs_reg    <= #1 cs;
   vs_reg    <= #1 vs;
   hs_reg    <= #1 hs;
   red_reg   <= #1 red;
@@ -216,6 +222,7 @@ always @ (posedge clk_28) begin
   blue_reg  <= #1 blue;
 end
 
+assign VGA_CS           = cs_reg;
 assign VGA_VS           = vs_reg;
 assign VGA_HS           = hs_reg;
 assign VGA_R[7:0]       = red_reg[7:0];
@@ -229,7 +236,7 @@ amiga_clk amiga_clk (
   .clk_in       (CLK_IN           ), // input clock     ( 27.000000MHz)
   .clk_114      (CLK_114          ), // output clock c0 (114.750000MHz)
   .clk_sdram    (clk_sdram        ), // output clock c2 (114.750000MHz, -146.25 deg)
-  .clk_28       (clk_28           ), // output clock c1 ( 28.687500MHz)
+  .clk_28       (CLK_28           ), // output clock c1 ( 28.687500MHz)
   .clk7_en      (clk7_en          ), // output clock 7 enable (on 28MHz clock domain)
   .clk7n_en     (clk7n_en         ), // 7MHz negedge output clock enable (on 28MHz clock domain)
   .c1           (c1               ), // clk28m clock domain signal synchronous with clk signal
@@ -403,7 +410,7 @@ minimig minimig (
   //system  pins
   .rst_ext      (!RESET_N         ), // reset from ctrl block
   .rst_out      (                 ), // minimig reset status
-  .clk          (clk_28           ), // output clock c1 ( 28.687500MHz)
+  .clk          (CLK_28           ), // output clock c1 ( 28.687500MHz)
   .clk7_en      (clk7_en          ), // 7MHz clock enable
   .clk7n_en     (clk7n_en         ), // 7MHz negedge clock enable
   .c1           (c1               ), // clk28m clock domain signal synchronous with clk signal
@@ -445,6 +452,8 @@ minimig minimig (
   .sdo          (SPI_DO           ),  // SPI data output
   .sck          (SPI_SCK          ),  // SPI clock
   //video
+  .selcsync     (VGA_SELCS        ),
+  ._csync       (cs               ),  // horizontal sync
   ._hsync       (hs               ),  // horizontal sync
   ._vsync       (vs               ),  // vertical sync
   .red          (red              ),  // red
@@ -485,14 +494,14 @@ EightThirtyTwo_Bridge #( debug ? "true" : "false") hostcpu
 	.nLDS(hostL),
 	.req(hostreq),
 	.ack(hostack),
-	.wr(hostwe),
+	.wr(hostwe)
 //	.busstate(hostState[1:0])
 	);
 
 wire enaWRreg;
 assign enaWRreg=1'b1;
 
-cfide mycfide
+cfide #(.spimux(spimux ? "true" : "false")) mycfide
 ( 
 		.sysclk(CLK_114),
 		.n_reset(reset_out),

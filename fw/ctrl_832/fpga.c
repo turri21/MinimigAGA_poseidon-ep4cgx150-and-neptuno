@@ -23,8 +23,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // 2010-04-14   - changed command header id
 
 //#include "AT91SAM7S256.h"
-#include "stdio.h"
-#include "string.h"
+#include <stdio.h>
+#include <string.h>
+#include "version.h"
 #include "errors.h"
 #include "hardware.h"
 #include "fat.h"
@@ -309,6 +310,7 @@ unsigned char GetFPGAStatus(void)
     return status;
 }
 
+
 void fpga_init() {
 	unsigned long time = GetTimer(0);
 	char ver_beta,ver_major,ver_minor,ver_minion;
@@ -322,29 +324,22 @@ void fpga_init() {
 	ver_minor  = SPI(0xff);
 	ver_minion = SPI(0xff);
 	DisableOsd();
+	SPIN; SPIN; SPIN; SPIN;
 
-	SPIN; SPIN; SPIN; SPIN;
-	SPI(OSD_CMD_RST);
-	rstval = (SPI_RST_USR | SPI_RST_CPU | SPI_CPU_HLT);
-	SPI(rstval);
-	DisableOsd();
-	SPIN; SPIN; SPIN; SPIN;
-	EnableOsd();
-	SPI(OSD_CMD_RST);
-	rstval = (SPI_RST_CPU | SPI_CPU_HLT);
-	SPI(rstval);
-	DisableOsd();
-	SPIN; SPIN; SPIN; SPIN;
+	OsdDoReset(SPI_RST_USR | SPI_RST_CPU | SPI_CPU_HLT,SPI_RST_CPU | SPI_CPU_HLT);
+
 	WaitTimer(100);
 	BootInit();
 	WaitTimer(500);
 
 	BootHome();
 
-	printf(rtl_ver, "MINIMIG AGA%s version %d.%d.%d", ver_beta ? " BETA" : "", ver_major, ver_minor, ver_minion);
+	sprintf(rtl_ver, "Minimig AGA%s version %d.%d.%d for Turbo Chameleon 64", ver_beta ? " BETA" : "", ver_major, ver_minor, ver_minion);
+	BootPrintEx(rtl_ver);
+	sprintf(rtl_ver, "Firmware version %x",MM_FIRMWARE_VERSION);
 	BootPrintEx(rtl_ver);
 	BootPrintEx(" ");
-	BootPrintEx("MINIMIG-AGA by Rok Krajnc.  Original Minimig by Dennis van Weeren");
+	BootPrintEx("Minimig AGA by Rok Krajnc.  Original Minimig by Dennis van Weeren");
 	BootPrintEx("Updates by Jakub Bednarski, Tobias Gubener, Sascha Boing, A.M. Robinson & others");
 	BootPrintEx(" ");
 	BootPrintEx("Ported to Turbo Chameleon 64 by Alastair M. Robinson");

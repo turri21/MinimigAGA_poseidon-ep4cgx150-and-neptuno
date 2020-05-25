@@ -85,14 +85,13 @@ void framebuffer_plot(int x,int y)
 }
 
 
-static int quickrand()
+static unsigned int quickrand()
 {
-	static int prev;
-	int r=*(volatile unsigned short *)0xDEE010;
-	r^=(prev&0xc75a)<<4;
-	r^=(prev&0x5a7c)>>(prev&7);
-	prev=r;
-	return(r);
+	static int x=0x12345678;
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 5;
+	return(x);
 }
 
 
@@ -101,10 +100,15 @@ void StarsInit()
 	int i;
 	for(i=0;i<64;++i)
 	{
-		stars[i].x=(quickrand()%228)<<4;	// X centre
-		stars[i].y=(quickrand()%56)<<4;	// Y centre
-			stars[i].dx=-(quickrand()&7)-3;
+		stars[i].x=(114)<<6;	// X centre
+		stars[i].y=(28)<<6;	// Y centre
+		stars[i].dx=0;
 		stars[i].dy=0;
+		while(stars[i].dx==0 && stars[i].dy==0)
+		{
+			stars[i].dx=(quickrand()&127)-64;
+			stars[i].dy=(quickrand()&63)-31;
+		}
 	}
 }
 
@@ -117,18 +121,120 @@ void StarsUpdate()
 	{
 		stars[i].x+=stars[i].dx;
 		stars[i].y+=stars[i].dy;
-		if((stars[i].x<0)||(stars[i].x>(228<<4)) ||
-			(stars[i].y<0)||(stars[i].y>(56<<4)))
+		if((stars[i].x<0)||(stars[i].x>(228<<6)) ||
+			(stars[i].y<0)||(stars[i].y>(56<<6)))
 		{
-			stars[i].x=228<<4;
-			stars[i].y=(quickrand()%56)<<4;
-			stars[i].dx=-(quickrand()&7)-3;
-			stars[i].dy=0;
-		}			
-		framebuffer_plot(stars[i].x>>4,stars[i].y>>4);
+			stars[i].x=(114)<<6;	// X centre
+			stars[i].y=(28)<<6;	// Y centre
+			while(stars[i].dx==0 && stars[i].dy==0)
+			{
+				stars[i].dx=(quickrand()&127)-64;
+				stars[i].dy=(quickrand()&63)-31;
+			}
+		}
+		framebuffer_plot(stars[i].x>>6,stars[i].y>>6);
 	}
 }
 
+
+// write a null-terminated string <s> to the frambuffer
+void OsdWriteFramebuffer(unsigned char n, char *s)
+{
+    unsigned short i;
+    unsigned char b;
+    const unsigned char *p;
+	unsigned char *fb=framebuffer[n];
+	int linelimit=OSDLINELEN-16;
+
+	if(!s)
+		return;
+	i=8*strlen(s);
+	if(i<linelimit)
+	{
+		i=(linelimit-i)/2;
+		fb+=i;
+		while(b = *s++)
+		{
+	        p = &charfont[b][0];
+			*fb++|=*p++;
+			*fb++|=*p++;
+			*fb++|=*p++;
+			*fb++|=*p++;
+			*fb++|=*p++;
+			*fb++|=*p++;
+			*fb++|=*p++;
+			*fb++|=*p++;
+		}
+    }
+}
+
+const char *supporters[]=
+{
+	"Jim Farley",
+	"SIDKidd64",
+	"Juan Jose Velez Ramirez",
+	"Dag Jacobsen",
+	"Bartol Filipovic",
+	0
+}
+
+char *supporter;
+
+void FireworksInit()
+{
+	static int supporteridx=0;
+	int i;
+	int x=(quickrand()%114)+57;
+	int y=(quickrand()%35)+5;
+	for(i=0;i<64;++i)
+	{
+		stars[i].x=x<<7;	// X centre
+		stars[i].y=y<<7;	// Y centre
+		stars[i].dx=(quickrand()&511)-256;
+		stars[i].dy=(quickrand()&255)-128;
+	}
+	supporter=supporters[supporteridx++];
+	if(!supporter)
+	{
+		supporteridx=0;
+		supporter=supporters[supporteridx++];
+	}
+}
+
+
+void FireworksUpdate()
+{
+	framebuffer_clear();
+	int i;
+	int active=0;
+	for(i=0;i<64;++i)
+	{
+		stars[i].x+=stars[i].dx;
+		stars[i].y+=stars[i].dy;
+		if((stars[i].x<0)||(stars[i].x>(228<<7)) ||
+			(stars[i].y<0)||(stars[i].y>(56<<7)))
+		{
+			if(stars[i].y>(56<<7))
+			{
+				stars[i].dx=0;
+				stars[i].dy=0;
+			}
+			else
+				stars[i].dy+=1;
+		}
+		else
+		{
+			++active;
+			framebuffer_plot(stars[i].x>>7,stars[i].y>>7);
+			stars[i].dy+=1;
+		}
+	}
+	if(active<2)
+		supporter=0;		
+	if(!active)
+		FireworksInit();
+	OsdWriteFramebuffer(2,supporter);
+}
 
 // time delay after which file/dir name starts to scroll
 #define SCROLL_DELAY 1000
@@ -182,10 +288,10 @@ void OsdSetTitle(char *s,int a)
 					zeros=0;
 					titlebuffer[outp++]=nc;
 				}
-				else if(zeros==0)
+				else if(zeros==0 || (zeros<5 && c==32)) // Allow whitespace for space character
 				{
 					titlebuffer[outp++]=0;
-					zeros=1;
+					++zeros;
 				}
 				if(outp>63)
 					break;
@@ -929,6 +1035,18 @@ void ScrollReset()
 // FIXME - reimplement?
 void OsdColor(unsigned char color)
 {
+}
+
+void OsdDoReset(int enter,int leave)
+{
+    EnableOsd();
+    SPI(OSD_CMD_RST);
+    SPI(enter);
+    DisableOsd();
+    EnableOsd();
+    SPI(OSD_CMD_RST);
+    SPI(leave);
+    DisableOsd();
 }
 
 

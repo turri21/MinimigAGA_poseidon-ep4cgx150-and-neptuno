@@ -31,6 +31,9 @@ use IEEE.STD_LOGIC_UNSIGNED.all;
 
  
 entity cfide is
+	generic (
+		spimux : in boolean
+	);
    port ( 
 		sysclk: in std_logic;	
 		n_reset: in std_logic;	
@@ -100,6 +103,7 @@ signal SD_busy		: std_logic;
 signal spi_div: std_logic_vector(8 downto 0);
 signal spi_speed: std_logic_vector(7 downto 0);
 signal spi_wait : std_logic;
+signal spi_wait_d : std_logic;
 
 signal rom_data: std_logic_vector(15 downto 0);
 
@@ -158,7 +162,8 @@ cpudata <=  rom_data WHEN ROM_select='1' ELSE
 part_in <= 
 			timecnt WHEN addr(4 downto 1)="1000" ELSE	--DEE010
 --			"XXXXXXXX"&"1"&"0000001" WHEN addr(4 downto 1)="1001" ELSE	--DEE012
-			X"010"&"001"&menu_button; -- Reconfig supported, 32 meg of RAM, menu button.
+--			X"010"&"001"&menu_button; -- Reconfig supported, 32 meg of RAM, menu button.
+			X"000"&"001"&menu_button; -- Reconfig not currently supported, 32 meg of RAM, menu button.
 			
 IOdata <= sd_in;
 
@@ -288,7 +293,9 @@ end process;
 			spi_wait <= '0';
 		ELSIF (sysclk'event AND sysclk='1') THEN
 
-		if sd_ack='1' then -- Unpause SPI as soon as the IO controller has written to the MUX
+		spi_wait_d<=spi_wait;
+		
+		if spi_wait_d='1' and sd_ack='1' then -- Unpause SPI as soon as the IO controller has written to the MUX
 			spi_wait<='0';
 		end if;
 		
@@ -328,7 +335,11 @@ end process;
 --						ELSE							--DA4000
 						if scs(1)='1' THEN -- Wait for io component to propagate signals.
 							spi_wait<='1'; -- Only wait if SPI needs to go through the MUX
-							spi_div(8 downto 1) <= spi_speed+2;
+							if spimux = true then
+								spi_div(8 downto 1) <= spi_speed+8;
+							else
+								spi_div(8 downto 1) <= spi_speed+2;
+							end if;
 						else
 							spi_div(8 downto 1) <= spi_speed;
 						end if;
@@ -353,7 +364,11 @@ end process;
 				IF spi_div="0000000000" THEN
 					if scs(1)='1' THEN -- Wait for io component to propagate signals.
 						spi_wait<='1'; -- Only wait if SPI needs to go through the MUX
-						spi_div(8 downto 1) <= spi_speed+2;
+						if spimux=true then
+							spi_div(8 downto 1) <= spi_speed+8;
+						else
+							spi_div(8 downto 1) <= spi_speed+2;
+						end if;
 					else
 						spi_div(8 downto 1) <= spi_speed;
 					end if;
