@@ -1,12 +1,13 @@
-# minimig-mist
+# Minimig AGA TC64
+based on minimig-mist
 
-This is a port of the minimig core to the [MiST board](http://harbaum.org/till/mist/index.shtml).
+This is a port of the minimig core to the Turbo Chameleon 64.
 
 [minimig](http://en.wikipedia.org/wiki/Minimig) (short for Mini Amiga) is an open source re-implementation of an Amiga using a field-programmable gate array (FPGA). Original minimig author is Dennis van Weeren.
 
 [Amiga](http://en.wikipedia.org/wiki/Amiga_500) was - in my opinion - an amazing personal computer, announced around 1984, which - at the time - far surpassed any other personal computer on the market, with advanced graphic & sound capabilities, not to mention its great OS with preemptive multitasking capabilities.
 
-The minimig-mist variant in this repository has been upgraded with [AGA chipset](http://en.wikipedia.org/wiki/Amiga_Advanced_Graphics_Architecture) capabilites, which allows it to emulate the latest Amiga models ([Amiga 1200](http://en.wikipedia.org/wiki/Amiga_1200), [Amiga 4000](http://en.wikipedia.org/wiki/Amiga_4000) and (partially) [Amiga CD32](http://en.wikipedia.org/wiki/Amiga_CD32)). Ofcourse it also supports previous OCS/ECS Amigas like [Amiga 500](http://en.wikipedia.org/wiki/Amiga_500), [Amiga 600](http://en.wikipedia.org/wiki/Amiga_600) etc.
+This minimig variant has been upgraded with [AGA chipset](http://en.wikipedia.org/wiki/Amiga_Advanced_Graphics_Architecture) capabilites, which allows it to emulate the latest Amiga models ([Amiga 1200](http://en.wikipedia.org/wiki/Amiga_1200), [Amiga 4000](http://en.wikipedia.org/wiki/Amiga_4000) and (partially) [Amiga CD32](http://en.wikipedia.org/wiki/Amiga_CD32)). Ofcourse it also supports previous OCS/ECS Amigas like [Amiga 500](http://en.wikipedia.org/wiki/Amiga_500), [Amiga 600](http://en.wikipedia.org/wiki/Amiga_600) etc.
 
 
 ## Core features supported
@@ -22,17 +23,16 @@ The minimig-mist variant in this repository has been upgraded with [AGA chipset]
 * hard disks : 1-2 hard disk images (supports whole disk images, partition images, using whole SD card and using SD card partition)
 * video standard : PAL / NTSC
 * supports normal & scandoubled video output (15kHz / 30kHz) - can be used with a monitor or a TV with a SCART cable
-* peripherals : real Amiga mice, real Amiga joysticks, USB keyboards, USB mice, USB gamepads, MIDI in / out
-* could potentially support anything that can be connected to USB (ethernet, RTC, USB Flash, ...)
+* peripherals : real Amiga / C64 joysticks connected to C64 joystick ports, CDTV infra-red controllers, PS/2 keyboards,
+PS/2 mice, Turbo Chameleon Docking Station for extra joysticks or real Amiga mouse, and MIDI in / out
 
 
 ## Usage
 
 ### Hardware
-To use this minimig core on the MiST board, you will at the minimum need an SD/SDHC card, formatted with the FAT32 filesystem, an USB keyboard and a compatible monitor / TV. Joysticks & mouse can be emulated on the keyboard. You will probably want to attach a set of speakers of headphones, a real Amiga or USB mouse and a real Amiga joystick or an USB gamepad. The MiST board is needed too, of course ;)
+To use this minimig core on the Turbo Chameleon 64, you will at the minimum need an SD/SDHC card, formatted with the FAT32 filesystem, a PS/2 keyboard and a compatible monitor / TV. Joysticks & mouse can be emulated on the keyboard. You will probably want to attach a set of speakers of headphones, a real Amiga or USB mouse and a real Amiga joystick.
 
 ### Software
-FPGA core releases can be found [here](http://somuch.guru/minimig/minimig-mist/). The latest release available is *minimig-mist-1_2*. The zip file contains a minimig-mist-1_2.rbf file, which is the FPGA core, and a firmware.upg file, which can be used to upgrade the firmware on the ARM microcontroller (usually, there is no need to upgrade the firmware, unless it is specifically mentioned to do so). Both files should be placed on the root of your SD card. If you want this core to be the default, you need to rename it to *core.rbf*.
 
 To use the core, you will also need a Kickstart ROM image file, which you can obtain by copying Kickstart ROM IC from your actual Amiga, or by buying an [Amiga Forever](http://www.amigaforever.com/) software pack. The Kickstart image should be placed on the root of the SD card with the name KICK.ROM. Minimig also supports the [AROS](http://aros.sourceforge.net/) kickstart ROM replacement.
 
@@ -53,6 +53,12 @@ Keyboard special keys:
 * F12         - OSD menu
 * F11         - start monitor (HRTmon) if HRTmon is enabled in OSD menu (otherwise F11 is the Amiga HELP key)
 * ScrollLock  - toggle keyoard only / mouse / joystick 1 / joystick 2 emulation on the keyboard (direction keys + LCTRL)
+
+
+
+
+
+# Documentation below this point refers to the parent project, Minimig-mist:
 
 
 ## Issues & Bug reports
