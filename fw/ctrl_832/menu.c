@@ -577,7 +577,7 @@ void HandleUI(void)
 		else
 		{
 	        OsdWrite(3, "", 0,0);
-			menumask&=~0x02;	// Remove the Reconfigure option from the menu
+			menumask&=~0x04;	// Remove the Reconfigure option from the menu
 		}
 //        OsdWrite(3, "    (Not yet implemented)", 0,1);
         OsdWrite(4, "    About", menusub == 3,0);
@@ -681,7 +681,6 @@ void HandleUI(void)
         OsdColor(OSDCOLOR_SUBMENU);
 		helptext=helptexts[HELPTEXT_NONE];
 		menumask=0x01;	// Just Exit
- 		OsdSetTitle("Supporters",0);
  		OsdSetTitle("Thanks to",0);
 		OsdDrawLogo(0,0,1);
 		OsdDrawLogo(1,1,1);

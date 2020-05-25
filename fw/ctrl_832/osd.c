@@ -43,6 +43,17 @@ This is the Minimig OSD (on-screen-display) handler.
 
 #include "string.h"
 
+const char *supporters[]=
+{
+	"Jim Farley",
+	"SIDKidd64",
+	"Juan Jose Velez Ramirez",
+	"Dag Jacobsen",
+	"Bartol Filipovic",
+	"+ all other contributors",
+	0
+}
+
 // conversion table of Amiga keyboard scan codes to ASCII codes
 const char keycode_table[128] =
 {
@@ -166,16 +177,6 @@ void OsdWriteFramebuffer(unsigned char n, char *s)
 			*fb++|=*p++;
 		}
     }
-}
-
-const char *supporters[]=
-{
-	"Jim Farley",
-	"SIDKidd64",
-	"Juan Jose Velez Ramirez",
-	"Dag Jacobsen",
-	"Bartol Filipovic",
-	0
 }
 
 char *supporter;
@@ -762,14 +763,6 @@ void OsdClear(void)
 
 void OsdWaitVBL(void)
 {
-//    unsigned long pioa_old = 0;
-//    unsigned long pioa = 0;
-//
-//    while ((~pioa ^ pioa_old) & INIT_B)
-//    {
-//        pioa_old = pioa;
-//        pioa = *AT91C_PIOA_PDSR;
-//    }
 }
 
 
@@ -824,23 +817,6 @@ void OsdReconfig()
 }
 
 
-//void ConfigFilter(unsigned char lores, unsigned char hires, unsigned char scanlines)
-//{
-//    EnableOsd();
-//    //SPI(OSDCMDCFGFLT | ((hires & 0x03) << 2) | (lores & 0x03));
-//    SPI(OSD_CMD_VID);
-//    SPI(((hires & 0x03) << 4) | ((lores & 0x03)<<2) | (scanlines & 0x03));
-//    DisableOsd();
-//}
-//
-//void ConfigScanlines(unsigned char scanlines)
-//{
-//    EnableOsd();
-//    //SPI(OSDCMDCFGSCL | (scanlines & 0x0F)); TODO! same reg as OSD_CMD_VID!
-//    DisableOsd();
-//}
-
-
 void ConfigVideo(unsigned char hires, unsigned char lores, unsigned char scanlines)
 {
     EnableOsd();
@@ -849,13 +825,6 @@ void ConfigVideo(unsigned char hires, unsigned char lores, unsigned char scanlin
     SPI(((hires & 0x03) << 4) | ((lores & 0x03)<<2) | (scanlines & 0x03));
     DisableOsd();
 }
-
-
-//void ConfigFilter(unsigned char lores, unsigned char hires, unsigned char scanlines)
-//{
-//	ConfigVideo(hires,lores,scanlines);
-//}
-
 
 void ConfigMemory(unsigned char memory)
 {

@@ -336,7 +336,7 @@ end process;
 						if scs(1)='1' THEN -- Wait for io component to propagate signals.
 							spi_wait<='1'; -- Only wait if SPI needs to go through the MUX
 							if spimux = true then
-								spi_div(8 downto 1) <= spi_speed+8;
+								spi_div(8 downto 1) <= spi_speed+4;
 							else
 								spi_div(8 downto 1) <= spi_speed+2;
 							end if;
@@ -365,7 +365,7 @@ end process;
 					if scs(1)='1' THEN -- Wait for io component to propagate signals.
 						spi_wait<='1'; -- Only wait if SPI needs to go through the MUX
 						if spimux=true then
-							spi_div(8 downto 1) <= spi_speed+8;
+							spi_div(8 downto 1) <= spi_speed+4;
 						else
 							spi_div(8 downto 1) <= spi_speed+2;
 						end if;
