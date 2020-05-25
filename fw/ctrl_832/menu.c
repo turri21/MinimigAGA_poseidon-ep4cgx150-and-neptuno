@@ -567,7 +567,7 @@ void HandleUI(void)
     case MENU_MISC1 :
         OsdColor(OSDCOLOR_TOPLEVEL);
 		helptext=helptexts[HELPTEXT_MAIN];
-		menumask=0x1f;	// Reset, about and exit.
+		menumask=0x3f;	// Reset, about and exit.
  		OsdSetTitle("Misc",OSD_ARROW_LEFT);
         OsdWrite(0, "    Reset", menusub == 0,0);
         OsdWrite(1, "    Reboot", menusub == 1,0);
@@ -581,9 +581,9 @@ void HandleUI(void)
 		}
 //        OsdWrite(3, "    (Not yet implemented)", 0,1);
         OsdWrite(4, "    About", menusub == 3,0);
-        OsdWrite(5, "", 0,0);
+        OsdWrite(5, "    Supporters", menusub == 4,0);
         OsdWrite(6, "", 0,0);
-        OsdWrite(7, STD_EXIT, menusub == 4,0);
+        OsdWrite(7, STD_EXIT, menusub == 5,0);
 
 		parentstate = menustate;
         menustate = MENU_MISC2;
@@ -623,7 +623,12 @@ void HandleUI(void)
 				menusub=0;
 				menustate=MENU_ABOUT1;
 			}
-            if (menusub == 4)	// Exit
+            if (menusub == 4)	// About
+            {
+				menusub=0;
+				menustate=MENU_SUPPORTERS1;
+			}
+            if (menusub == 5)	// Exit
             {
 				menustate=MENU_NONE1;
 			}
@@ -665,6 +670,49 @@ void HandleUI(void)
 		OsdDrawLogo(4,4,1);
 		OsdDrawLogo(6,6,1);
 		ScrollText(5,"                                 Minimig AGA by Rok Krajnc, ported to Turbo Chameleon 64 by Alastair M. Robinson.  Original Minimig by Dennis van Weeren with chipset improvements by Jakub Bednarski and Sascha Boing.  TG68K softcore by Tobias Gubener.  Menu / disk code by Dennis van Weeren, Jakub Bednarski, Alastair M. Robinson and Christian Vogelgsang.  Minimig logo based on a design by Loriano Pagni.  Minimig is distributed under the terms of the GNU General Public License version 3.",0,0,0);
+        if (select || menu)
+        {
+			menusub = 2;
+			menustate=MENU_MISC1;
+		}
+		break;
+
+	case MENU_SUPPORTERS1 :
+        OsdColor(OSDCOLOR_SUBMENU);
+		helptext=helptexts[HELPTEXT_NONE];
+		menumask=0x01;	// Just Exit
+ 		OsdSetTitle("Supporters",0);
+ 		OsdSetTitle("Thanks to",0);
+		OsdDrawLogo(0,0,1);
+		OsdDrawLogo(1,1,1);
+		OsdDrawLogo(2,2,1);
+		OsdDrawLogo(3,3,1);
+		OsdDrawLogo(4,4,1);
+		OsdDrawLogo(6,6,1);
+//        OsdWrite(1, "", 0,0);
+//        OsdWriteDoubleSize(2,"   Minimig",0);
+//        OsdWriteDoubleSize(3,"   Minimig",1);
+//        OsdWrite(4, "", 0,0);
+        OsdWrite(5, "", 0,0);
+        OsdWrite(6, "", 0,0);
+        OsdWrite(7, STD_BACK, menusub == 0,0);
+
+		FireworksInit();
+		ScrollReset();
+
+		parentstate = menustate;
+        menustate = MENU_SUPPORTERS2;
+        break;
+
+	case MENU_SUPPORTERS2 :
+		FireworksUpdate();
+		OsdDrawLogo(0,8,1);
+		OsdDrawLogo(1,8,1);
+		OsdDrawLogo(2,8,1);
+		OsdDrawLogo(3,8,1);
+		OsdDrawLogo(4,8,1);
+		OsdDrawLogo(6,8,1);
+		ScrollText(5,"                                 I'm very grateful to these people for their support, which will give me the means and motivation to continue working on this core and others.  If you would like to contribute then one-off donations at paypal.me/robinsonb5 are very welcome, or if you wish you can contribute regularly at patreon.com/coresforchameleon - if you donate 20UKP or more, or join the second tier at Patreon your name will be included on this screen, or the equivalent screen of future projects.",0,0,0);
         if (select || menu)
         {
 			menusub = 2;
@@ -1759,25 +1807,10 @@ void HandleUI(void)
 
                 OsdHide();
 
-				EnableOsd();
-				SPI(OSD_CMD_RST);
-				SPI(SPI_RST_CPU | SPI_CPU_HLT);
-				DisableOsd();
+				OsdDoReset(0,SPI_RST_CPU | SPI_CPU_HLT);
 
-//                ConfigChipset(config.chipset | CONFIG_TURBO);
-//                ConfigFloppy(config.floppy.drives, CONFIG_FLOPPY2X);
 				UploadKickstart(config.kickstart.name);
-//                ConfigChipset(config.chipset); // restore CPU speed mode
-//                ConfigFloppy(config.floppy.drives, config.floppy.speed); // restore floppy speed mode
-				EnableOsd();
-			    SPI(OSD_CMD_RST);
-				SPI(SPI_RST_USR | SPI_CPU_HLT | SPI_RST_CPU);
-			    DisableOsd();
-			    SPIN; SPIN; SPIN; SPIN;
-			    EnableOsd();
-			    SPI(OSD_CMD_RST);
-				SPI(0);
-			    DisableOsd();
+				OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
 
                 menustate = MENU_NONE1;
             }

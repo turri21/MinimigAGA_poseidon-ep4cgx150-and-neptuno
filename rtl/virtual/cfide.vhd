@@ -162,7 +162,8 @@ cpudata <=  rom_data WHEN ROM_select='1' ELSE
 part_in <= 
 			timecnt WHEN addr(4 downto 1)="1000" ELSE	--DEE010
 --			"XXXXXXXX"&"1"&"0000001" WHEN addr(4 downto 1)="1001" ELSE	--DEE012
-			X"010"&"001"&menu_button; -- Reconfig supported, 32 meg of RAM, menu button.
+--			X"010"&"001"&menu_button; -- Reconfig supported, 32 meg of RAM, menu button.
+			X"000"&"001"&menu_button; -- Reconfig not currently supported, 32 meg of RAM, menu button.
 			
 IOdata <= sd_in;
 

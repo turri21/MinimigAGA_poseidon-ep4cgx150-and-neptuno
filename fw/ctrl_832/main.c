@@ -110,14 +110,7 @@ void ColdBoot()
 	Error=ERROR_SDCARD;
 
 	/* Reset the chipset briefly to cancel AGA display modes, then Put the CPU in reset while we initialise */
-    EnableOsd();
-    SPI(OSD_CMD_RST);
-    SPI(SPI_RST_USR);
-    DisableOsd();
-    EnableOsd();
-    SPI(OSD_CMD_RST);
-    SPI(SPI_CPU_HLT | SPI_RST_CPU);
-    DisableOsd();
+	OsdDoReset(SPI_RST_USR | SPI_RST_CPU | SPI_CPU_HLT,SPI_RST_CPU | SPI_CPU_HLT);
 
     if (MMC_Init())
 	{
@@ -167,10 +160,12 @@ void ColdBoot()
 			{
 				BootPrintEx("Overriding screenmode.");
 				ApplyConfiguration(0);
+				OsdDoReset(SPI_RST_USR | SPI_RST_CPU | SPI_CPU_HLT,SPI_RST_CPU | SPI_CPU_HLT);
 			}
 
 			BootPrintEx("Loading kickstart ROM...");
 			ApplyConfiguration(1);
+			OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
 			Error=0;
 		}
 	}

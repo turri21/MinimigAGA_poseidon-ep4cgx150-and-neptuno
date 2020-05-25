@@ -161,6 +161,8 @@ architecture rtl of chameleon_toplevel is
 	signal vga_red : std_logic_vector(7 downto 0);
 	signal vga_green : std_logic_vector(7 downto 0);
 	signal vga_blue : std_logic_vector(7 downto 0);
+	signal HSync : std_logic;
+	signal VSync : std_logic;
 	
 	COMPONENT amiga_clk_altera
 	PORT
@@ -316,8 +318,8 @@ myReset : entity work.gen_reset
 			spi_raw_ack => spi_raw_ack,
 
 		-- LEDs
-			led_green => '1',
-			led_red => '1',
+			led_green => led_green,
+			led_red => led_red,
 			ir => ir,
 		
 		-- PS/2 Keyboard
@@ -347,10 +349,10 @@ myReset : entity work.gen_reset
 			c64_nmi_n => c64_nmi_n,
 
 			midi_txd => midi_txd,
-			midi_rxd => midi_rxd,
+			midi_rxd => midi_rxd
 --
-			iec_atn_out => rs232_txd,
-			iec_clk_in => rs232_rxd
+--			iec_atn_out => rs232_txd,
+--			iec_clk_in => rs232_rxd
 --			iec_clk_out : in std_logic := '1';
 --			iec_dat_out : in std_logic := '1';
 --			iec_srq_out : in std_logic := '1';
@@ -391,8 +393,8 @@ PORT map
 		CLK_IN => clk8,
 		CLK_28 => clk_28,
 		CLK_114 => clk_114,
-		LED_DISK => led_green,
-		LED_POWER => led_red,
+		LED_DISK => led_red,
+		LED_POWER => led_green,
 		RESET_N => reset_n,
 		MENU_BUTTON => runstop and (not power_button) and usart_cts,
 		CTRL_TX => rs232_txd,
@@ -468,13 +470,15 @@ vga_window<='1';
 			iRed => unsigned(vga_red),
 			iGreen => unsigned(vga_green),
 			iBlue => unsigned(vga_blue),
-			oHsync=>nHSync,
-			oVsync=>nVSync,
+			oHsync=>HSync,
+			oVsync=>VSync,
 			oRed => red,
 			oGreen => grn,
 			oBlue => blu
 		);
 
+nHSync <= not HSync;
+nVSync <= not VSync;
 
 audio_sd : COMPONENT hybrid_pwm_sd
 	PORT map

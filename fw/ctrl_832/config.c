@@ -463,34 +463,21 @@ void ApplyConfiguration(char reloadkickstart)
 
     if(reloadkickstart) {
 //      printf("Reloading kickstart ...\r");
-      WaitTimer(1000);
-      EnableOsd();
-      SPI(OSD_CMD_RST);
-      rstval |= (SPI_RST_CPU | SPI_CPU_HLT);
-      SPI(rstval);
-      DisableOsd();
-      SPIN; SPIN; SPIN; SPIN;
-      UploadActionReplay();
-      if (!UploadKickstart(config.kickstart.name)) {
-        strcpy(config.kickstart.name, "KICK    ");
-        if (!UploadKickstart(config.kickstart.name)) {
-          BootPrintEx("\nKickstart loading failed.");
-          Error=ERROR_FILE_NOT_FOUND;
-        }
-      }
-//    printf("Resetting ...\r");
+		WaitTimer(1000);
 		EnableOsd();
 		SPI(OSD_CMD_RST);
-		rstval |= (SPI_RST_USR | SPI_RST_CPU);
+		rstval |= (SPI_RST_CPU | SPI_CPU_HLT);
 		SPI(rstval);
 		DisableOsd();
 		SPIN; SPIN; SPIN; SPIN;
-		EnableOsd();
-		SPI(OSD_CMD_RST);
-		rstval = 0;
-		SPI(rstval);
-		DisableOsd();
-		SPIN; SPIN; SPIN; SPIN;
+		UploadActionReplay();
+		if (!UploadKickstart(config.kickstart.name)) {
+			strcpy(config.kickstart.name, "KICK    ");
+			if (!UploadKickstart(config.kickstart.name)) {
+				BootPrintEx("\nKickstart loading failed.");
+				Error=ERROR_FILE_NOT_FOUND;
+			}
+		}
     }
 }
 
