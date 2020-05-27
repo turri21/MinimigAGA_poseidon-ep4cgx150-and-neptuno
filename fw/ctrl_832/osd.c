@@ -45,11 +45,14 @@ This is the Minimig OSD (on-screen-display) handler.
 
 const char *supporters[]=
 {
+	"Jens Schoenfeld",
 	"Jim Farley",
 	"SIDKidd64",
 	"Juan Jose Velez Ramirez",
 	"Dag Jacobsen",
 	"Bartol Filipovic",
+	"Espen Skog",
+	"Pasi Ylinen",
 	"+ all other contributors",
 	0
 }

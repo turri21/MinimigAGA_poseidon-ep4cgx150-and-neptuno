@@ -5,6 +5,7 @@
 
 void ShiftFpga(unsigned char data);
 unsigned char ConfigureFpga(void);
+void SendFileV2(RAFile* file, unsigned char* key, int keysize, int address, int size);
 void SendFile(RAFile *file);
 void SendFileEncrypted(RAFile *file,unsigned char *key,int keysize);
 char BootPrint(const char *text);

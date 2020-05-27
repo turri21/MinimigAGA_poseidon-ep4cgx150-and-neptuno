@@ -44,7 +44,7 @@ extern char s[40];
 
 char BootPrint(const char *text);
 
-
+#if 0
 void SendFile(RAFile *file)
 {
     unsigned char  c1, c2;
@@ -154,6 +154,7 @@ void SendFileEncrypted(RAFile *file,unsigned char *key,int keysize)
     }
     printf("]\r");
 }
+#endif
 
 char kick1xfoundstr[] = "Kickstart v1.x found\n";
 const char applymemdetectionpatchstr[] = "Applying Kickstart 1.x memory detection patch\n";

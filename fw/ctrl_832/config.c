@@ -70,100 +70,72 @@ void ClearVectorTable(void)
 //// UploadKickstart() ////
 char UploadKickstart(char *name)
 {
-  int keysize=0;
-  char filename[12];
+	int keysize=0;
+	char filename[12];
 
-  strncpy(filename, name, 8); // copy base name
-  strcpy(&filename[8], "ROM"); // add extension
+	strncpy(filename, name, 8); // copy base name
+	strcpy(&filename[8], "ROM"); // add extension
 
-  BootPrint("Checking for Amiga Forever key file:");
-  if(FileOpen(&file,"ROM     KEY")) {
-    keysize=file.size;
-    if(file.size<sizeof(romkey)) {
-      int c=0;
-      while(c<keysize) {
-        FileRead(&file, &romkey[c]);
-        c+=512;
-        FileNextSector(&file);
-      }
-      BootPrint("Loaded Amiga Forever key file");
-    } else {
-      BootPrint("Amiga Forever keyfile is too large!");
-    }
-  }
-  BootPrint("Loading file: ");
-  BootPrint(filename);
+	BootPrint("Checking for Amiga Forever key file:");
+	if(FileOpen(&file,"ROM     KEY")) {
+		keysize=file.size;
+		if(file.size<sizeof(romkey)) {
+			int c=0;
+			while(c<keysize) {
+				FileRead(&file, &romkey[c]);
+				c+=512;
+				FileNextSector(&file);
+			}
+		} else {
+			SetError(ERROR_BAD_ROM);
+		}
+	}
 
-  if (RAOpen(&romfile, filename)) {
-    if (romfile.size == 0x100000) {
-      // 1MB Kickstart ROM
-      BootPrint("Uploading 1MB Kickstart ...");
-      SendFileV2(&romfile, NULL, 0, 0xe00000, romfile.size>>10);
-      SendFileV2(&romfile, NULL, 0, 0xf80000, romfile.size>>10);
-      ClearVectorTable();
-      return(1);
-    } else if(romfile.size == 0x80000) {
-      // 512KB Kickstart ROM
-      BootPrint("Uploading 512KB Kickstart ...");
-//      if (minimig_v1()) {
-//        PrepareBootUpload(0xF8, 0x08);
-//        SendFile(&romfile);
-//      } else {
-        SendFileV2(&romfile, NULL, 0, 0xf80000, romfile.size>>9);
-        RAOpen(&romfile, filename);
-        SendFileV2(&romfile, NULL, 0, 0xe00000, romfile.size>>9);
-        ClearVectorTable();
-//      }
-      return(1);
-    } else if ((romfile.size == 0x8000b) && keysize) {
-      // 512KB Kickstart ROM
-      BootPrint("Uploading 512 KB Kickstart (Probably Amiga Forever encrypted...)");
-//      if (minimig_v1()) {
-//        PrepareBootUpload(0xF8, 0x08);
-//        SendFileEncrypted(&romfile,romkey,keysize);
-//      } else {
-        SendFileV2(&romfile, romkey, keysize, 0xf80000, romfile.size>>9);
-        RAOpen(&romfile, filename);
-        SendFileV2(&romfile, romkey, keysize, 0xe00000, romfile.size>>9);
-        ClearVectorTable();
-//     }
-      return(1);
-    } else if (romfile.size == 0x40000) {
-      // 256KB Kickstart ROM
-      BootPrint("Uploading 256 KB Kickstart...");
-//      if (minimig_v1()) {
-//        PrepareBootUpload(0xF8, 0x04);
-//        SendFile(&romfile);
-//      } else {
-        SendFileV2(&romfile, NULL, 0, 0xf80000, romfile.size>>9);
-        RAOpen(&romfile, filename);
-        SendFileV2(&romfile, NULL, 0, 0xfc0000, romfile.size>>9);
-        ClearVectorTable();
-        ClearKickstartMirrorE0();
-//      }
-      return(1);
-    } else if ((romfile.size == 0x4000b) && keysize) {
-      // 256KB Kickstart ROM
-      BootPrint("Uploading 256 KB Kickstart (Probably Amiga Forever encrypted...");
-/*      if (minimig_v1()) {
-        PrepareBootUpload(0xF8, 0x04);
-        SendFileEncrypted(&romfile,romkey,keysize);
-      } else {*/
-        SendFileV2(&romfile, romkey, keysize, 0xf80000, romfile.size>>9);
-        RAOpen(&romfile, filename);
-        SendFileV2(&romfile, romkey, keysize, 0xfc0000, romfile.size>>9);
-        ClearVectorTable();
-        ClearKickstartMirrorE0();
-//      }
-      return(1);
-    } else {
-      BootPrint("Unsupported ROM file size!");
-    }
-  } else {
-    sprintf(s, "No \"%s\" file!", filename);
-    BootPrint(s);
-  }
-  return(0);
+	if (RAOpen(&romfile, filename)) {
+		if (romfile.size == 0x100000) {
+			// 1MB Kickstart ROM
+			BootPrint("Uploading 1MB Kickstart ...");
+			SendFileV2(&romfile, NULL, 0, 0xe00000, romfile.size>>10);
+			SendFileV2(&romfile, NULL, 0, 0xf80000, romfile.size>>10);
+			ClearVectorTable();
+			return(1);
+		} else if(romfile.size == 0x80000) {
+		// 512KB Kickstart ROM
+			SendFileV2(&romfile, NULL, 0, 0xf80000, romfile.size>>9);
+			RAOpen(&romfile, filename);
+			SendFileV2(&romfile, NULL, 0, 0xe00000, romfile.size>>9);
+			ClearVectorTable();
+		return(1);
+		} else if ((romfile.size == 0x8000b) && keysize) {
+			// 512KB Kickstart ROM
+			SendFileV2(&romfile, romkey, keysize, 0xf80000, romfile.size>>9);
+			RAOpen(&romfile, filename);
+			SendFileV2(&romfile, romkey, keysize, 0xe00000, romfile.size>>9);
+			ClearVectorTable();
+			return(1);
+		} else if (romfile.size == 0x40000) {
+			// 256KB Kickstart ROM
+			SendFileV2(&romfile, NULL, 0, 0xf80000, romfile.size>>9);
+			RAOpen(&romfile, filename);
+			SendFileV2(&romfile, NULL, 0, 0xfc0000, romfile.size>>9);
+			ClearVectorTable();
+			ClearKickstartMirrorE0();
+			return(1);
+		} else if ((romfile.size == 0x4000b) && keysize) {
+			// 256KB Kickstart ROM
+			SendFileV2(&romfile, romkey, keysize, 0xf80000, romfile.size>>9);
+			RAOpen(&romfile, filename);
+			SendFileV2(&romfile, romkey, keysize, 0xfc0000, romfile.size>>9);
+			ClearVectorTable();
+			ClearKickstartMirrorE0();
+			return(1);
+		} else {
+			SetError(ERROR_BAD_ROM);
+		}
+	} else {
+		SetError(ERROR_MISSING_ROM);
+	}
+	return(0);
 }
 
 //// UploadActionReplay() ////
@@ -262,7 +234,6 @@ char UploadActionReplay()
       puts("\rhrtmon.rom not found!\r");
       return(0);
     }
-//  }
   return(0);
 }
 
@@ -462,7 +433,6 @@ void ApplyConfiguration(char reloadkickstart)
     ConfigMisc(config.misc);
 
     if(reloadkickstart) {
-//      printf("Reloading kickstart ...\r");
 		WaitTimer(1000);
 		EnableOsd();
 		SPI(OSD_CMD_RST);
@@ -473,10 +443,7 @@ void ApplyConfiguration(char reloadkickstart)
 		UploadActionReplay();
 		if (!UploadKickstart(config.kickstart.name)) {
 			strcpy(config.kickstart.name, "KICK    ");
-			if (!UploadKickstart(config.kickstart.name)) {
-				BootPrintEx("\nKickstart loading failed.");
-				Error=ERROR_FILE_NOT_FOUND;
-			}
+			UploadKickstart(config.kickstart.name);
 		}
     }
 }

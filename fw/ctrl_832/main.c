@@ -107,14 +107,11 @@ void HandleFpga(void)
 
 void ColdBoot()
 {
-	Error=ERROR_SDCARD;
-
 	/* Reset the chipset briefly to cancel AGA display modes, then Put the CPU in reset while we initialise */
 	OsdDoReset(SPI_RST_USR | SPI_RST_CPU | SPI_CPU_HLT,SPI_RST_CPU | SPI_CPU_HLT);
 
     if (MMC_Init())
 	{
-		Error=ERROR_FILESYSTEM;
 	    if (FindDrive())
 		{
 			int key;
@@ -166,16 +163,21 @@ void ColdBoot()
 			BootPrintEx("Loading kickstart ROM...");
 			ApplyConfiguration(1);
 			OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
-			Error=0;
 		}
+		else
+			SetError(ERROR_FILESYSTEM);
 	}
+	else
+		SetError(ERROR_SDCARD);
 }
 
 static char *errormessages[]=
 {
 	"SD Card error!",
 	"No filesystem found!",
-	"File not found!"
+	"File not found!",
+	"ROM file missing!",
+	"Unsupported ROM file!"
 };
 
 
