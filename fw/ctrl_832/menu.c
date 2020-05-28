@@ -46,6 +46,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // other constants
 #define DIRSIZE 8 // number of items in directory display window
 
+signed char errorpage;
 unsigned char menustate = MENU_NONE1;
 unsigned char parentstate;
 unsigned char menusub = 0;
@@ -1837,11 +1838,15 @@ void HandleUI(void)
 
  		OsdSetTitle("Error",0);
         OsdWrite(0, "         *** ERROR ***", 1,0);
-	    OsdWrite(1, "", 0,0);
-        OsdWrite(2, s, 0,0);
-	    OsdWrite(3, "", 0,0);
-	    OsdWrite(4, "", 0,0);
-	    OsdWrite(5, "", 0,0);
+	    OsdWrite(1, "", 0,!(ErrorMask&(1<<errorpage)));
+		snprintf(s,32," %s",ErrorMessages[errorpage]);
+        OsdWrite(2, s, 0,!(ErrorMask&(1<<errorpage)));
+		snprintf(s,32," %s",Errors[errorpage].string);
+        OsdWrite(3, s, 0,!(ErrorMask&(1<<errorpage)));
+		snprintf(s,32," %x",Errors[errorpage].a);
+        OsdWrite(4, s, 0,!(ErrorMask&(1<<errorpage)));
+		snprintf(s,32," %x",Errors[errorpage].b);
+        OsdWrite(5, s, 0,!(ErrorMask&(1<<errorpage)));
 	    OsdWrite(6, "Reboot", 1,0);
 	    OsdWrite(7, "", 0,0);
 
@@ -1849,13 +1854,25 @@ void HandleUI(void)
 		break;
 
 	case MENU_ERROR2 :
+		if(left)
+		{
+			--errorpage;
+			if(errorpage<0)
+				errorpage=ERROR_MAX;
+		}
+		if(right)
+		{
+			++errorpage;
+			if(errorpage>ERROR_MAX)
+				errorpage=0;
+		}
         if (select)
 		{
 			OsdHide();
             ColdBoot();
 			menustate = MENU_NONE1;
 		}
-
+		menustate = MENU_ERROR;
         break;
 
         /******************************************************************/
@@ -2134,10 +2151,24 @@ void InsertFloppy(adfTYPE *drive)
 void ErrorMessage(char *message, unsigned char code)
 {
     menustate = MENU_ERROR;
-    snprintf(s,32," %s: %d",message,code);
 	OsdShow(DISABLE_KEYBOARD); // do not disable KEYBOARD
     OsdColor(OSDCOLOR_WARNING);
 }
+
+
+void ShowError(char *message, unsigned char code)
+{
+	int t=ErrorMask>>1;
+	errorpage=0;
+	while(t)
+	{
+		++errorpage;
+	}
+    menustate = MENU_ERROR;
+	OsdShow(DISABLE_KEYBOARD); // do not disable KEYBOARD
+    OsdColor(OSDCOLOR_WARNING);
+}
+
 
 void InfoMessage(char *message)
 {

@@ -42,6 +42,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //#include "stdio.h"
 //#include "string.h"
 #include "errors.h"
+#include "boot.h"
 #include "hardware.h"
 #include "mmc.h"
 #include "fat.h"
@@ -59,7 +60,6 @@ const char version[] = "$VER:AYQ200515_832";
 
 extern adfTYPE df[4];
 
-unsigned char Error;
 char s[40];
 
 #if 0
@@ -109,6 +109,8 @@ void ColdBoot()
 {
 	/* Reset the chipset briefly to cancel AGA display modes, then Put the CPU in reset while we initialise */
 	OsdDoReset(SPI_RST_USR | SPI_RST_CPU | SPI_CPU_HLT,SPI_RST_CPU | SPI_CPU_HLT);
+
+	ErrorMask=0;
 
     if (MMC_Init())
 	{
@@ -164,28 +166,15 @@ void ColdBoot()
 			ApplyConfiguration(1);
 			OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
 		}
-		else
-			SetError(ERROR_FILESYSTEM);
 	}
-	else
-		SetError(ERROR_SDCARD);
 }
-
-static char *errormessages[]=
-{
-	"SD Card error!",
-	"No filesystem found!",
-	"File not found!",
-	"ROM file missing!",
-	"Unsupported ROM file!"
-};
 
 
 void setstack();
 #ifdef __GNUC__
 void c_entry(void)
 #else
-__geta4 void main(void)
+__geta4 int main(void)
 #endif
 {
 	setstack();
@@ -204,10 +193,10 @@ __geta4 void main(void)
     {
         HandleFpga();
         HandleUI();
-		if(Error && Error<=ERROR_MAX)
+		if(ErrorMask)
 		{
-			ErrorMessage(errormessages[Error-1],0);
-			while(Error)
+			ShowError();
+			while(ErrorMask)
 		        HandleUI();
 		}
     }

@@ -1,14 +1,25 @@
-#define ERROR_NONE 0
-#define ERROR_SDCARD 1
-#define ERROR_FILESYSTEM 2
-#define ERROR_FILE_NOT_FOUND 3
-#define ERROR_MISSING_ROM 4
-#define ERROR_BAD_ROM 5
-#define ERROR_MAX 5
+#define ERROR_SDCARD 0
+#define ERROR_FILESYSTEM 1
+#define ERROR_ROM 2
+#define ERROR_FDD 3
+#define ERROR_HDD 4
+#define ERROR_MAX 4
 
-#define SetError(x) Error=x
-extern unsigned char Error;
-extern char *ErrorMsg;
+#define SetError(x,s,y,z) {ErrorMask|=(1<<x); Errors[x].string=s; Errors[x].a=y; Errors[x].b=z;}
+#define FDDError(s,a) SetError(ERROR_FDD,s,a,0)
+#define SetSubError(x) SubError=x
+#define SetSubError2(x) SubError2=x
+#define SetSubErrorString(x) SubErrorString=x
+
+extern int ErrorMask;
+extern char *ErrorMessages[ERROR_MAX];
+struct Error
+{
+	char *string;
+	int a;
+	int b;
+};
+extern struct Error Errors[ERROR_MAX];
 
 void FatalError(unsigned long error);
-void ErrorMessage(char *message, unsigned char code);
+

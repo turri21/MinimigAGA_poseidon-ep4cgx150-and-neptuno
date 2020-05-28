@@ -82,6 +82,7 @@ void InsertFloppy(adfTYPE *drive);
 void HandleUI(void);
 void PrintDirectory(void);
 void ScrollLongName(void);
+void ShowError();
 void ErrorMessage(char *message, unsigned char code);
 void InfoMessage(char *message);
 void DebugMessage(char *message);

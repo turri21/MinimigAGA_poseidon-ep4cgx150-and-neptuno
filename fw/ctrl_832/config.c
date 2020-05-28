@@ -87,7 +87,7 @@ char UploadKickstart(char *name)
 				FileNextSector(&file);
 			}
 		} else {
-			SetError(ERROR_BAD_ROM);
+			SetError(ERROR_ROM,"ROM Key file wrong size",file.size,0);
 		}
 	}
 
@@ -130,10 +130,10 @@ char UploadKickstart(char *name)
 			ClearKickstartMirrorE0();
 			return(1);
 		} else {
-			SetError(ERROR_BAD_ROM);
+			SetError(ERROR_ROM,"ROM size incorrect",romfile.size,0);
 		}
 	} else {
-		SetError(ERROR_MISSING_ROM);
+		SetError(ERROR_ROM,"ROM missing",0,0);
 	}
 	return(0);
 }

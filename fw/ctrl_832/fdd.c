@@ -178,7 +178,7 @@ void ReadTrack(adfTYPE *drive)
     if (drive->track >= drive->tracks)
     {
         printf("Illegal track read: %d\r", drive->track);
-        ErrorMessage("    Illegal track read!", drive->track);
+        FDDError("    Illegal track read!", drive->track);
         drive->track = drive->tracks - 1;
     }
 
@@ -219,8 +219,7 @@ void ReadTrack(adfTYPE *drive)
 
     while (1)
     {
-        if(!(FileRead(&file, sector_buffer)))
-			Error=ERROR_SDCARD;
+        FileRead(&file, sector_buffer);
 
         EnableFpga();
 
@@ -349,8 +348,8 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
     unsigned int c, c1, c2, c3, c4;
     unsigned int i;
 //    unsigned char checksum[4];
+	int error=0;
 
-    Error = 0;
     while (1)
     {
         EnableFpga();
@@ -369,7 +368,7 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
             c2 = SPI(0); // second sync msb
             if (c1 != 0x44 || c2 != 0x89)
             {
-                Error = 21;
+				FDDError("Second sync word missing...",21);
                 printf("\rSecond sync word missing...\r");
                 break;
             }
@@ -415,16 +414,17 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
             c4 |= c & 0x55;
 
             if (c1 != 0xFF) // always 0xFF
-                Error = 22;
+                error = 22;
             else if (c2 > 159) // Track number (0-159)
-                Error = 23;
+                error = 23;
             else if (c3 > 10) // Sector number (0-10)
-                Error = 24;
+                error = 24;
             else if (c4 > 11 || c4 == 0) // Number of sectors to gap (1-11)
-                Error = 25;
+                error = 25;
 
-            if (Error)
+            if (error)
             {
+				FDDError("Bad header",error);
                 printf("\rWrong header: %u.%u.%u.%u\r", c1, c2, c3, c4);
                 break;
             }
@@ -468,7 +468,7 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
 
             if (c1 != checksum[0] || c2 != checksum[1] || c3 != checksum[2] || c4 != checksum[3])
             {
-                Error = 26;
+				FDDError("Bad checksum",26);
                 break;
             }
 
@@ -477,7 +477,7 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
         }
         else if ((c3 & 0x80) == 0) // not enough data for header and write dma is not active
         {
-            Error = 20;
+			FDDError("Not enough data / no DMA",20);
             break;
         }
 
@@ -496,7 +496,6 @@ unsigned char GetData(void)
     unsigned int n;
 //    unsigned char checksum[4];
 
-    Error = 0;
     while (1)
     {
         EnableFpga();
@@ -585,7 +584,7 @@ unsigned char GetData(void)
 
             if (c1 != checksum[0] || c2 != checksum[1] || c3 != checksum[2] || c4 != checksum[3])
             {
-                Error = 29;
+				FDDError("Bad checksum",29);
                 break;
             }
 
@@ -594,7 +593,7 @@ unsigned char GetData(void)
         }
         else if ((c3 & 0x80) == 0) // not enough data in fifo and write dma is not active
         {
-            Error = 28;
+			FDDError("Not enough data / no DMA",20);
             break;
         }
 
@@ -644,24 +643,13 @@ void WriteTrack(adfTYPE *drive)
                 if (GetData())
                 {
                     if (drive->status & DSK_WRITABLE)
-					{
-                        if(!(FileWrite(&file, sector_buffer)))
-							Error=ERROR_SDCARD;
-					}
+                       FileWrite(&file, sector_buffer);
                     else
-                    {
-                        Error = 30;
-                        printf("Write attempt to protected disk!\r");
-                    }
+						FDDError("Disk write protected",30);
                 }
             }
             else
-                Error = 27; //track number reported in sector header is not the same as current drive track
-        }
-        if (Error)
-        {
-            printf("WriteTrack: error %u\r", Error);
-            ErrorMessage("  WriteTrack", Error);
+				FDDError("Wrong track number",27);
         }
     }
 }
