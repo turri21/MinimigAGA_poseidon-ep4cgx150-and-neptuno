@@ -37,7 +37,9 @@ JB:
 
 */
 
+#include <stdio.h>
 #include <string.h>
+#include "errors.h"
 //#include <ctype.h>
 #include "mmc.h"
 #include "fat.h"
@@ -45,7 +47,6 @@ JB:
 #include "hexdump.h"
 // #include "small_printf.h"
 
-#include <stdio.h>
 
 #define DEBUG 0
 
@@ -92,25 +93,10 @@ unsigned char t_sort_table[MAXDIRENTRIES];
 
 // external functions
 extern unsigned long GetTimer(unsigned long);
-extern void ErrorMessage(const char *message, unsigned char code);
-
-#if 0
-unsigned long SwapEndianL(unsigned long l)
-{
-	unsigned char c[4];
-	c[0] = (unsigned char)(l & 0xff);
-	c[1] = (unsigned char)((l >> 8) & 0xff);
-	c[2] = (unsigned char)((l >> 16) & 0xff);
-	c[3] = (unsigned char)((l >> 24) & 0xff);
-	return((c[0]<<24)+(c[1]<<16)+(c[2]<<8)+c[3]);
-}
-#endif
 
 void SwapPartitionBytes(int i)
 {
 	// We don't bother to byteswap the CHS geometry fields since we don't use them.
-//	partitions[i].startlba=SwapEndianL(partitions[i].startlba);
-//	partitions[i].sectors=SwapEndianL(partitions[i].sectors);
 	partitions[i].startlba=SwapBBBB(partitions[i].startlba);
 	partitions[i].sectors=SwapBBBB(partitions[i].sectors);
 }
@@ -186,6 +172,7 @@ unsigned char FindDrive(void)
 					BootPrint("Read boot sector from first partition\n");
 				break;
 			default:
+				SetError(ERROR_FILESYSTEM,"No partition signature found",mbr->Signature,0);
 				if(DEBUG)
 					BootPrintEx("No partition signature found\n");
 				break;
@@ -222,32 +209,48 @@ unsigned char FindDrive(void)
 
     if (fattype != 32 && fattype != 16) // first partition filesystem type: FAT16 or FAT32
     {
+		FatalError(ERROR_FILESYSTEM,"Unsupported partition type",fattype,0);
 //        BootPrintEx("Unsupported partition type!");
         return(0);
     }
 
     if (sector_buffer[510] != 0x55 || sector_buffer[511] != 0xaa)  // check signature
+    {
+		FatalError(ERROR_FILESYSTEM,"Bad signature",sector_buffer[510],sector_buffer[511]);
         return(0);
+	}
 
 //    if (!MMC_Read(boot_sector, sector_buffer)) // read boot sector
 //        return(0);
 
     // check for near-jump or short-jump opcode
     if (sector_buffer[0] != 0xe9 && sector_buffer[0] != 0xeb)
+    {
+		FatalError(ERROR_FILESYSTEM,"Boot sector not found",sector_buffer[0],0);
         return(0);
+	}
 
     // check if blocksize is really 512 bytes
     if (sector_buffer[11] != 0x00 || sector_buffer[12] != 0x02)
+    {
+		FatalError(ERROR_FILESYSTEM,"Bad blocksize",sector_buffer[11],sector_buffer[12]);
         return(0);
+	}
 
     // check medium descriptor byte, must be 0xf8 for hard drive
     if (sector_buffer[21] != 0xf8)
+    {
+		FatalError(ERROR_FILESYSTEM,"Bad media descriptor",sector_buffer[21],0);
         return(0);
+	}
 
     if (fat32)
     {
         if (strncmp((const char*)&sector_buffer[0x52], "FAT32   ", 8) != 0) // check file system type
+	    {
+			FatalError(ERROR_FILESYSTEM,"Filesystem mismatch",sector_buffer[55],sector_buffer[56]);
             return(0);
+		}
 
         cluster_size = sector_buffer[0x0D]; // get cluster_size in sectors
         cluster_mask = ~(cluster_size - 1); // calculate cluster mask
@@ -330,7 +333,8 @@ unsigned char FileOpen(fileTYPE *file, const char *name)
         {
             if ((iEntry & 0x0F) == 0) // first entry in sector, load the sector
             {
-                MMC_Read(iDirectorySector++, sector_buffer); // root directory is linear
+                if(!MMC_Read(iDirectorySector++, sector_buffer)) // root directory is linear
+					return(0);
                 pEntry = (DIRENTRY*)sector_buffer;
             }
             else
@@ -377,6 +381,8 @@ unsigned char FileOpen(fileTYPE *file, const char *name)
             break;
     }
 
+	SetError(ERROR_FILESYSTEM,"File not found",0,0);
+
     printf("file \"%s\" not found\r", name);
     memset(file, 0, sizeof(fileTYPE));
     return(0);
@@ -410,7 +416,8 @@ unsigned long FindDirectory(unsigned long parent, const char *name)
         {
             if ((iEntry & 0x0F) == 0) // first entry in sector, load the sector
             {
-                MMC_Read(iDirectorySector++, sector_buffer); // root directory is linear
+                if(!MMC_Read(iDirectorySector++, sector_buffer)) // root directory is linear
+					return(0);
                 pEntry = (DIRENTRY*)sector_buffer;
             }
             else
@@ -627,7 +634,8 @@ char ScanDirectory(unsigned long mode, char *extension, unsigned char options)
         {
             if ((iEntry & 0xF) == 0) // first entry in sector, load the sector
             {
-                MMC_Read(iDirectorySector++, sector_buffer);
+                if(!MMC_Read(iDirectorySector++, sector_buffer))
+					return(0);
                 pEntry = (DIRENTRY*)sector_buffer;
 				for (i = 0; i < 16; i++) 
 				{
@@ -685,7 +693,10 @@ char ScanDirectory(unsigned long mode, char *extension, unsigned char options)
 //							printf("Long filename: %s\n",&lfn[((sequence_number & 0x1F) - 1) * 13]);
                         }
                         else
+						{
+							SetError(ERROR_FILESYSTEM,"bad long filename",sequence_number,name_checksum);
                             printf("LFN error!\r");
+						}
                     }
                 }
                 else // if not an LFN entry
@@ -1388,7 +1399,8 @@ unsigned char FileCreate(unsigned long iDirectory, fileTYPE *file)
         {
             if ((iEntry & 0x0F) == 0) // first entry in sector, load the sector
             {
-                MMC_Read(iDirectorySector++, sector_buffer); // read directory sector
+                if(!MMC_Read(iDirectorySector++, sector_buffer)) // read directory sector
+					return(0);
                 pEntry = (DIRENTRY*)sector_buffer;
             }
             else
@@ -1511,7 +1523,7 @@ unsigned char FileCreate(unsigned long iDirectory, fileTYPE *file)
             break;
     }
 
-    ErrorMessage("   Can\'t create config file!", 0);
+    SetError(ERROR_FILESYSTEM,"Can\'t create config file!",0,0);
     return(0);
 }
 

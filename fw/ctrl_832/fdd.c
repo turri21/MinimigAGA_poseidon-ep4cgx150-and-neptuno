@@ -178,7 +178,7 @@ void ReadTrack(adfTYPE *drive)
     if (drive->track >= drive->tracks)
     {
         printf("Illegal track read: %d\r", drive->track);
-        FDDError("    Illegal track read!", drive->track);
+        FatalError(ERROR_FDD,"Illegal track read!", drive->track,0);
         drive->track = drive->tracks - 1;
     }
 
@@ -368,7 +368,7 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
             c2 = SPI(0); // second sync msb
             if (c1 != 0x44 || c2 != 0x89)
             {
-				FDDError("Second sync word missing...",21);
+				FatalError(ERROR_FDD,"Second sync word missing...",21,0);
                 printf("\rSecond sync word missing...\r");
                 break;
             }
@@ -424,7 +424,7 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
 
             if (error)
             {
-				FDDError("Bad header",error);
+				FatalError(ERROR_FDD,"Bad header",error,0);
                 printf("\rWrong header: %u.%u.%u.%u\r", c1, c2, c3, c4);
                 break;
             }
@@ -468,7 +468,7 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
 
             if (c1 != checksum[0] || c2 != checksum[1] || c3 != checksum[2] || c4 != checksum[3])
             {
-				FDDError("Bad checksum",26);
+				FatalError(ERROR_FDD,"Bad checksum",26,0);
                 break;
             }
 
@@ -477,7 +477,7 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
         }
         else if ((c3 & 0x80) == 0) // not enough data for header and write dma is not active
         {
-			FDDError("Not enough data / no DMA",20);
+			FatalError(ERROR_FDD,"Not enough data / no DMA",20,0);
             break;
         }
 
@@ -584,7 +584,7 @@ unsigned char GetData(void)
 
             if (c1 != checksum[0] || c2 != checksum[1] || c3 != checksum[2] || c4 != checksum[3])
             {
-				FDDError("Bad checksum",29);
+				FatalError(ERROR_FDD,"Bad checksum",29,0);
                 break;
             }
 
@@ -593,7 +593,7 @@ unsigned char GetData(void)
         }
         else if ((c3 & 0x80) == 0) // not enough data in fifo and write dma is not active
         {
-			FDDError("Not enough data / no DMA",20);
+			FatalError(ERROR_FDD,"Not enough data / no DMA",20,0);
             break;
         }
 
@@ -645,11 +645,11 @@ void WriteTrack(adfTYPE *drive)
                     if (drive->status & DSK_WRITABLE)
                        FileWrite(&file, sector_buffer);
                     else
-						FDDError("Disk write protected",30);
+						SetError(ERROR_FDD,"Disk write protected",0,0);
                 }
             }
             else
-				FDDError("Wrong track number",27);
+				FatalError(ERROR_FDD,"Wrong track number",27,0);
         }
     }
 }

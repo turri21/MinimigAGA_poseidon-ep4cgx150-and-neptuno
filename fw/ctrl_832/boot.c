@@ -2,7 +2,7 @@
 // bootscreen functions
 // 2014, rok.krajnc@gmail.com
 
-
+#include "errors.h"
 #include "string.h"
 #include "stdio.h"
 #include "boot.h"
@@ -225,6 +225,7 @@ void BootUploadLogo()
     }
     mem_upload_fini();
   }
+  ClearError(ERROR_FILESYSTEM);
 }
 
 
@@ -254,6 +255,7 @@ void BootUploadBall()
     }
     mem_upload_fini();
   }
+  ClearError(ERROR_FILESYSTEM);
 }
 
 
@@ -292,6 +294,7 @@ void BootUploadCopper()
     mem_write16(0xffff); mem_write16(0xfffe);
     mem_upload_fini();
   }
+  ClearError(ERROR_FILESYSTEM);
 }
 
 

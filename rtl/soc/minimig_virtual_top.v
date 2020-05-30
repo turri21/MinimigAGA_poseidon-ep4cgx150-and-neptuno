@@ -294,6 +294,7 @@ TG68K tg68k (
 wire [ 16-1:0] hostRD;
 wire [ 16-1:0] hostWR;
 wire [ 24-1:0] hostaddr;
+reg  [ 24-1:0] hostaddr_d;
 wire [  3-1:0] hostState;
 wire           hostL;
 wire           hostU;
@@ -304,6 +305,10 @@ wire           hostwe;
 wire           hostreq;
 wire           hostack;
 wire           hostce;
+
+always @(posedge CLK_114) begin
+	hostaddr_d<=hostaddr;
+end
 
 //sdram sdram (
 sdram_ctrl sdram (
@@ -322,7 +327,7 @@ sdram_ctrl sdram (
   .reset_in     (sdctl_rst        ),
   
   .hostWR       (hostWR           ),
-  .hostAddr     (hostaddr         ),
+  .hostAddr     (hostaddr_d       ),
 //  .hostState    (hostState        ),
   .hostwe       (hostwe           ),
   .hostce       (hostce           ),

@@ -92,7 +92,11 @@ char UploadKickstart(char *name)
 	}
 
 	if (RAOpen(&romfile, filename)) {
-		if (romfile.size == 0x100000) {
+		ClearError(ERROR_FILESYSTEM);
+		if ((romfile.size & 0xf) == 0xb && !keysize) {
+			FatalError(ERROR_ROM,"ROM requires key file",0,0);
+		}
+		else if (romfile.size == 0x100000) {
 			// 1MB Kickstart ROM
 			BootPrint("Uploading 1MB Kickstart ...");
 			SendFileV2(&romfile, NULL, 0, 0xe00000, romfile.size>>10);
@@ -106,7 +110,7 @@ char UploadKickstart(char *name)
 			SendFileV2(&romfile, NULL, 0, 0xe00000, romfile.size>>9);
 			ClearVectorTable();
 		return(1);
-		} else if ((romfile.size == 0x8000b) && keysize) {
+		} else if ((romfile.size == 0x8000b)) {
 			// 512KB Kickstart ROM
 			SendFileV2(&romfile, romkey, keysize, 0xf80000, romfile.size>>9);
 			RAOpen(&romfile, filename);
@@ -121,7 +125,7 @@ char UploadKickstart(char *name)
 			ClearVectorTable();
 			ClearKickstartMirrorE0();
 			return(1);
-		} else if ((romfile.size == 0x4000b) && keysize) {
+		} else if ((romfile.size == 0x4000b)) {
 			// 256KB Kickstart ROM
 			SendFileV2(&romfile, romkey, keysize, 0xf80000, romfile.size>>9);
 			RAOpen(&romfile, filename);
@@ -130,10 +134,10 @@ char UploadKickstart(char *name)
 			ClearKickstartMirrorE0();
 			return(1);
 		} else {
-			SetError(ERROR_ROM,"ROM size incorrect",romfile.size,0);
+			FatalError(ERROR_ROM,"ROM size incorrect",romfile.size,0);
 		}
 	} else {
-		SetError(ERROR_ROM,"ROM missing",0,0);
+		FatalError(ERROR_ROM,"ROM missing",0,0);
 	}
 	return(0);
 }
@@ -231,6 +235,7 @@ char UploadActionReplay()
       SPIN; SPIN; SPIN; SPIN;
       return(1);
     } else {
+	  ClearError(ERROR_FILESYSTEM);
       puts("\rhrtmon.rom not found!\r");
       return(0);
     }
@@ -256,6 +261,7 @@ unsigned char ConfigurationExists(char *filename)
     {
 		return(1);
 	}
+	ClearError(ERROR_FILESYSTEM);
 	return(0);
 }
 
@@ -304,7 +310,7 @@ unsigned char LoadConfiguration(char *filename)
     if(!result)
 	{
         BootPrint("Config loading failed - using defaults\n");
-
+		ClearError(ERROR_FILESYSTEM);
 		// set default configuration
 		memset((void*)&config, 0, sizeof(config));	// Finally found default config bug - params were reversed!
 		strncpy(config.id, config_id, sizeof(config.id));
@@ -471,6 +477,7 @@ unsigned char SaveConfiguration(char *filename)
     }
     else
     {
+		ClearError(ERROR_FILESYSTEM);
         printf("Configuration file not found!\r");
         printf("Trying to create a new one...\r");
         strncpy(file.name, filename, 11);

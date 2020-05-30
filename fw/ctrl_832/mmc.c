@@ -217,7 +217,7 @@ unsigned char MMC_Read(unsigned long lba, unsigned char *pReadBuffer)
     {
         DisableCard();
         printf("CMD17 (READ_BLOCK): invalid response 0x%02X (lba=%lu)\r", response, lba);
-		SetError(ERROR_SDCARD,"CMD17 Read block",lba,response);
+		FatalError(ERROR_SDCARD,"CMD17 Read block",lba,response);
         return(0);
     }
 
@@ -229,7 +229,7 @@ unsigned char MMC_Read(unsigned long lba, unsigned char *pReadBuffer)
         {
             DisableCard();
             printf("CMD17 (READ_BLOCK): no data token! (lba=%lu)\r", lba);
-			SetError(ERROR_SDCARD,"CMD17 No data token",lba,0);
+			FatalError(ERROR_SDCARD,"CMD17 No data token",lba,0);
             return(0);
         }
     }
@@ -271,7 +271,7 @@ unsigned char MMC_GetCSD()
     {
         printf("CMD9 (GET_CSD): invalid response 0x%02X \r", response);
         DisableCard();
-		SetError(ERROR_SDCARD,"GetCSD - invalid response",response,0);
+		FatalError(ERROR_SDCARD,"GetCSD - invalid response",response,0);
         return(0);
     }
 
@@ -281,7 +281,7 @@ unsigned char MMC_GetCSD()
     {
         if (timeout++ >= 1000000) // we can't wait forever
         {
-			SetError(ERROR_SDCARD,"GetCSD - No data token",0,0);
+			FatalError(ERROR_SDCARD,"GetCSD - No data token",0,0);
             printf("CMD9 (READ_BLOCK): no data token!\r");
             DisableCard();
             return(0);
@@ -344,7 +344,7 @@ unsigned char MMC_ReadMultiple(unsigned long lba, unsigned char *pReadBuffer, un
     {
         printf("CMD18 (READ_MULTIPLE_BLOCK): invalid response 0x%02X (lba=%lu)\r", response, lba);
         DisableCard();
-		SetError(ERROR_SDCARD,"CMD18 - invalid response",response,lba);
+		FatalError(ERROR_SDCARD,"CMD18 - invalid response",response,lba);
         return(0);
     }
 
@@ -358,7 +358,7 @@ unsigned char MMC_ReadMultiple(unsigned long lba, unsigned char *pReadBuffer, un
             {
                 printf("CMD18 (READ_MULTIPLE_BLOCK): no data token! (lba=%lu)\r", lba);
                 DisableCard();
-				SetError(ERROR_SDCARD,"CMD18 - no data token",response,lba);
+				FatalError(ERROR_SDCARD,"CMD18 - no data token",response,lba);
                 return(0);
             }
         }
@@ -408,7 +408,7 @@ unsigned char MMC_Write(unsigned long lba, unsigned char *pWriteBuffer)
     {
         printf("CMD24 (WRITE_BLOCK): invalid response 0x%02X (lba=%lu)\r", response, lba);
         DisableCard();
-		SetError(ERROR_SDCARD,"CMD24 invalid response",response,lba);
+		FatalError(ERROR_SDCARD,"CMD24 invalid response",response,lba);
         return(0);
     }
 
@@ -432,7 +432,7 @@ unsigned char MMC_Write(unsigned long lba, unsigned char *pWriteBuffer)
     {
         printf("CMD24 (WRITE_BLOCK): invalid status 0x%02X (lba=%lu)\r", response, lba);
         DisableCard();
-		SetError(ERROR_SDCARD,"CMD24 invalid response",response,lba);
+		FatalError(ERROR_SDCARD,"CMD24 invalid response",response,lba);
         return(0);
     }
 
@@ -443,7 +443,7 @@ unsigned char MMC_Write(unsigned long lba, unsigned char *pWriteBuffer)
         {
             printf("CMD24 (WRITE_BLOCK): busy wait timeout! (lba=%lu)\r", lba);
             DisableCard();
-			SetError(ERROR_SDCARD,"CMD24 post-write timeout",lba,0);
+			FatalError(ERROR_SDCARD,"CMD24 post-write timeout",lba,0);
             return(0);
         }
     }

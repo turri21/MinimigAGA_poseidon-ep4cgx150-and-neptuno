@@ -110,7 +110,7 @@ void ColdBoot()
 	/* Reset the chipset briefly to cancel AGA display modes, then Put the CPU in reset while we initialise */
 	OsdDoReset(SPI_RST_USR | SPI_RST_CPU | SPI_CPU_HLT,SPI_RST_CPU | SPI_CPU_HLT);
 
-	ErrorMask=0;
+	ClearError(ERROR_ALL);
 
     if (MMC_Init())
 	{

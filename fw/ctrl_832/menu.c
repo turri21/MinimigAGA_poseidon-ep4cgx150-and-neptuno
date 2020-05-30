@@ -102,6 +102,8 @@ const char *helptexts[]={
 	0
 };
 
+void SanityCheck();
+
 void ColdBoot();
 void (*confirmfunc)();
 
@@ -259,6 +261,8 @@ void HandleUI(void)
 		{
 			OsdSetTitle("Debug",0);
 			DebugMode=DebugMode^1;
+			if(DebugMode)
+				SanityCheck();
 	        menustate = MENU_NONE1;
 		}
 		else
@@ -1836,8 +1840,8 @@ void HandleUI(void)
 		menumask=0x01;
 		parentstate=MENU_ERROR;
 
- 		OsdSetTitle("Error",0);
-        OsdWrite(0, "         *** ERROR ***", 1,0);
+ 		OsdSetTitle("Error",OSD_ARROW_LEFT|OSD_ARROW_RIGHT);
+        OsdWrite(0, ErrorFatal ? "      *** FATAL ERROR ***" : "         *** ERROR ***", 1,0);
 	    OsdWrite(1, "", 0,!(ErrorMask&(1<<errorpage)));
 		snprintf(s,32," %s",ErrorMessages[errorpage]);
         OsdWrite(2, s, 0,!(ErrorMask&(1<<errorpage)));
@@ -1847,13 +1851,14 @@ void HandleUI(void)
         OsdWrite(4, s, 0,!(ErrorMask&(1<<errorpage)));
 		snprintf(s,32," %x",Errors[errorpage].b);
         OsdWrite(5, s, 0,!(ErrorMask&(1<<errorpage)));
-	    OsdWrite(6, "Reboot", 1,0);
-	    OsdWrite(7, "", 0,0);
+	    OsdWrite(6, "", 0,0);
+	    OsdWrite(7, ErrorFatal ? "           Reboot" : "             OK", 1,0);
 
 		menustate = MENU_ERROR2;
 		break;
 
 	case MENU_ERROR2 :
+		menustate = MENU_ERROR;
 		if(left)
 		{
 			--errorpage;
@@ -1869,10 +1874,10 @@ void HandleUI(void)
         if (select)
 		{
 			OsdHide();
-            ColdBoot();
+			if(ErrorFatal)
+	            ColdBoot();
 			menustate = MENU_NONE1;
 		}
-		menustate = MENU_ERROR;
         break;
 
         /******************************************************************/
@@ -2190,6 +2195,37 @@ void InfoMessage(char *message)
     OsdWrite(7, "", 0,0);
     menu_timer = GetTimer(1000);
     menustate = MENU_INFO;
+}
+
+static int shiftcheck(int in)
+{
+	return(in>>1);
+}
+
+static int mulcheck(int in)
+{
+	return(in*0x88888888);
+}
+
+static int addcheck(int in)
+{
+	return(in+0xa5a5a5a5);
+}
+
+void SanityCheck()
+{
+	snprintf(s,32,"%x",shiftcheck(0xabcdef01));
+	DebugMessage(s);
+	snprintf(s,32,"%x",shiftcheck(0x23456789));
+	DebugMessage(s);
+	snprintf(s,32,"%x",mulcheck(0xabcdef01));
+	DebugMessage(s);
+	snprintf(s,32,"%x",mulcheck(0x23456789));
+	DebugMessage(s);
+	snprintf(s,32,"%x",addcheck(0xabcdef01));
+	DebugMessage(s);
+	snprintf(s,32,"%x",addcheck(0x23456789));
+	DebugMessage(s);
 }
 
 void DebugMessage(char *message)

@@ -41,6 +41,7 @@ hdfTYPE hdf[2];
 char debugmsg[40];
 char debugmsg2[40];
 
+#define DEBUG1(x) {if(DebugMode) DebugMessage(x);}
 #define DEBUG2(x,y) {if(DebugMode) { sprintf(debugmsg2,x,y); DebugMessage(debugmsg2); }}
 
 //unsigned char DIRECT_TRANSFER_MODE = 0;
@@ -66,7 +67,7 @@ static void RDBChecksum(unsigned long *p)
 	unsigned long count=p[1];
 	unsigned long c2;
 	long result=0;
-	DebugMessage("Generating checksum");
+	DEBUG1("Generating checksum");
 	p[2]=0;
 	for(c2=0;c2<count;++c2)
 		result+=p[c2];
@@ -79,7 +80,7 @@ static void RDBChecksum(unsigned long *p)
 static void FakeRDB(int unit,int block)
 {
 	int i;
-	DebugMessage("Clearing sector buffer");
+	DEBUG1("Clearing sector buffer");
 	// Start by clearing the sector buffer
 	for(i=0;i<512;++i)
 		sector_buffer[i]=0;
@@ -90,7 +91,7 @@ static void FakeRDB(int unit,int block)
 		case 0: // RDB
 			{
 				struct RigidDiskBlock *rdb=(struct RigidDiskBlock *)sector_buffer;
-				DebugMessage("Creating RDB...");
+				DEBUG1("Creating RDB...");
 				rdb->rdb_ID = 'R'<<24 | 'D' << 16 | 'S' << 8 | 'K';
 				
 				rdb->rdb_Summedlongs=0x40;
@@ -131,7 +132,7 @@ static void FakeRDB(int unit,int block)
 		case 1: // Partition
 			{
 				struct PartitionBlock *pb=(struct PartitionBlock *)sector_buffer;
-				DebugMessage("Creating RDB...");
+				DEBUG1("Creating RDB...");
 				pb->pb_ID = 'P'<<24 | 'A' << 16 | 'R' << 8 | 'T';
 			
 				pb->pb_Summedlongs=0x40;
@@ -177,7 +178,7 @@ void IdentifyDevice(unsigned short *pBuffer, int unit)
 	{
 		case HDF_FILE | HDF_SYNTHRDB:
 		case HDF_FILE:
-			DebugMessage("Identify - Type: HDF_FILE");
+			DEBUG1("Identify - Type: HDF_FILE");
 			pBuffer[0] = 1 << 6; // hard disk
 			pBuffer[1] = hdf[unit].cylinders; // cyl count
 			pBuffer[3] = hdf[unit].heads; // head count
@@ -214,7 +215,7 @@ void IdentifyDevice(unsigned short *pBuffer, int unit)
 		case HDF_CARDPART1:
 		case HDF_CARDPART2:
 		case HDF_CARDPART3:
-			DebugMessage("Identify - Type: HDF_CARD");
+			DEBUG1("Identify - Type: HDF_CARD");
 			pBuffer[0] = 1 << 6; // hard disk
 			pBuffer[1] = hdf[unit].cylinders; // cyl count
 			pBuffer[3] = hdf[unit].heads; // head count
@@ -693,7 +694,7 @@ void HandleHDD(unsigned int c1, unsigned int c2)
 						case HDF_CARDPART1:
 						case HDF_CARDPART2:
 						case HDF_CARDPART3:
-							DebugMessage("Write HDF_Card");
+							DEBUG1("Write HDF_Card");
 							MMC_Write(lba,sector_buffer);
 							++lba;
 							break;
@@ -774,7 +775,7 @@ void HandleHDD(unsigned int c1, unsigned int c2)
 							case HDF_CARDPART1:
 							case HDF_CARDPART2:
 							case HDF_CARDPART3:
-								DebugMessage("Write HDF_Card");
+								DEBUG1("Write HDF_Card");
 								DEBUG2("SPB: %d",hdf[unit].sectors_per_block);
 								MMC_Write(lba,sector_buffer);
 								++lba;
@@ -980,7 +981,7 @@ unsigned char GetHDFFileType(char *filename)
 	if(FileOpen(&rdbfile,filename))
 	{
 		int i;
-		DebugMessage("Hunting for RDB...");
+		DEBUG1("Hunting for RDB...");
 		for(i=0;i<16;++i)
 		{
 			FileRead(&rdbfile,sector_buffer);
