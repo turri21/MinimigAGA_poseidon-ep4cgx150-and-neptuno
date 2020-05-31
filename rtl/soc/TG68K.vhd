@@ -134,6 +134,14 @@ SIGNAL sel_slowram      : std_logic;
 SIGNAL sel_cart         : std_logic;
 SIGNAL sel_32           : std_logic;
 signal sel_undecoded    : std_logic;
+signal sel_akiko        : std_logic;
+
+-- Akiko registers
+signal akiko_d : std_logic_vector(15 downto 0);
+signal akiko_q : std_logic_vector(15 downto 0);
+signal akiko_wr : std_logic;
+signal akiko_req : std_logic;
+signal akiko_ack : std_logic;
 
 SIGNAL NMI_addr         : std_logic_vector(31 downto 0);
 SIGNAL sel_nmi_vector   : std_logic;
@@ -162,11 +170,13 @@ BEGIN
          X"ffff"                              when sel_undecoded='1'
 	 else fromram                              WHEN sel_ram='1' AND sel_nmi_vector='0'
     --ELSE frometh                              WHEN sel_eth='1'
+	 else akiko_q when sel_akiko='1'
     ELSE autoconfig_data&r_data(11 downto 0)  WHEN sel_autoconfig='1' AND autoconfig_out="01" -- Zorro II RAM autoconfig
     ELSE autoconfig_data2&r_data(11 downto 0) WHEN sel_autoconfig='1' AND autoconfig_out="10" -- Zorro III RAM autoconfig
     --ELSE autoconfig_data3&r_data(11 downto 0) WHEN sel_autoconfig='1' AND autoconfig_out="11" -- Zorro III ethernet autoconfig
     else r_data;
 
+	sel_akiko <= '1' when cpuaddr(31 downto 16)=X"00B8" else '0';
   sel_32 <= '1' when cpu(1)='1' and cpuaddr(31 downto 24)/=X"00" and cpuaddr(31 downto 24)/=X"ff" else '0'; -- Decode 32-bit space, but exclude interrupt vectors
   sel_autoconfig  <= '1' WHEN fastramcfg(2 downto 0)/="000" AND cpuaddr(23 downto 19)="11101" AND autoconfig_out/="00" ELSE '0'; --$E80000 - $EFFFFF
   sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 24)=z3ram_base) AND z3ram_ena='1' ELSE '0';
@@ -290,6 +300,37 @@ PROCESS (clk, turbochipram, turbokick) BEGIN
   END IF;
 END PROCESS;
 
+
+myakiko : entity work.akiko
+port map
+(
+	clk => clk,
+	reset_n => reset,
+	addr => cpuaddr(7 downto 0),
+	d => akiko_d,
+	q => akiko_q,
+	wr => akiko_wr,
+	req => akiko_req,
+	ack => akiko_ack
+);
+
+akiko_d <= data_write;
+process(clk,cpuaddr) begin
+	if rising_edge(clk) then
+		if sel_akiko='0' then
+			akiko_req<='0';
+			akiko_wr<='0';
+		end if;
+		if slower(0)='0' and sel_akiko='1' and state(1)='1' then
+			akiko_req<=not clkena;
+			if state(0)='1' then -- write cycle
+				akiko_wr<='1';
+			end if;	
+		end if;
+	end if;
+end process;
+			
+
 PROCESS (clk, fastramcfg, cpuaddr, cpu) BEGIN
   -- Zorro II RAM (Up to 8 meg at 0x200000)
   autoconfig_data <= "1111";
@@ -412,7 +453,10 @@ PROCESS (clk) BEGIN
   END IF;
 END PROCESS;
 
-clkena <= '1' WHEN (clkena_in='1' AND enaWRreg='1' AND (state="01" OR (ena7RDreg='1' AND clkena_e='1') OR ramready='1')) ELSE '0';
+clkena <= '1' WHEN (clkena_in='1' AND enaWRreg='1' AND
+						(state="01" OR (ena7RDreg='1' AND clkena_e='1')
+							OR ramready='1' or akiko_ack='1'))
+								ELSE '0';
 
 PROCESS (clk) BEGIN
   IF rising_edge(clk) THEN
@@ -451,7 +495,7 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
         uds_s <= '1';
         lds_s <= '1';
           CASE S_state IS
-            WHEN "00" => IF state/="01" AND sel_ram='0' THEN
+            WHEN "00" => IF state/="01" AND sel_ram='0' and sel_akiko='0' THEN
                      uds_s <= uds_in;
                      lds_s <= lds_in;
                     S_state <= "01";
@@ -493,7 +537,7 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
         CASE S_state IS
           WHEN "00" =>
                  cpuIPL <= IPL;
-                 IF sel_ram='0' THEN
+                 IF sel_ram='0' and sel_akiko='0' THEN
                    IF state/="01" THEN
                     as_e <= '0';
                    END IF;
