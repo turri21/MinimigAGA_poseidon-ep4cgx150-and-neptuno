@@ -321,7 +321,7 @@ process(clk,cpuaddr) begin
 			akiko_req<='0';
 			akiko_wr<='0';
 		end if;
-		if slower(0)='0' and sel_akiko='1' and state(1)='1' then
+		if sel_akiko='1' and state(1)='1' and slower(2)='0' then
 			akiko_req<=not clkena;
 			if state(0)='1' then -- write cycle
 				akiko_wr<='1';

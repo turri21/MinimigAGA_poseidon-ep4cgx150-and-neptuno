@@ -328,9 +328,9 @@ audiosd : COMPONENT hybrid_pwm_sd
 		d_l(15) => not audio_l(15),
 		d_l(14 downto 0) => audio_l(14 downto 0),
 		q_l => sigma_l,
-		d_r(15) => not audio_l(15),
-		d_r(14 downto 0) => audio_l(14 downto 0),
-		q_r => sigma_l
+		d_r(15) => not audio_r(15),
+		d_r(14 downto 0) => audio_r(14 downto 0),
+		q_r => sigma_r
 	);
 
 end rtl;

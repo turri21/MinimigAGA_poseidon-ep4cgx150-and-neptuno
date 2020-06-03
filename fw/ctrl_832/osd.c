@@ -53,6 +53,8 @@ const char *supporters[]=
 	"Bartol Filipovic",
 	"Espen Skog",
 	"Pasi Ylinen",
+	"Andreas Beck",
+	"Dirk Vroomen",
 	"+ all other contributors",
 	0
 }
