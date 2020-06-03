@@ -158,11 +158,6 @@ wire           cs;
 wire [  8-1:0] red;
 wire [  8-1:0] green;
 wire [  8-1:0] blue;
-wire [  6-1:0] mixer_red;
-wire [  6-1:0] mixer_green;
-wire [  6-1:0] mixer_blue;
-wire           mixer_vs;
-wire           mixer_hs;
 reg            cs_reg;
 reg            vs_reg;
 reg            hs_reg;
@@ -293,8 +288,8 @@ TG68K tg68k (
 
 wire [ 16-1:0] hostRD;
 wire [ 16-1:0] hostWR;
-wire [ 24-1:0] hostaddr;
-reg  [ 24-1:0] hostaddr_d;
+wire [ 32-1:0] hostaddr;
+reg  [ 32-1:0] hostaddr_d;
 wire [  3-1:0] hostState;
 wire           hostL;
 wire           hostU;
@@ -327,7 +322,7 @@ sdram_ctrl sdram (
   .reset_in     (sdctl_rst        ),
   
   .hostWR       (hostWR           ),
-  .hostAddr     (hostaddr_d       ),
+  .hostAddr     (hostaddr_d[23:0] ),
 //  .hostState    (hostState        ),
   .hostwe       (hostwe           ),
   .hostce       (hostce           ),
@@ -503,8 +498,6 @@ EightThirtyTwo_Bridge #( debug ? "true" : "false") hostcpu
 //	.busstate(hostState[1:0])
 	);
 
-wire enaWRreg;
-assign enaWRreg=1'b1;
 
 cfide #(.spimux(spimux ? "true" : "false")) mycfide
 ( 
@@ -516,14 +509,12 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.memdata_in(hostRD),
 		.addr(hostaddr),
 		.cpudata_in(hostWR),
-//		.state(hostState[1:0]),
 		.lds(hostL),
 		.uds(hostU),
 		.cpu_req(hostreq),
 		.cpu_wr(hostwe),
 		.cpu_ack(hostack),
 		.cpudata(hostdata),
-//		.cpuena(hostena),
 
 		.sd_di(SPI_DO),
 		.sd_cs(SPI_CS),
@@ -531,8 +522,6 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.sd_do(SPI_DI),
 		.sd_dimm(SD_MISO),
 		.sd_ack(SD_ACK),
-
-		.enaWRreg(enaWRreg), // or enaWRreg_d,
 
 		.debugTxD(CTRL_TX),
 		.debugRxD(CTRL_RX),

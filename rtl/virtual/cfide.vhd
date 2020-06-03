@@ -22,8 +22,6 @@
 -- Modifications by Alastair M. Robinson to work with a cheap 
 -- Ebay Cyclone III board.
 
--- FIXME - having removed the enawrreg gate the
--- SPI clock will need to be slowed down
  
 library IEEE;
 use IEEE.std_logic_1164.all;
@@ -39,9 +37,8 @@ entity cfide is
 		n_reset: in std_logic;	
 		cpuena_in: in std_logic;			
 		memdata_in: in std_logic_vector(15 downto 0);		
-		addr: in std_logic_vector(23 downto 0);
+		addr: in std_logic_vector(31 downto 0);
 		cpudata_in: in std_logic_vector(15 downto 0);	
---		state: in std_logic_vector(1 downto 0);
 		cpu_req : in std_logic;
 		cpu_wr : in std_logic;
 		cpu_ack : out std_logic;
@@ -51,13 +48,11 @@ entity cfide is
 			
 		memce: out std_logic;			
 		cpudata: out std_logic_vector(15 downto 0);		
---		cpuena: buffer std_logic;			
 		sd_cs 		: out std_logic_vector(7 downto 0);
 		sd_clk 		: out std_logic;
 		sd_do		: out std_logic;
 		sd_dimm		: in std_logic;		--for sdcard
 		sd_ack : in std_logic; -- indicates that SPI signal has made it to the wire
-		enaWRreg    : in std_logic:='1';
 		debugTxD : out std_logic;
 		debugRxD : in std_logic;
 		menu_button : in std_logic:='1';
@@ -73,7 +68,7 @@ signal shift: std_logic_vector(9 downto 0);
 signal clkgen: std_logic_vector(9 downto 0);
 signal shiftout: std_logic;
 signal txbusy: std_logic;
-signal ld: std_logic;
+signal uart_ld: std_logic;
 signal IO_select : std_logic;
 signal KEY_select: std_logic;
 signal PART_select: std_logic;
@@ -114,7 +109,6 @@ signal enacnt: std_logic_vector(6 downto 0);
 
 signal rs232_select : std_logic;
 signal rs232data : std_logic_vector(15 downto 0);
---signal slower : std_logic_vector(2 downto 0);
 
 signal cpu_req_d : std_logic;
 signal cpu_req_r : std_logic;
@@ -136,7 +130,7 @@ srom: entity work.OSDBoot_832_ROM
 		uds_n	=> uds,			--	: IN STD_LOGIC_VECTOR (1 DOWNTO 0),
 		clk   => sysclk,								--: IN STD_LOGIC ;
 		d	=> cpudata_in,		--	: IN STD_LOGIC_VECTOR (15 DOWNTO 0),
-		we_n	=> not (RAM_write AND enaWRreg),		-- 	: IN STD_LOGIC ,
+		we_n	=> not RAM_write,		-- 	: IN STD_LOGIC ,
 		q		=> rom_data									--: OUT STD_LOGIC_VECTOR (15 DOWNTO 0)
     );
 
@@ -144,12 +138,7 @@ srom: entity work.OSDBoot_832_ROM
 process(sysclk)
 begin
 	if rising_edge(sysclk) then
-		cpu_req_d<=cpu_req;
-		
---		slower<='0'&slower(2 downto 1);
---		if cpuena='1' then
---			slower<="111";
---		end if;	
+		cpu_req_d<=cpu_req;		
 	end if;
 end process;
 
@@ -186,21 +175,14 @@ begin
 end process;
 
 
---cpuena <= '1' WHEN ROM_select='1' OR PART_select='1' OR state="01" ELSE
---		  IOcpuena WHEN IO_select='1' ELSE 
---		  cpuena_in; 
-
-rs232data <= X"FFFF" WHEN txbusy='1' ELSE X"0000";
-
 sd_in(15 downto 8) <= sd_in_shift(15 downto 8) WHEN lds='0' ELSE sd_in_shift(7 downto 0); 
 sd_in(7 downto 0) <= sd_in_shift(7 downto 0);
 
 RAM_write <= '1' when ROM_select='1' AND cpu_wr='1' and cpu_req='1' ELSE '0';
-ROM_select <= '1' when addr(23 downto 13)=X"00"&"000" ELSE '0';
+ROM_select <= '1' when addr(31)='0' and addr(23 downto 13)=X"00"&"000" ELSE '0';
 
 IO_select <= '1' when addr(23 downto 16)=X"DA" else '0';
 rs232_select <= '1' when addr(23 downto 12)=X"DA8" ELSE '0';
---SPI_select <= '1' when addr(23 downto 12)=X"DA4" AND state(1)='1' ELSE '0';
 SPI_select <= '1' when addr(23 downto 12)=X"DA4" AND cpu_req='1' ELSE '0';
 
 KEY_select <= '1' when addr(23 downto 12)=X"DE0" ELSE '0';
@@ -217,18 +199,8 @@ begin
 		
 		mem_ack_d <= cpuena_in;
 		
---		reconfigure<='0';
 		if PART_select='1' and cpu_req_r='1' and cpu_wr='1' then	-- Write to platform registers
 			scandoubler<=cpudata_in(0);
---			case addr(4 downto 1) is
---				when "1010" => -- DEE014
---					fastramsize<=cpudata_in(2 downto 0);
---					turbochipram<=cpudata_in(15);
---				when "1011" => -- DEE016
---					reconfigure<='1';
---				when others =>
---					null;
---			end case;
 		end if;
 	end if;
 end process;
@@ -240,32 +212,30 @@ end process;
 process(sysclk, shift)
 begin
   	IF sysclk'event AND sysclk = '1' THEN
-		IF enaWRreg='1' THEN
-			support_state <= idle;
-			ld <= '0';
-			IOcpuena <= '0';
-			CASE support_state IS
-				WHEN idle => 
-					IF rs232_select='1' AND cpu_req_r='1' and cpu_wr='1' THEN
-						IF txbusy='0' THEN
-							ld <= '1';
-							support_state <= io_aktion;
-							IOcpuena <= '1';
-						END IF;	
-					ELSIF SPI_select='1' THEN		
-						IF SD_busy='0' THEN
-							support_state <= io_aktion;
-							IOcpuena <= '1';
-						END IF;
+		support_state <= idle;
+		uart_ld <= '0';
+		IOcpuena <= '0';
+		CASE support_state IS
+			WHEN idle => 
+				IF rs232_select='1' AND cpu_req_r='1' and cpu_wr='1' THEN
+					IF txbusy='0' THEN
+						uart_ld <= '1';
+						support_state <= io_aktion;
+						IOcpuena <= '1';
+					END IF;	
+				ELSIF SPI_select='1' THEN		
+					IF SD_busy='0' THEN
+						support_state <= io_aktion;
+						IOcpuena <= '1';
 					END IF;
-						
-				WHEN io_aktion => 
-					support_state <= idle;
+				END IF;
 					
-				WHEN OTHERS => 
-					support_state <= idle;
-			END CASE;
-		END IF;	
+			WHEN io_aktion => 
+				support_state <= idle;
+				
+			WHEN OTHERS => 
+				support_state <= idle;
+		END CASE;
 	END IF;	
 end process; 
 
@@ -299,72 +269,42 @@ end process;
 			spi_wait<='0';
 		end if;
 		
-		IF enaWRreg='1' THEN
-			IF SPI_select='1' AND cpu_req_r='1' and cpu_wr='1' AND SD_busy='0' THEN	 --SD write
-				case addr(4 downto 0) is
-					when "10000" => -- DA4010, platform-specific register
-						
-					when "01000" =>
+		IF SPI_select='1' AND cpu_req_r='1' and cpu_wr='1' AND SD_busy='0' THEN	 --SD write
+			case addr(4 downto 0) is
+				when "10000" => -- DA4010, platform-specific register
+					
+				when "01000" =>
 --						IF addr(3)='1' THEN				--DA4008
-						spi_speed <= cpudata_in(7 downto 0);
-					when "00100" =>
+					spi_speed <= cpudata_in(7 downto 0);
+				when "00100" =>
 --						ELSIF addr(2)='1' THEN				--DA4004
-						scs(0) <= not cpudata_in(0);
-						IF cpudata_in(7)='1' THEN
-							scs(7) <= not cpudata_in(0);
-						END IF;
-						IF cpudata_in(6)='1' THEN
-							scs(6) <= not cpudata_in(0);
-						END IF;
-						IF cpudata_in(5)='1' THEN
-							scs(5) <= not cpudata_in(0);
-						END IF;
-						IF cpudata_in(4)='1' THEN
-							scs(4) <= not cpudata_in(0);
-						END IF;
-						IF cpudata_in(3)='1' THEN
-							scs(3) <= not cpudata_in(0);
-						END IF;
-						IF cpudata_in(2)='1' THEN
-							scs(2) <= not cpudata_in(0);
-						END IF;
-						IF cpudata_in(1)='1' THEN
-							scs(1) <= not cpudata_in(0);
-						END IF;
-					when "00000" =>
+					scs(0) <= not cpudata_in(0);
+					IF cpudata_in(7)='1' THEN
+						scs(7) <= not cpudata_in(0);
+					END IF;
+					IF cpudata_in(6)='1' THEN
+						scs(6) <= not cpudata_in(0);
+					END IF;
+					IF cpudata_in(5)='1' THEN
+						scs(5) <= not cpudata_in(0);
+					END IF;
+					IF cpudata_in(4)='1' THEN
+						scs(4) <= not cpudata_in(0);
+					END IF;
+					IF cpudata_in(3)='1' THEN
+						scs(3) <= not cpudata_in(0);
+					END IF;
+					IF cpudata_in(2)='1' THEN
+						scs(2) <= not cpudata_in(0);
+					END IF;
+					IF cpudata_in(1)='1' THEN
+						scs(1) <= not cpudata_in(0);
+					END IF;
+				when "00000" =>
 --						ELSE							--DA4000
-						if scs(1)='1' THEN -- Wait for io component to propagate signals.
-							spi_wait<='1'; -- Only wait if SPI needs to go through the MUX
-							if spimux = true then
-								spi_div(8 downto 1) <= spi_speed+4;
-							else
-								spi_div(8 downto 1) <= spi_speed+2;
-							end if;
-						else
-							spi_div(8 downto 1) <= spi_speed;
-						end if;
-						sd_out <= cpudata_in(15 downto 0);
-						IF scs(6)='1' THEN		-- SPI direkt Mode
-							shiftcnt <= "10111111111111";
-							sd_out <= "1111111111111111";
-						ELSIF uds='0' AND lds='0' THEN
-							shiftcnt <= "10000000001111";
-						ELSE
-							shiftcnt <= "10000000000111";
-							IF lds='0' THEN
-								sd_out(15 downto 8) <= cpudata_in(7 downto 0);
-							END IF;
-						END IF;
-						sck <= '1';
-					when others =>
-						null;
-				end case;
---				END IF;
-			ELSE
-				IF spi_div="0000000000" THEN
 					if scs(1)='1' THEN -- Wait for io component to propagate signals.
 						spi_wait<='1'; -- Only wait if SPI needs to go through the MUX
-						if spimux=true then
+						if spimux = true then
 							spi_div(8 downto 1) <= spi_speed+4;
 						else
 							spi_div(8 downto 1) <= spi_speed+2;
@@ -372,22 +312,50 @@ end process;
 					else
 						spi_div(8 downto 1) <= spi_speed;
 					end if;
-					IF SD_busy='1' THEN
-						IF sck='0' THEN
-							IF shiftcnt(12 downto 0)/="0000000000000" THEN
-								sck <='1';
-							END IF;
-							shiftcnt <= shiftcnt-1;
-							sd_out <= sd_out(14 downto 0)&'1';
-						ELSE	
-							sck <='0';
-							sd_in_shift <= sd_in_shift(14 downto 0)&sd_di_in;
+					sd_out <= cpudata_in(15 downto 0);
+					IF scs(6)='1' THEN		-- SPI direkt Mode
+						shiftcnt <= "10111111111111";
+						sd_out <= "1111111111111111";
+					ELSIF uds='0' AND lds='0' THEN
+						shiftcnt <= "10000000001111";
+					ELSE
+						shiftcnt <= "10000000000111";
+						IF lds='0' THEN
+							sd_out(15 downto 8) <= cpudata_in(7 downto 0);
 						END IF;
 					END IF;
-				ELSif spi_wait='0' then
-					spi_div <= spi_div-1;
+					sck <= '1';
+				when others =>
+					null;
+			end case;
+--				END IF;
+		ELSE
+			IF spi_div="0000000000" THEN
+				if scs(1)='1' THEN -- Wait for io component to propagate signals.
+					spi_wait<='1'; -- Only wait if SPI needs to go through the MUX
+					if spimux=true then
+						spi_div(8 downto 1) <= spi_speed+4;
+					else
+						spi_div(8 downto 1) <= spi_speed+2;
+					end if;
+				else
+					spi_div(8 downto 1) <= spi_speed;
+				end if;
+				IF SD_busy='1' THEN
+					IF sck='0' THEN
+						IF shiftcnt(12 downto 0)/="0000000000000" THEN
+							sck <='1';
+						END IF;
+						shiftcnt <= shiftcnt-1;
+						sd_out <= sd_out(14 downto 0)&'1';
+					ELSE
+						sck <='0';
+						sd_in_shift <= sd_in_shift(14 downto 0)&sd_di_in;
+					END IF;
 				END IF;
-			END IF;		
+			ELSif spi_wait='0' then
+				spi_div <= spi_div-1;
+			END IF;
 		END IF;
 
 		END IF;		
@@ -408,28 +376,17 @@ begin
 	if n_reset='0' then
 		shiftout <= '0';
 		shift <= "0000000000"; 
-	elsif sysclk'event and sysclk = '1' then
-	IF enaWRreg='1' THEN
-		if ld = '1' then
-			IF lds='0'THEN
-				shift <=  '1' & cpudata_in(7 downto 0) & '0';			--STOP,MSB...LSB, START
-			ELSE	
-				shift <=  '1' & cpudata_in(15 downto 8) & '0';			--STOP,MSB...LSB, START
-			END IF;		
+	elsif rising_edge(sysclk) then
+		if uart_ld = '1' then
+			shift <=  '1' & cpudata_in(7 downto 0) & '0';			--STOP,MSB...LSB, START
 		end if;
 		if clkgen/=0 then
 			clkgen <= clkgen-1;
 		else	
 			clkgen <= "1111011001";--985;		--113.5MHz/115200
---			clkgen <= "1110101001";--937;		--108MHz/115200
---			clkgen <= "0011101010";--234;		--27MHz/115200
---			clkgen <= "0011111000";--249-1;		--28,7MHz/115200
---			clkgen <= "0011110101";--246-1;		--28,7MHz/115200
---			clkgen <= "0001111100";--249-1;		--14,3MHz/115200
 			shiftout <= not shift(0) and txbusy;
-		   	shift <=  '0' & shift(9 downto 1);
+			shift <=  '0' & shift(9 downto 1);
 		end if;
-	END IF;		
 	end if;
 end process; 
 
@@ -439,7 +396,7 @@ end process;
 -----------------------------------------------------------------
 process(sysclk)
 begin
-  	IF sysclk'event AND sysclk = '1' THEN
+  	IF rising_edge(sysclk) THEN
 		IF timeprecnt=0 THEN
 			timeprecnt <= X"3808F";
 			timecnt <= timecnt+1;
