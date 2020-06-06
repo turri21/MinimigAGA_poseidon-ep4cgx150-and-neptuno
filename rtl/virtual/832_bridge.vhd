@@ -116,7 +116,7 @@ begin
 						-- Trigger write of either high word, or single word if half or byte cycle.
 
 						if mem_sel(0)='1' or mem_sel(1)='1' then -- High word
-							addr(23 downto 0)<=mem_addr(23 downto 2)&"00";
+							addr(31 downto 0)<=mem_addr(31 downto 2)&"00";
 							data_write(15 downto 0)<=mem_write(31 downto 16);
 							if mem_sel(1)='0' then
 								data_write(7 downto 0)<=mem_write(31 downto 24);
@@ -127,7 +127,7 @@ begin
 							wr<='1';
 							state<=waitwritehigh;
 						else
-							addr(23 downto 0)<=mem_addr(23 downto 2)&"10";
+							addr(31 downto 0)<=mem_addr(31 downto 2)&"10";
 							data_write<=mem_write(15 downto 0);
 							if mem_sel(3)='0' then
 								data_write(7 downto 0)<=mem_write(15 downto 8);
@@ -141,7 +141,7 @@ begin
 					
 					elsif mem_req='1' and mem_wr='0' then
 						read_pending<='0';
-						addr(23 downto 0)<=mem_addr(23 downto 2)&"00";
+						addr(31 downto 0)<=mem_addr(31 downto 2)&"00";
 						req<='1';
 						wr<='0';
 						nUDS<='0';
@@ -155,7 +155,7 @@ begin
 					nUDS<='1';
 					nLDS<='1';
 					mem_read(31 downto 16)<=data_in;
-					addr(23 downto 0)<=mem_addr(23 downto 2)&"10";
+					addr(31 downto 0)<=mem_addr(31 downto 2)&"10";
 					nUDS<='0';
 					nLDS<='0';
 					req<='1';
@@ -182,7 +182,7 @@ begin
 					wr<='0';
 
 					if mem_sel(2)='1' or mem_sel(3)='1' then -- low word
-						addr(23 downto 0)<=mem_addr(23 downto 2)&"10";
+						addr(31 downto 0)<=mem_addr(31 downto 2)&"10";
 						data_write<=mem_write(15 downto 0);
 						if mem_sel(3)='0' then
 							data_write(7 downto 0)<=mem_write(15 downto 8);

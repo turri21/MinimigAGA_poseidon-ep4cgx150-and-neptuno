@@ -18,6 +18,7 @@ module minimig_virtual_top
   input wire            CLK_IN,
   output wire           CLK_114,
   output wire           CLK_28,
+  output wire           PLL_LOCKED,
   input wire            RESET_N,
   
   // Button inputs
@@ -96,7 +97,6 @@ wire           c1;
 wire           c3;
 wire           cck;
 wire [ 10-1:0] eclk;
-wire pll_locked;
 
 // reset
 wire           pll_rst;
@@ -205,7 +205,7 @@ assign SDRAM_BA         = sdram_ba;
 
 // reset
 assign pll_rst          = 1'b0;
-assign sdctl_rst        = pll_locked & RESET_N;
+assign sdctl_rst        = PLL_LOCKED & RESET_N;
 
 // VGA data
 always @ (posedge CLK_28) begin
@@ -238,7 +238,7 @@ amiga_clk amiga_clk (
   .c3           (c3               ), // clk28m clock domain signal synchronous with clk signal delayed by 90 degrees
   .cck          (cck              ), // colour clock output (3.54 MHz)
   .eclk         (eclk             ), // 0.709379 MHz clock enable output (clk domain pulse)
-  .locked       (pll_locked       )  // pll locked output
+  .locked       (PLL_LOCKED       )  // pll locked output
 );
 
 

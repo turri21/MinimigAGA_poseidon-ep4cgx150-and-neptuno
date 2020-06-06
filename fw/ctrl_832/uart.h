@@ -3,7 +3,7 @@
 
 /* Hardware registers for a supporting UART to the ZPUFlex project. */
 
-#define UARTBASE 0xda8000
+#define UARTBASE 0xfffffff0
 #define HW_UART(x) *(volatile unsigned char *)(UARTBASE+x)
 
 #define REG_UART 0x0

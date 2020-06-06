@@ -17,36 +17,42 @@
 #define DISKLED_ON // *AT91C_PIOA_SODR = DISKLED;
 #define DISKLED_OFF // *AT91C_PIOA_CODR = DISKLED;
 
-#define EnableCard()  *(volatile unsigned short *)0xda4004=0x02
-#define DisableCard() *(volatile unsigned short *)0xda4004=0x03
-#define EnableFpga()  *(volatile unsigned short *)0xda4004=0x10
-#define DisableFpga() *(volatile unsigned short *)0xda4004=0x11
-#define EnableOsd()   *(volatile unsigned short *)0xda4004=0x20
-#define DisableOsd()  *(volatile unsigned short *)0xda4004=0x21
-#define EnableDMode() *(volatile unsigned short *)0xda4004=0x40
-#define DisableDMode() *(volatile unsigned short *)0xda4004=0x41
+#define HW_SPI(x) (*(volatile unsigned char *)(0xffffffe0+x))
+#define HW_SPI_CS 5
+#define HW_SPI_DATA 1
+#define HW_SPI_SPEED 9
 
-#define SPI_slow()  *(volatile unsigned short *)0xda4008=0xef
-#define SPI_fast()  *(volatile unsigned short *)0xda4008=0x1
+#define EnableCard()  HW_SPI(HW_SPI_CS)=0x02
+#define DisableCard() HW_SPI(HW_SPI_CS)=0x03
+#define EnableFpga()  HW_SPI(HW_SPI_CS)=0x10
+#define DisableFpga() HW_SPI(HW_SPI_CS)=0x11
+#define EnableOsd()   HW_SPI(HW_SPI_CS)=0x20
+#define DisableOsd()  HW_SPI(HW_SPI_CS)=0x21
+#define EnableDMode() HW_SPI(HW_SPI_CS)=0x40
+#define DisableDMode() HW_SPI(HW_SPI_CS)=0x41
+
+#define SPI_slow()  HW_SPI(HW_SPI_SPEED)=0xef
+#define SPI_fast()  HW_SPI(HW_SPI_SPEED)=0x1
 
 // Yuk.  The following monstrosity does a dummy read from the timer register, writes, then reads from
 // the SPI register.  Doing it this way works around a timing issue with ADF writing when GCC optimisation is turned on.
 //#define SPI(x) (*(volatile unsigned short *)0xDEE010,*(volatile unsigned char *)0xda4000=x,*(volatile unsigned char *)0xda4000)
 
-#define SPI(x) (*(volatile unsigned char * volatile)0xda4001=x,*(volatile unsigned char * volatile)0xda4001)
-#define SPIW(x) (*(volatile unsigned short * volatile)0xda4000=x,*(volatile unsigned short * volatile)0xda4000)
+#define SPI(x) (HW_SPI(HW_SPI_DATA)=x,HW_SPI(HW_SPI_DATA))
+#define RDSPI  HW_SPI(HW_SPI_DATA)
 
-#define SPIN {char v=*(volatile unsigned short * volatile)0xDEE010;}	// Waste a few cycles to let the FPGA catch up
+#define RS232(x) (*(volatile unsigned char *)0xfffffff1)=x
+
+#define TIMER (*(volatile unsigned short *)0xffffffd0)
+#define SPIN {int v=TIMER;}	// Waste a few cycles to let the FPGA catch up
 
 // A 16-bit register for platform-specific config.
-
-#define PLATFORM (*(volatile unsigned short *)0xDEE014)
-
 // On read:
-//   Bits 0 -> menu button
+//   Bit 0 -> menu button
 //   Bit 1 -> 32meg supported
 //   Bit 8 -> Reconfig supportred 
 
+#define PLATFORM (*(volatile unsigned short *)0xffffffc0)
 #define PLATFORM_MENUBUTTON 0
 #define PLATFORM_32MEG 1
 #define PLATFORM_RECONFIG 8
@@ -60,11 +66,6 @@
 
 // Write to this register to reconfigure the FPGA on devices which support such operations.
 #define RECONFIGURE (*(volatile unsigned short *)0xDEE016)
-
-	
-#define RDSPI  (volatile)*(volatile unsigned char *)0xda4001
-#define RS232  *(volatile unsigned char *)0xda8001=
- 
 
 #define RAMFUNC  // Used by ARM
 

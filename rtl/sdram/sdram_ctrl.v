@@ -244,49 +244,35 @@ assign reset_out = init_done;
 assign hostena = zce & (zena | zcachehit);
 
 // map host processor's address space to 0x580000
-assign zmAddr = {2'b00, ~hostAddr[22], hostAddr[21], ~hostAddr[20], ~hostAddr[19], hostAddr[18:0]};
+assign zmAddr = {2'b00, ~hostAddr[22], hostAddr[21], ~hostAddr[20], ~hostAddr[19],
+						hostAddr[18:3], hostwe ? hostAddr[2:0] : 3'b000};
 // map host processor's address space to 0x400000
 // assign zmAddr = {2'b00, ~hostAddr[22], hostAddr[21:0]};
 
 always @ (*) begin
   zequal = (zmAddr[23:3] == zcache_addr[23:3]) ? 1'b1 : 1'b0;
   zcachehit = 1'b0;
-  if(!hostwe && zequal && zvalid[0]) begin
-    case ({hostAddr[2:1], zcache_addr[2:1]})
-      4'b0000,
-      4'b0101,
-      4'b1010,
-      4'b1111 : begin
+  if(!hostwe && zequal) begin
+    case ({hostAddr[2:1]})
+      2'b00 : begin
         zcachehit = zvalid[0];
         hostRD    = zcache[63:48];
       end
-      4'b0100,
-      4'b1001,
-      4'b1110,
-      4'b0011 : begin
+      2'b01 : begin
         zcachehit = zvalid[1];
         hostRD    = zcache[47:32];
       end
-      4'b1000,
-      4'b1101,
-      4'b0010,
-      4'b0111 : begin
+      2'b10 : begin
         zcachehit = zvalid[2];
         hostRD    = zcache[31:16];
       end
-      4'b1100,
-      4'b0001,
-      4'b0110,
-      4'b1011 : begin
+      2'b11 : begin
         zcachehit = zvalid[3];
         hostRD    = zcache[15:0];
       end
       default : begin
       end
     endcase
-  end
-  else begin
-    hostRD = hostRDd;
   end
 end
 
@@ -303,14 +289,14 @@ always @ (posedge sysclk) begin
 //    if(enaWRreg) begin
 //      zena            <= #1 1'b0;
 //    end
-    if(sdram_state == ph9 && slot1_type == HOST) begin
-      hostRDd         <= #1 sdata_reg;
-    end
+//    if(sdram_state == ph9 && slot1_type == HOST) begin
+//      hostRDd         <= #1 sdata_reg;
+//    end
 
-    if(sdram_state == ph11 && slot1_type == HOST) begin
+    if(hostwe && sdram_state == ph2 && slot1_type == HOST) begin
       zena            <= #1 1'b1;
     end
-	 
+
     if(zequal && hostwe && hostce) begin
       zvalid          <= #1 4'b0000;
     end
@@ -330,22 +316,25 @@ always @ (posedge sysclk) begin
     ph9 : begin
       if(zcache_fill) begin
         zcache[63:48] <= #1 sdata_reg;
+		  zvalid[0]<=1'b1;
       end
     end
     ph10 : begin
       if(zcache_fill) begin
         zcache[47:32] <= #1 sdata_reg;
+		  zvalid[1]<=1'b1;
       end
     end
     ph11 : begin
       if(zcache_fill) begin
         zcache[31:16] <= #1 sdata_reg;
+		  zvalid[2]<=1'b1;
       end
     end
     ph12 : begin
       if(zcache_fill) begin
         zcache[15:0]  <= #1 sdata_reg;
-        zvalid        <= #1 4'b1111;
+		  zvalid[3]<=1'b1;
       end
       zcache_fill     <= #1 1'b0;
     end
