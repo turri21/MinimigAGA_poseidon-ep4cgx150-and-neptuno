@@ -134,7 +134,7 @@ reg  [16-1:0] datawr;
 reg  [25-1:0] casaddr;
 reg           sdwrite;
 reg  [16-1:0] sdata_reg;
-wire [25-1:0] zmAddr;
+reg  [25-1:0] zmAddr;
 reg           zce;
 reg           zena;
 reg  [64-1:0] zcache;
@@ -244,29 +244,40 @@ assign reset_out = init_done;
 assign hostena = zce & (zena | zcachehit);
 
 // map host processor's address space to 0x580000
-assign zmAddr = {2'b00, ~hostAddr[22], hostAddr[21], ~hostAddr[20], ~hostAddr[19],
-						hostAddr[18:3], hostwe ? hostAddr[2:0] : 3'b000};
-// map host processor's address space to 0x400000
-// assign zmAddr = {2'b00, ~hostAddr[22], hostAddr[21:0]};
+always @ (posedge sysclk) begin
+	zequal <= (zmAddr[23:3] == zcache_addr[23:3]) ? 1'b1 : 1'b0;
+end
 
 always @ (*) begin
-  zequal = (zmAddr[23:3] == zcache_addr[23:3]) ? 1'b1 : 1'b0;
-  zcachehit = 1'b0;
-  if(!hostwe && zequal) begin
-    case ({hostAddr[2:1]})
-      2'b00 : begin
+	zmAddr = {2'b00, ~hostAddr[22], hostAddr[21], ~hostAddr[20], ~hostAddr[19], hostAddr[18:0]};
+	zcachehit = 1'b0;
+  if(!hostwe && zequal && zvalid[0]) begin
+    case ({hostAddr[2:1], zcache_addr[2:1]})
+      4'b0000,
+      4'b0101,
+      4'b1010,
+      4'b1111 : begin
         zcachehit = zvalid[0];
         hostRD    = zcache[63:48];
       end
-      2'b01 : begin
+      4'b0100,
+      4'b1001,
+      4'b1110,
+      4'b0011 : begin
         zcachehit = zvalid[1];
         hostRD    = zcache[47:32];
       end
-      2'b10 : begin
+      4'b1000,
+      4'b1101,
+      4'b0010,
+      4'b0111 : begin
         zcachehit = zvalid[2];
         hostRD    = zcache[31:16];
       end
-      2'b11 : begin
+      4'b1100,
+      4'b0001,
+      4'b0110,
+      4'b1011 : begin
         zcachehit = zvalid[3];
         hostRD    = zcache[15:0];
       end
@@ -285,18 +296,11 @@ always @ (posedge sysclk) begin
     zvalid            <= #1 4'b0000;
   end else begin
     zce <= #1 hostce;
+
+//    if(hostwe && sdram_state == ph7 && slot1_type == HOST) begin
+//      zena            <= #1 1'b1;
+//    end
 	 
-//    if(enaWRreg) begin
-//      zena            <= #1 1'b0;
-//    end
-//    if(sdram_state == ph9 && slot1_type == HOST) begin
-//      hostRDd         <= #1 sdata_reg;
-//    end
-
-    if(hostwe && sdram_state == ph2 && slot1_type == HOST) begin
-      zena            <= #1 1'b1;
-    end
-
     if(zequal && hostwe && hostce) begin
       zvalid          <= #1 4'b0000;
     end
@@ -306,12 +310,17 @@ always @ (posedge sysclk) begin
 	 end
 
     case(sdram_state)
-    ph7 : begin
-      if(!hostwe && slot1_type == HOST) begin // only instruction cache, reads only
-        zcache_addr   <= #1 casaddr[23:0];
-        zcache_fill   <= #1 1'b1;
-        zvalid        <= #1 4'b0000;
-      end
+    ph2 : begin
+		if(slot1_type==HOST) begin
+			if(hostwe)
+				zena <= #1 1'b1;
+			else begin
+//      if(!hostwe && slot1_type == HOST) begin // only instruction cache, reads only
+				zcache_addr   <= #1 casaddr[23:0];
+				zcache_fill   <= #1 1'b1;
+				zvalid        <= #1 4'b0000;
+			end
+		end
     end
     ph9 : begin
       if(zcache_fill) begin
@@ -335,6 +344,7 @@ always @ (posedge sysclk) begin
       if(zcache_fill) begin
         zcache[15:0]  <= #1 sdata_reg;
 		  zvalid[3]<=1'b1;
+//        zvalid        <= #1 4'b1111;
       end
       zcache_fill     <= #1 1'b0;
     end
@@ -737,7 +747,7 @@ always @ (posedge sysclk) begin
         end
         // the Amiga CPU gets next bite of the cherry, unless the OSD CPU has been cycle-starved
         // request from write buffer
-        else if(writebuffer_req && (|hostslot_cnt || (!hostce || hostena)) && (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23])) begin
+        else if(writebuffer_req && (|hostslot_cnt || (!zce || hostena)) && (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23])) begin
           // We only yield to the OSD CPU if it's both cycle-starved and ready to go.
           slot1_type          <= #1 CPU_WRITECACHE;
           sdaddr              <= #1 writebufferAddr[22:10];
@@ -753,7 +763,7 @@ always @ (posedge sysclk) begin
           writebuffer_hold    <= #1 1'b1; // let the write buffer know we're about to write
         end
         // request from read cache
-        else if(cache_req && (|hostslot_cnt || (!hostce || hostena)) && (slot2_type == IDLE || slot2_bank != cpuAddr_mangled[24:23])) begin
+        else if(cache_req && (|hostslot_cnt || (!zce || hostena)) && (slot2_type == IDLE || slot2_bank != cpuAddr_mangled[24:23])) begin
           // we only yield to the OSD CPU if it's both cycle-starved and ready to go
           slot1_type          <= #1 CPU_READCACHE;
           sdaddr              <= #1 cpuAddr_mangled[22:10];
@@ -766,7 +776,7 @@ always @ (posedge sysclk) begin
           cas_sd_we           <= #1 1'b1;
           cas_sd_cas          <= #1 1'b0;
         end
-        else if(hostce && !zcachehit) begin
+        else if(zce && !zcachehit) begin
           hostslot_cnt        <= #1 8'b00001111;
           slot1_type          <= #1 HOST;
           sdaddr              <= #1 zmAddr[22:10];
@@ -779,7 +789,7 @@ always @ (posedge sysclk) begin
           sd_ras              <= #1 1'b0;
           casaddr             <= #1 zmAddr;
           cas_sd_cas          <= #1 1'b0;
-          if(hostce && hostwe) begin
+          if(zce && hostwe) begin
             cas_sd_we         <= #1 1'b0;
           end
         end
