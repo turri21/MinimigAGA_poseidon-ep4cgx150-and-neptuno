@@ -20,8 +20,9 @@ configTYPE config;
 fileTYPE file;
 extern char s[40];
 char configfilename[12];
-char DebugMode=0;
+char DebugMode;
 
+int CheckSum();
 
 int minimig_v1()
 {
@@ -266,9 +267,10 @@ unsigned char ConfigurationExists(char *filename)
 }
 
 
+static const char config_id[] = "MNMGCFGA"; /* New signature for AGA core */
+
 unsigned char LoadConfiguration(char *filename)
 {
-    static const char config_id[] = "MNMGCFGA"; /* New signature for AGA core */
 	int updatekickstart=0;
 	int result=0;
     unsigned int key;
@@ -342,10 +344,13 @@ void ApplyConfiguration(char reloadkickstart)
 {
 	int rstval=0;
 
+	printf("c1: %x\n",CheckSum());
+
 	// Whether or not we uploaded a kickstart image we now need to set various parameters from the config.
 
   	if(OpenHardfile(0))
 	{
+		printf("c2: %x\n",CheckSum());
 		switch(hdf[0].type) // Customise message for SD card access
 		{
 			case (HDF_FILE | HDF_SYNTHRDB):
@@ -368,6 +373,7 @@ void ApplyConfiguration(char reloadkickstart)
         BootPrint(s);
         sprintf(s, "Offset: %ld", hdf[0].offset);
 		BootPrint(s);
+		printf("c3: %x\n",CheckSum());
 	}
    	if(OpenHardfile(1))
 	{
@@ -394,6 +400,7 @@ void ApplyConfiguration(char reloadkickstart)
         sprintf(s, "Offset: %ld", hdf[1].offset);
         BootPrint(s);
 	}
+	printf("c4: %x\n",CheckSum());
 
     ConfigIDE(config.enable_ide, config.hardfile[0].present && config.hardfile[0].enabled,
 		config.hardfile[1].present && config.hardfile[1].enabled);
@@ -437,6 +444,8 @@ void ApplyConfiguration(char reloadkickstart)
     ConfigFloppy(config.floppy.drives, config.floppy.speed);
     ConfigVideo(config.filter.hires, config.filter.lores, config.scanlines);
     ConfigMisc(config.misc);
+
+	printf("c5: %x\n",CheckSum());
 
     if(reloadkickstart) {
 		WaitTimer(1000);

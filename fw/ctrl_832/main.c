@@ -62,6 +62,20 @@ extern adfTYPE df[4];
 
 char s[40];
 
+extern int _bss_start__;
+int CheckSum()
+{
+	int *end=&_bss_start__;
+	int size=(int)end-0x2000;
+	int *ptr=0x2000;
+	int sum=0;
+	while(ptr<end)
+	{
+		sum+=*ptr++;
+	}
+	return(sum);
+}
+
 #if 0
 void FatalError(unsigned long error)
 {
@@ -114,18 +128,26 @@ void ColdBoot()
 
     if (MMC_Init())
 	{
+		printf("1 Firmware checksum: %x\n",CheckSum());
+
 	    if (FindDrive())
 		{
 			int key;
 			int override=0;
 		    ChangeDirectory(DIRECTORY_ROOT);
 
+			printf("2 Firmware checksum: %x\n",CheckSum());
+
 			config.kickstart.name[0]=0;
 			SetConfigurationFilename(0); // Use default config
 		    LoadConfiguration(0);	// Use slot-based config filename
 			ApplyConfiguration(0);  // Setup screenmodes, etc before loading KickStart.
 
+			printf("3 Firmware checksum: %x\n",CheckSum());
+
 			fpga_init();	// Display splashscreen
+
+			printf("4 Firmware checksum: %x\n",CheckSum());
 
 			key = OsdGetCtrl();
 			sprintf(s,"Got key: %x\n",key);
@@ -164,6 +186,9 @@ void ColdBoot()
 
 			BootPrintEx("Loading kickstart ROM...");
 			ApplyConfiguration(1);
+
+			printf("5 Firmware checksum: %x\n",CheckSum());
+
 			OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
 		}
 	}
@@ -181,6 +206,8 @@ __geta4 int main(void)
 	debugmsg[0]=0;
 	debugmsg2[0]=0;
 
+	printf("Firmware checksum: %x\n",CheckSum());
+
     DISKLED_ON;
 
 	ColdBoot();
@@ -188,6 +215,8 @@ __geta4 int main(void)
     sprintf(s, "Firmware %s **\n", version + 5);
 	printf(s);
     BootPrintEx(s);
+
+	printf("Firmware checksum: %x\n",CheckSum());
 
     while (1)
     {

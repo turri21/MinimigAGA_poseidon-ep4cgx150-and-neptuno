@@ -8,6 +8,7 @@
 #include "boot.h"
 #include "hardware.h"
 #include "osd.h"
+#include "fpga.h"
 //#include "spi.h"
 #include "fat.h"
 #include "rafile.h"
@@ -34,13 +35,13 @@ static void mem_write16(unsigned short x) {
 }
 
 //// boot cursor positions ////
-unsigned short bcurx=0;
-unsigned short bcury=96;
+//unsigned short bcurx=0;
+//unsigned short bcury=96;
 
-static int bootscreen_adr = 0x80000 + /*120*/112*640/8;
+static unsigned char *bootscreen_adr; // = 0x80000 + /*120*/112*640/8;
 
 void BootHome() {
-  bootscreen_adr = 0x80000 + /*120*/112*640/8;
+  bootscreen_adr = (unsigned char *)((0x80000 + 112*640/8)^0xd80000);
 }
 
 //// boot font ////
@@ -155,8 +156,6 @@ void BootEnableMem()
   SPI(OSD_CMD_RST);
   SPI(SPI_CPU_HLT | SPI_RST_CPU);
   DisableOsd();
-  //SPIN; SPIN; SPIN; SPIN;
-  //while ((read32(REG_SYS_STAT_ADR) & 0x2));
 }
 
 //// BootClearScreen() ////
@@ -166,7 +165,6 @@ void BootClearScreen(int adr, int size)
   mem_upload_init(adr);
   for (i=0; i<size; i++) {
     mem_write16(0x0000);
-    //mem_write16(i);
   }
   mem_upload_fini();
 }
@@ -175,35 +173,37 @@ void BootClearScreen(int adr, int size)
 //// BootUploadLogo() ////
 void BootUploadLogo()
 {
-  RAFile file;
-  int x,y;
-  int i=0;
-  int adr;
+	RAFile file;
+	int x,y;
+	int i=0;
+	unsigned char *adr;
 
-  if (RAOpen(&file, LOGO_FILE)) {
-    RARead(&file, sector_buffer, 512);
-    mem_upload_init(SCREEN_BPL1+LOGO_OFFSET);
-    adr = SCREEN_BPL1+LOGO_OFFSET;
-    for (y=0; y<LOGO_HEIGHT; y++) {
-      for (x=0; x<LOGO_WIDTH/16; x++) {
-        if (i == 512) {
-          mem_upload_fini();
-          RARead(&file, sector_buffer, 512);
-          mem_upload_init(adr);
-          i = 0;
-        }
-        SPI(sector_buffer[i++]);
-        SPI(sector_buffer[i++]);
-        SPIN; SPIN; SPIN; SPIN;
-        //for (tmp=0; tmp<0x80000; tmp++);
-        //printf("i=%03d  x=%03d  y=%03d  dat[0]=0x%08x  dat[1]=0x%08x\r", i, x, y, sector_buffer[i], sector_buffer[i+1]);
-        adr += 2;
-      }
-      mem_upload_fini();
-      mem_upload_init(SCREEN_BPL1+LOGO_OFFSET+(y+1)*(SCREEN_WIDTH/8));
-      adr = SCREEN_BPL1+LOGO_OFFSET+(y+1)*(SCREEN_WIDTH/8);
-    }
-    mem_upload_fini();
+	if (RAOpen(&file, LOGO_FILE)) {
+		RARead(&file, sector_buffer, 512);
+		for (y=0; y<LOGO_HEIGHT; y++) {
+			adr = (unsigned char *)((SCREEN_BPL1+LOGO_OFFSET+y*(SCREEN_WIDTH/8))^0xd80000);
+			for (x=0; x<LOGO_WIDTH/16; x++) {
+				if (i == 512) {
+					RARead(&file, sector_buffer, 512);
+					i = 0;
+				}
+				*adr++=sector_buffer[i++];
+				*adr++=sector_buffer[i++];
+			}
+		}
+		for (y=0; y<LOGO_HEIGHT; y++) {
+			adr = (unsigned char *)((SCREEN_BPL2+LOGO_OFFSET+y*(SCREEN_WIDTH/8))^0xd80000);
+			for (x=0; x<LOGO_WIDTH/16; x++) {
+				if (i == 512) {
+					RARead(&file, sector_buffer, 512);
+					i = 0;
+				}
+				*adr++=sector_buffer[i++];
+				*adr++=sector_buffer[i++];
+			}
+		}
+	}
+#if 0
     mem_upload_init(SCREEN_BPL2+LOGO_OFFSET);
     adr = SCREEN_BPL2+LOGO_OFFSET;
     for (y=0; y<LOGO_HEIGHT; y++) {
@@ -225,6 +225,7 @@ void BootUploadLogo()
     }
     mem_upload_fini();
   }
+#endif
   ClearError(ERROR_FILESYSTEM);
 }
 
@@ -232,69 +233,58 @@ void BootUploadLogo()
 //// BootUploadBall() ////
 void BootUploadBall()
 {
-  RAFile file;
-  int x;
-  int i=0;
-  int adr;
+	RAFile file;
+	int x;
+	int i=0;
+	unsigned char *adr;
 
-  if (RAOpen(&file, BALL_FILE)) {
-    RARead(&file, sector_buffer, 512);
-    mem_upload_init(BALL_ADDRESS);
-    adr = BALL_ADDRESS;
-    for (x=0; x<BALL_SIZE/2; x++) {
-      if (i == 512) {
-        mem_upload_fini();
-        RARead(&file, sector_buffer, 512);
-        mem_upload_init(adr);
-        i = 0;
-      }
-      SPI(sector_buffer[i++]);
-      SPI(sector_buffer[i++]);
-      SPIN; SPIN; SPIN; SPIN;
-      adr += 2;
-    }
-    mem_upload_fini();
-  }
-  ClearError(ERROR_FILESYSTEM);
+	if (RAOpen(&file, BALL_FILE)) {
+		adr = (unsigned char *)(BALL_ADDRESS ^ 0xd80000);
+		RARead(&file, adr, BALL_SIZE);
+	}
+	ClearError(ERROR_FILESYSTEM);
 }
 
 
 //// BootUploadCopper() ////
 void BootUploadCopper()
 {
-  RAFile file;
-  int x;
-  int i=0;
-  int adr;
-
-  if (RAOpen(&file, COPPER_FILE)) {
-    RARead(&file, sector_buffer, 512);
-    mem_upload_init(COPPER_ADDRESS);
-    adr = COPPER_ADDRESS;
-    for (x=0; x<COPPER_SIZE/2; x++) {
-      if (i == 512) {
-        mem_upload_fini();
-        RARead(&file, sector_buffer, 512);
-        mem_upload_init(adr);
-        i = 0;
-      }
-      SPI(sector_buffer[i++]);
-      SPI(sector_buffer[i++]);
-      SPIN; SPIN; SPIN; SPIN;
-      adr += 2;
-    }
-    mem_upload_fini();
-  } else {
-    mem_upload_init(COPPER_ADDRESS);
-    mem_write16(0x00e0); mem_write16(0x0008);
-    mem_write16(0x00e2); mem_write16(0x0000);
-    mem_write16(0x00e4); mem_write16(0x0008);
-    mem_write16(0x00e6); mem_write16(0x5000);
-    mem_write16(0x0100); mem_write16(0xa200);
-    mem_write16(0xffff); mem_write16(0xfffe);
-    mem_upload_fini();
-  }
-  ClearError(ERROR_FILESYSTEM);
+	RAFile file;
+	int x;
+	int i=0;
+	unsigned char *adr;
+//	return;
+	if (RAOpen(&file, COPPER_FILE)) {
+//		RARead(&file, sector_buffer, 512);
+//		mem_upload_init(COPPER_ADDRESS);
+		adr = (unsigned char *)(COPPER_ADDRESS ^ 0xd80000);
+		RARead(&file, adr, COPPER_SIZE);
+//		for (x=0; x<COPPER_SIZE/2; x++) {
+//			if (i == 512) {
+//				mem_upload_fini();
+//				RARead(&file, sector_buffer, 512);
+//				mem_upload_init(adr);
+//				i = 0;
+//			}
+//			*adr++=sector_buffer[i++];
+//			*adr++=sector_buffer[i++];
+//			SPI(sector_buffer[i++]);
+//			SPI(sector_buffer[i++]);
+//			SPIN; SPIN; SPIN; SPIN;
+//			adr += 2;
+//		}
+//		mem_upload_fini();
+	} else {
+		mem_upload_init(COPPER_ADDRESS);
+		mem_write16(0x00e0); mem_write16(0x0008);
+		mem_write16(0x00e2); mem_write16(0x0000);
+		mem_write16(0x00e4); mem_write16(0x0008);
+		mem_write16(0x00e6); mem_write16(0x5000);
+		mem_write16(0x0100); mem_write16(0xa200);
+		mem_write16(0xffff); mem_write16(0xfffe);
+		mem_upload_fini();
+	}
+	ClearError(ERROR_FILESYSTEM);
 }
 
 
@@ -420,25 +410,26 @@ void BootPrintEx(char * str)
   char buf[2];
   unsigned char i,j;
   unsigned char len;
-  
+  unsigned char *ptr;
+  if(!bootscreen_adr)
+    BootHome();
+
   printf(str);
   printf("\n");
   
   len = strlen(str);
   len = (len>80) ? 80 : len;
   
-  for(j=0; j<8; j++) {
-    mem_upload_init(bootscreen_adr);
-    for(i=0; i<len; i+=2) {
-      SPI(boot_font[str[i]-32][j]);
-      if (i==(len-1))
-	SPI(boot_font[0][j]);
-      else
-	SPI(boot_font[str[i+1]-32][j]);
-      SPIN; SPIN; SPIN; SPIN;
-    }
-    mem_upload_fini();
-    bootscreen_adr += 640/8;
-  }
+	for(j=0; j<8; j++) {
+		ptr=bootscreen_adr;
+		for(i=0; i<len; i+=2) {
+			*ptr++=boot_font[str[i]-32][j];
+			if (i==(len-1))
+				*ptr++=boot_font[0][j];
+			else
+				*ptr++=boot_font[str[i+1]-32][j];
+		}
+		bootscreen_adr += 640/8;
+	}
 }
 

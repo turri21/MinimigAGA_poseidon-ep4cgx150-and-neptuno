@@ -57,7 +57,7 @@ unsigned short entries_per_cluster;     // number of directory entries per clust
 
 // internal global variables
 unsigned char fattype;              	// volume format 
-unsigned char fat32 = 0;                // volume format is FAT32
+unsigned char fat32;                // volume format is FAT32
 unsigned long boot_sector;              // partition boot sector
 unsigned long fat_start;                // start LBA of first FAT table
 unsigned long data_start;               // start LBA of data field
@@ -81,10 +81,10 @@ unsigned long buffered_fat_index;       // index of buffered FAT sector
 char DirEntryLFN[MAXDIRENTRIES][261];
 DIRENTRY DirEntry[MAXDIRENTRIES];
 unsigned char sort_table[MAXDIRENTRIES];
-unsigned char nDirEntries = 0;          // entries in DirEntry table
-unsigned char iSelectedEntry = 0;       // selected entry index
-unsigned long iCurrentDirectory = 0;    // cluster number of current directory, 0 for root
-unsigned long iPreviousDirectory = 0;   // cluster number of previous directory
+unsigned char nDirEntries;          // entries in DirEntry table
+unsigned char iSelectedEntry;       // selected entry index
+unsigned long iCurrentDirectory;    // cluster number of current directory, 0 for root
+unsigned long iPreviousDirectory;   // cluster number of previous directory
 
 // temporary storage buffers
 char t_DirEntryLFN[MAXDIRENTRIES][261];

@@ -42,6 +42,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 extern fileTYPE file;
 extern char s[40];
 
+int CheckSum();
+
 char BootPrint(const char *text);
 
 #if 0
@@ -159,17 +161,17 @@ void SendFileEncrypted(RAFile *file,unsigned char *key,int keysize)
 char kick1xfoundstr[] = "Kickstart v1.x found\n";
 const char applymemdetectionpatchstr[] = "Applying Kickstart 1.x memory detection patch\n";
 
-const char *kickfoundstr = NULL, *applypatchstr = NULL;
+const char *kickfoundstr, *applypatchstr;
 
-void PatchKick1xMemoryDetection() {
+void PatchKick1xMemoryDetection(unsigned char *buf) {
   int applypatch = 0;
 
-  if (!strncmp(sector_buffer + 0x18, "exec 33.192 (8 Oct 1986)", 24)) {
+  if (!strncmp(buf + 0x18, "exec 33.192 (8 Oct 1986)", 24)) {
     kick1xfoundstr[13] = '2';
     kickfoundstr = kick1xfoundstr;
     goto applypatch;
   }
-  if (!strncmp(sector_buffer + 0x18, "exec 34.2 (28 Oct 1987)", 23)) {
+  if (!strncmp(buf + 0x18, "exec 34.2 (28 Oct 1987)", 23)) {
     kick1xfoundstr[13] = '3';
     kickfoundstr = kick1xfoundstr;
     goto applypatch;
@@ -178,20 +180,22 @@ void PatchKick1xMemoryDetection() {
   goto out;
 
 applypatch:
-  if ((sector_buffer[0x154] == 0x66) && (sector_buffer[0x155] == 0x78)) {
+  if ((buf[0x154] == 0x66) && (buf[0x155] == 0x78)) {
     applypatchstr = applymemdetectionpatchstr;
-    sector_buffer[0x154] = 0x60;
+    buf[0x154] = 0x60;
   }
 
 out:
   return;
 }
 
+
 // SendFileV2 (for minimig_v2)
 void SendFileV2(RAFile* file, unsigned char* key, int keysize, int address, int size)
 {
   int i,j;
   unsigned int keyidx=0;
+  printf("Pre-send: %x\n",CheckSum());
   printf("File size: %dkB\r", size>>1);
   printf("[");
   if (keysize) {
@@ -199,12 +203,13 @@ void SendFileV2(RAFile* file, unsigned char* key, int keysize, int address, int 
     RARead(file, sector_buffer, 0xb);
   }
   for (i=0; i<size; i++) {
+    unsigned char *adr = (unsigned char *)(((address + i*512) & 0x7fffff) ^ 0xd80000);
     if (!(i&31)) printf("*");
-    RARead(file, sector_buffer, 512);
+    RARead(file, adr, 512);
     if (keysize) {
       // decrypt ROM
       for (j=0; j<512; j++) {
-        sector_buffer[j] ^= key[keyidx++];
+        adr[j] ^= key[keyidx++];
         if(keyidx >= keysize) keyidx -= keysize;
       }
     }
@@ -213,28 +218,9 @@ void SendFileV2(RAFile* file, unsigned char* key, int keysize, int address, int 
     if (config.kick13patch && (i == 0 || i == 512)) {
       kickfoundstr = NULL;
       applypatchstr = NULL;
-      PatchKick1xMemoryDetection();
+      PatchKick1xMemoryDetection(adr);
     }
 
-    EnableOsd();
-    unsigned int adr = address + i*512;
-    SPI(OSD_CMD_WR);
-    SPIN; SPIN; SPIN; SPIN;
-    SPI(adr&0xff); adr = adr>>8;
-    SPI(adr&0xff); adr = adr>>8;
-    SPIN; SPIN; SPIN; SPIN;
-    SPI(adr&0xff); adr = adr>>8;
-    SPI(adr&0xff); adr = adr>>8;
-    SPIN; SPIN; SPIN; SPIN;
-    for (j=0; j<512; j=j+4) {
-      SPI(sector_buffer[j+0]);
-      SPI(sector_buffer[j+1]);
-      SPIN; SPIN; SPIN; SPIN; SPIN; SPIN; SPIN; SPIN;
-      SPI(sector_buffer[j+2]);
-      SPI(sector_buffer[j+3]);
-      SPIN; SPIN; SPIN; SPIN; SPIN; SPIN; SPIN; SPIN;
-    }
-    DisableOsd();
   }
   printf("]\r");
 
@@ -244,6 +230,7 @@ void SendFileV2(RAFile* file, unsigned char* key, int keysize, int address, int 
   if (applypatchstr) {
     printf(applypatchstr);
   }
+  printf("Post-send: %x\n",CheckSum());
 }
 
 
