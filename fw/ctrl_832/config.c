@@ -38,34 +38,20 @@ static char filename[12];
 
 void ClearKickstartMirrorE0(void)
 {
-  int i;
-  spi_osd_cmd32le_cont(OSD_CMD_WR, 0x00e00000);
-  for (i = 0; i < (0x80000 / 4); i++) {
-    SPI(0x00);
-    SPI(0x00);
-    SPIN; SPIN; SPIN; SPIN;
-    SPI(0x00);
-    SPI(0x00);
-    SPIN; SPIN; SPIN; SPIN;
-  }
-  DisableOsd();
-  SPIN; SPIN; SPIN; SPIN;
+	int i;
+	int *p=(0xe00000 & 0x7fffff) ^ 0xd80000;
+	for (i = 0; i < (0x80000 / 4); i++) {
+		*p++=0;
+	}
 }
 
 void ClearVectorTable(void)
 {
-  int i;
-  spi_osd_cmd32le_cont(OSD_CMD_WR, 0x00000000);
-  for (i = 0; i < 256; i++) {
-    SPI(0x00);
-    SPI(0x00);
-    SPIN; SPIN; SPIN; SPIN;
-    SPI(0x00);
-    SPI(0x00);
-    SPIN; SPIN; SPIN; SPIN;
-  }
-  DisableOsd();
-  SPIN; SPIN; SPIN; SPIN;
+	int i;
+	int *p=0 ^ 0xd80000;
+	for (i = 0; i < 256; i++) {
+		*p++=0;
+	}
 }
 
 //// UploadKickstart() ////
@@ -164,82 +150,71 @@ char UploadActionReplay()
     }
   } else {
 #endif
-    if (RAOpen(&romfile, "HRTMON  ROM")) {
-      int adr, data;
-      puts("Uploading HRTmon ROM... ");
-      SendFileV2(&romfile, NULL, 0, 0xa10000, (romfile.file.size+511)>>9);
-      // HRTmon config
-      adr = 0xa10000 + 20;
-      spi_osd_cmd32le_cont(OSD_CMD_WR, adr);
-      data = 0x00800000; // mon_size, 4 bytes
-      SPI((data>>24)&0xff); SPI((data>>16)&0xff); SPIN; SPIN; SPIN; SPIN; SPI((data>>8)&0xff); SPI((data>>0)&0xff);
-      data = 0x00; // col0h, 1 byte
-      SPI((data>>0)&0xff);
-      data = 0x5a; // col0l, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0x0f; // col1h, 1 byte
-      SPI((data>>0)&0xff);
-      data = 0xff; // col1l, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0xff; // right, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0x00; // keyboard, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0xff; // key, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = config.enable_ide ? 0xff : 0; // ide, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0xff; // a1200, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = config.chipset&CONFIG_AGA ? 0xff : 0; // aga, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0xff; // insert, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0x0f; // delay, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0xff; // lview, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0x00; // cd32, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = config.chipset&CONFIG_NTSC ? 1 : 0; // screenmode, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0xff; // novbr, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0; // entered, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 1; // hexmode, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      DisableOsd();
-      SPIN; SPIN; SPIN; SPIN;
-      adr = 0xa10000 + 68;
-      spi_osd_cmd32le_cont(OSD_CMD_WR, adr);
-      data = ((config.memory&0x3) + 1) * 512 * 1024; // maxchip, 4 bytes TODO is this correct?
-      SPI((data>>24)&0xff); SPI((data>>16)&0xff); SPIN; SPIN; SPIN; SPIN; SPI((data>>8)&0xff); SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      DisableOsd();
-      SPIN; SPIN; SPIN; SPIN;
-      return(1);
-    } else {
+
+// FIXME - migrate to direct access
+
+	if (RAOpen(&romfile, "HRTMON  ROM")) {
+		unsigned char *adr;
+		int data;
+		printf("Uploading HRTmon ROM... ");
+		SendFileV2(&romfile, NULL, 0, 0xa10000, (romfile.file.size+511)>>9);
+
+		// HRTmon config
+		adr = (unsigned char *)(((0xa10000 + 20)&0x7fffff)^0xd80000);
+
+		*adr++=0x00; *adr++=0x80; *adr++=0x00; *adr++=0x00;
+		//      data = 0x00800000; // mon_size, 4 bytes
+
+		*adr++ =0x00; // col0h, 1 byte
+		*adr++ =0x5a; // col0l, 1 byte
+
+		*adr++ =0x0f; // col1h, 1 byte
+		*adr++ =0xff; // col1l, 1 byte
+
+		*adr++ =0xff; // right, 1 byte
+
+		*adr++ =0x00; // keyboard, 1 byte
+
+		*adr++ =0xff; // key, 1 byte
+
+		*adr++ =config.enable_ide ? 0xff : 0; // ide, 1 byte
+
+		*adr++ =0xff; // a1200, 1 byte
+
+		*adr++ =config.chipset&CONFIG_AGA ? 0xff : 0; // aga, 1 byte
+
+		*adr++ =0xff; // insert, 1 byte
+
+		*adr++ =0x0f; // delay, 1 byte
+
+		*adr++ =0xff; // lview, 1 byte
+
+		*adr++ =0x00; // cd32, 1 byte
+
+		*adr++ =config.chipset&CONFIG_NTSC ? 1 : 0; // screenmode, 1 byte
+
+		*adr++ =0xff; // novbr, 1 byte
+
+		*adr++ =0; // entered, 1 byte
+
+		*adr++ =1; // hexmode, 1 byte
+
+		DisableOsd();
+
+
+		adr = (unsigned char *)(((0xa10000 + 68) & 0x7fffff) ^ 0xd80000);
+		data = ((config.memory&0x3) + 1) * 512 * 1024; // maxchip, 4 bytes TODO is this correct?
+		*adr++=(data>>24)&0xff;
+		*adr++=(data>>16)&0xff;
+		*adr++=(data>>8)&0xff;
+		*adr++=(data>>0)&0xff;
+
+		return(1);
+	} else {
 	  ClearError(ERROR_FILESYSTEM);
-      puts("\rhrtmon.rom not found!\r");
-      return(0);
-    }
+	  puts("\rhrtmon.rom not found!\r");
+	  return(0);
+	}
   return(0);
 }
 
@@ -344,13 +319,13 @@ void ApplyConfiguration(char reloadkickstart)
 {
 	int rstval=0;
 
-	printf("c1: %x\n",CheckSum());
+//	printf("c1: %x\n",CheckSum());
 
 	// Whether or not we uploaded a kickstart image we now need to set various parameters from the config.
 
   	if(OpenHardfile(0))
 	{
-		printf("c2: %x\n",CheckSum());
+//		printf("c2: %x\n",CheckSum());
 		switch(hdf[0].type) // Customise message for SD card access
 		{
 			case (HDF_FILE | HDF_SYNTHRDB):
@@ -373,7 +348,7 @@ void ApplyConfiguration(char reloadkickstart)
         BootPrint(s);
         sprintf(s, "Offset: %ld", hdf[0].offset);
 		BootPrint(s);
-		printf("c3: %x\n",CheckSum());
+//		printf("c3: %x\n",CheckSum());
 	}
    	if(OpenHardfile(1))
 	{
@@ -400,7 +375,7 @@ void ApplyConfiguration(char reloadkickstart)
         sprintf(s, "Offset: %ld", hdf[1].offset);
         BootPrint(s);
 	}
-	printf("c4: %x\n",CheckSum());
+//	printf("c4: %x\n",CheckSum());
 
     ConfigIDE(config.enable_ide, config.hardfile[0].present && config.hardfile[0].enabled,
 		config.hardfile[1].present && config.hardfile[1].enabled);
@@ -445,7 +420,7 @@ void ApplyConfiguration(char reloadkickstart)
     ConfigVideo(config.filter.hires, config.filter.lores, config.scanlines);
     ConfigMisc(config.misc);
 
-	printf("c5: %x\n",CheckSum());
+//	printf("c5: %x\n",CheckSum());
 
     if(reloadkickstart) {
 		WaitTimer(1000);

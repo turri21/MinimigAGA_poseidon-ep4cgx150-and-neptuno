@@ -14,25 +14,25 @@
 #include "rafile.h"
 
 
-static void mem_upload_init(unsigned long addr) {
-  spi_osd_cmd32le_cont(OSD_CMD_WR, addr);
-}
+//static void mem_upload_init(unsigned long addr) {
+//  spi_osd_cmd32le_cont(OSD_CMD_WR, addr);
+//}
 
-static void mem_upload_fini() {
-  DisableOsd();
-
-  // do we really still need these if it's within a function?
-  SPIN; SPIN; 
-  SPIN; SPIN;
-}
-
-static void mem_write16(unsigned short x) {
-  SPI((((x)>>8)&0xff)); SPI(((x)&0xff));
+//static void mem_upload_fini() {
+//  DisableOsd();
 
   // do we really still need these if it's within a function?
-  SPIN; SPIN;
-  SPIN; SPIN;
-}
+//  SPIN; SPIN; 
+//  SPIN; SPIN;
+//}
+
+//static void mem_write16(unsigned short x) {
+//  SPI((((x)>>8)&0xff)); SPI(((x)&0xff));
+
+  // do we really still need these if it's within a function?
+//  SPIN; SPIN;
+//  SPIN; SPIN;
+//}
 
 //// boot cursor positions ////
 //unsigned short bcurx=0;
@@ -159,14 +159,15 @@ void BootEnableMem()
 }
 
 //// BootClearScreen() ////
-void BootClearScreen(int adr, int size)
+void BootClearScreen(unsigned short *adr, int size)
 {
   int i;
-  mem_upload_init(adr);
+//  mem_upload_init(adr);
   for (i=0; i<size; i++) {
-    mem_write16(0x0000);
+	*adr++=0;
+//    mem_write16(0x0000);
   }
-  mem_upload_fini();
+//  mem_upload_fini();
 }
 
 
@@ -203,29 +204,6 @@ void BootUploadLogo()
 			}
 		}
 	}
-#if 0
-    mem_upload_init(SCREEN_BPL2+LOGO_OFFSET);
-    adr = SCREEN_BPL2+LOGO_OFFSET;
-    for (y=0; y<LOGO_HEIGHT; y++) {
-      for (x=0; x<LOGO_WIDTH/16; x++) {
-        if (i == 512) {
-          mem_upload_fini();
-          RARead(&file, sector_buffer, 512);
-          mem_upload_init(adr);
-          i = 0;
-        }
-        SPI(sector_buffer[i++]);
-        SPI(sector_buffer[i++]);
-        SPIN; SPIN; SPIN; SPIN;
-        adr += 2;
-      }
-      mem_upload_fini();
-      mem_upload_init(SCREEN_BPL2+LOGO_OFFSET+(y+1)*(SCREEN_WIDTH/8));
-      adr = SCREEN_BPL2+LOGO_OFFSET+(y+1)*(SCREEN_WIDTH/8);
-    }
-    mem_upload_fini();
-  }
-#endif
   ClearError(ERROR_FILESYSTEM);
 }
 
@@ -253,44 +231,34 @@ void BootUploadCopper()
 	int x;
 	int i=0;
 	unsigned char *adr;
-//	return;
+
 	if (RAOpen(&file, COPPER_FILE)) {
-//		RARead(&file, sector_buffer, 512);
-//		mem_upload_init(COPPER_ADDRESS);
 		adr = (unsigned char *)(COPPER_ADDRESS ^ 0xd80000);
 		RARead(&file, adr, COPPER_SIZE);
-//		for (x=0; x<COPPER_SIZE/2; x++) {
-//			if (i == 512) {
-//				mem_upload_fini();
-//				RARead(&file, sector_buffer, 512);
-//				mem_upload_init(adr);
-//				i = 0;
-//			}
-//			*adr++=sector_buffer[i++];
-//			*adr++=sector_buffer[i++];
-//			SPI(sector_buffer[i++]);
-//			SPI(sector_buffer[i++]);
-//			SPIN; SPIN; SPIN; SPIN;
-//			adr += 2;
-//		}
-//		mem_upload_fini();
 	} else {
-		mem_upload_init(COPPER_ADDRESS);
-		mem_write16(0x00e0); mem_write16(0x0008);
-		mem_write16(0x00e2); mem_write16(0x0000);
-		mem_write16(0x00e4); mem_write16(0x0008);
-		mem_write16(0x00e6); mem_write16(0x5000);
-		mem_write16(0x0100); mem_write16(0xa200);
-		mem_write16(0xffff); mem_write16(0xfffe);
-		mem_upload_fini();
+		unsigned short *p = (unsigned short *)(COPPER_ADDRESS ^ 0xd80000);
+		*p++=0x00e0; *p++=0x0008;
+		*p++=0x00e2; *p++=0x0000;
+		*p++=0x00e4; *p++=0x0008;
+		*p++=0x00e6; *p++=0x5000;
+		*p++=0x0100; *p++=0xa200;
+		*p++=0xffff; *p++=0xfffe;
 	}
 	ClearError(ERROR_FILESYSTEM);
 }
 
+#include "bootcustominit.h"
 
 //// BootCustomInit() ////
 void BootCustomInit()
 {
+	unsigned char *upload=(unsigned char *)(0x780000^0xd80000);
+	unsigned char *src=bootcustominit_bin;
+	int i=bootcustominit_bin_len;
+	while(--i)
+		*upload++=*src++;
+
+#if 0
   //move.w #$0000,$dff1fc  ; FMODE, slow fetch mode for AGA compatibility
   mem_upload_init(0xdff1fc);
   mem_write16(0x0000);
@@ -389,18 +357,34 @@ void BootCustomInit()
   mem_upload_init(0xdff088);
   mem_write16(0x0000);
   mem_upload_fini(); 
+#endif
 }
 
 
 //// BootInit() ////
 void BootInit()
 {
-  BootEnableMem();
+//  BootEnableMem();
+  // TEMP enable 1MB memory
+  spi_osd_cmd8(OSD_CMD_MEM, 0x5);
+  SPIN; SPIN; SPIN; SPIN;
+
+  // Put the CPU in reset while we upload init data.
+  EnableOsd();
+  SPI(OSD_CMD_RST);
+  SPI(SPI_CPU_HLT | SPI_RST_CPU);
+  DisableOsd();
+
   BootClearScreen(SCREEN_ADDRESS, SCREEN_MEM_SIZE);
   BootUploadLogo();
   BootUploadBall();
   BootUploadCopper();
   BootCustomInit();
+
+  EnableOsd();
+  SPI(OSD_CMD_RST);
+  SPI(0); // Allow the CPU to run 
+  DisableOsd();
 }
 
 

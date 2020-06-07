@@ -56,7 +56,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 
-const char version[] = "$VER:AYQ200515_832";
+const char version[] = "$VER:AYQ200607_832";
 
 extern adfTYPE df[4];
 
@@ -128,7 +128,7 @@ void ColdBoot()
 
     if (MMC_Init())
 	{
-		printf("1 Firmware checksum: %x\n",CheckSum());
+//		printf("1 Firmware checksum: %x\n",CheckSum());
 
 	    if (FindDrive())
 		{
@@ -136,18 +136,18 @@ void ColdBoot()
 			int override=0;
 		    ChangeDirectory(DIRECTORY_ROOT);
 
-			printf("2 Firmware checksum: %x\n",CheckSum());
+//			printf("2 Firmware checksum: %x\n",CheckSum());
 
 			config.kickstart.name[0]=0;
 			SetConfigurationFilename(0); // Use default config
 		    LoadConfiguration(0);	// Use slot-based config filename
 			ApplyConfiguration(0);  // Setup screenmodes, etc before loading KickStart.
 
-			printf("3 Firmware checksum: %x\n",CheckSum());
+//			printf("3 Firmware checksum: %x\n",CheckSum());
 
 			fpga_init();	// Display splashscreen
 
-			printf("4 Firmware checksum: %x\n",CheckSum());
+//			printf("4 Firmware checksum: %x\n",CheckSum());
 
 			key = OsdGetCtrl();
 			sprintf(s,"Got key: %x\n",key);
@@ -187,7 +187,7 @@ void ColdBoot()
 			BootPrintEx("Loading kickstart ROM...");
 			ApplyConfiguration(1);
 
-			printf("5 Firmware checksum: %x\n",CheckSum());
+//			printf("5 Firmware checksum: %x\n",CheckSum());
 
 			OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
 		}
@@ -212,11 +212,12 @@ __geta4 int main(void)
 
 	ColdBoot();
 
-    sprintf(s, "Firmware %s **\n", version + 5);
+    sprintf(s, "Firmware %s **", version + 5);
 	printf(s);
+	putchar('\n');
     BootPrintEx(s);
 
-	printf("Firmware checksum: %x\n",CheckSum());
+//	printf("Firmware checksum: %x\n",CheckSum());
 
     while (1)
     {

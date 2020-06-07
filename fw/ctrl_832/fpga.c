@@ -195,7 +195,7 @@ void SendFileV2(RAFile* file, unsigned char* key, int keysize, int address, int 
 {
   int i,j;
   unsigned int keyidx=0;
-  printf("Pre-send: %x\n",CheckSum());
+//  printf("Pre-send: %x\n",CheckSum());
   printf("File size: %dkB\r", size>>1);
   printf("[");
   if (keysize) {
@@ -230,7 +230,7 @@ void SendFileV2(RAFile* file, unsigned char* key, int keysize, int address, int 
   if (applypatchstr) {
     printf(applypatchstr);
   }
-  printf("Post-send: %x\n",CheckSum());
+//  printf("Post-send: %x\n",CheckSum());
 }
 
 
@@ -316,9 +316,9 @@ void fpga_init() {
 
 	OsdDoReset(SPI_RST_USR | SPI_RST_CPU | SPI_CPU_HLT,SPI_RST_CPU | SPI_CPU_HLT);
 
-	WaitTimer(100);
+	WaitTimer(50);
 	BootInit();
-	WaitTimer(500);
+	WaitTimer(100);
 
 	BootHome();
 
