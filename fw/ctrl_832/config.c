@@ -132,24 +132,6 @@ char UploadKickstart(char *name)
 //// UploadActionReplay() ////
 char UploadActionReplay()
 {
-#if 0
-  if(minimig_v1()) {
-    if (RAOpen(&romfile, "AR3     ROM")) {
-      if (romfile.file.size == 0x40000) {
-        // 256 KB Action Replay 3 ROM
-        BootPrint("\nUploading Action Replay ROM...");
-        PrepareBootUpload(0x40, 0x04);
-        SendFile(&romfile);
-        ClearMemory(0x440000, 0x40000);
-        return(1);
-      } else {
-        BootPrint("\nUnsupported AR3.ROM file size!!!");
-        /* FatalError(6); */
-        return(0);
-      }
-    }
-  } else {
-#endif
 
 // FIXME - migrate to direct access
 
@@ -164,43 +146,24 @@ char UploadActionReplay()
 
 		*adr++=0x00; *adr++=0x80; *adr++=0x00; *adr++=0x00;
 		//      data = 0x00800000; // mon_size, 4 bytes
-
 		*adr++ =0x00; // col0h, 1 byte
 		*adr++ =0x5a; // col0l, 1 byte
-
 		*adr++ =0x0f; // col1h, 1 byte
 		*adr++ =0xff; // col1l, 1 byte
-
 		*adr++ =0xff; // right, 1 byte
-
 		*adr++ =0x00; // keyboard, 1 byte
-
 		*adr++ =0xff; // key, 1 byte
-
 		*adr++ =config.enable_ide ? 0xff : 0; // ide, 1 byte
-
 		*adr++ =0xff; // a1200, 1 byte
-
 		*adr++ =config.chipset&CONFIG_AGA ? 0xff : 0; // aga, 1 byte
-
 		*adr++ =0xff; // insert, 1 byte
-
 		*adr++ =0x0f; // delay, 1 byte
-
 		*adr++ =0xff; // lview, 1 byte
-
 		*adr++ =0x00; // cd32, 1 byte
-
 		*adr++ =config.chipset&CONFIG_NTSC ? 1 : 0; // screenmode, 1 byte
-
 		*adr++ =0xff; // novbr, 1 byte
-
 		*adr++ =0; // entered, 1 byte
-
 		*adr++ =1; // hexmode, 1 byte
-
-		DisableOsd();
-
 
 		adr = (unsigned char *)(((0xa10000 + 68) & 0x7fffff) ^ 0xd80000);
 		data = ((config.memory&0x3) + 1) * 512 * 1024; // maxchip, 4 bytes TODO is this correct?
@@ -315,7 +278,7 @@ unsigned char LoadConfiguration(char *filename)
 }
 
 
-void ApplyConfiguration(char reloadkickstart)
+void ApplyConfiguration(char reloadkickstart, char applydrives)
 {
 	int rstval=0;
 
@@ -323,95 +286,63 @@ void ApplyConfiguration(char reloadkickstart)
 
 	// Whether or not we uploaded a kickstart image we now need to set various parameters from the config.
 
-  	if(OpenHardfile(0))
+	if(applydrives)
 	{
-//		printf("c2: %x\n",CheckSum());
-		switch(hdf[0].type) // Customise message for SD card access
+		if(OpenHardfile(0))
 		{
-			case (HDF_FILE | HDF_SYNTHRDB):
-		        sprintf(s, "\nHardfile 1 (with fake RDB): %.8s.%.3s", hdf[1].file.name, &hdf[1].file.name[8]);
-				break;
-			case HDF_FILE:
-		        sprintf(s, "\nHardfile 0: %.8s.%.3s", hdf[0].file.name, &hdf[0].file.name[8]);
-				break;
-			case HDF_CARD:
-		        sprintf(s, "\nHardfile 0: using entire SD card");
-				break;
-			default:
-		        sprintf(s, "\nHardfile 0: using SD card partition %d",hdf[0].type-HDF_CARD);	// Number from 1
-				break;
+		//		printf("c2: %x\n",CheckSum());
+			switch(hdf[0].type) // Customise message for SD card access
+			{
+				case (HDF_FILE | HDF_SYNTHRDB):
+					sprintf(s, "\nHardfile 1 (with fake RDB): %.8s.%.3s", hdf[1].file.name, &hdf[1].file.name[8]);
+					break;
+				case HDF_FILE:
+					sprintf(s, "\nHardfile 0: %.8s.%.3s", hdf[0].file.name, &hdf[0].file.name[8]);
+					break;
+				case HDF_CARD:
+					sprintf(s, "\nHardfile 0: using entire SD card");
+					break;
+				default:
+					sprintf(s, "\nHardfile 0: using SD card partition %d",hdf[0].type-HDF_CARD);	// Number from 1
+					break;
+			}
+			BootPrint(s);
+			sprintf(s, "CHS: %u.%u.%u", hdf[0].cylinders, hdf[0].heads, hdf[0].sectors);
+			BootPrint(s);
+			sprintf(s, "Size: %lu MB", ((((unsigned long) hdf[0].cylinders) * hdf[0].heads * hdf[0].sectors) >> 11));
+			BootPrint(s);
+			sprintf(s, "Offset: %ld", hdf[0].offset);
+			BootPrint(s);
+		//		printf("c3: %x\n",CheckSum());
 		}
-        BootPrint(s);
-        sprintf(s, "CHS: %u.%u.%u", hdf[0].cylinders, hdf[0].heads, hdf[0].sectors);
-        BootPrint(s);
-        sprintf(s, "Size: %lu MB", ((((unsigned long) hdf[0].cylinders) * hdf[0].heads * hdf[0].sectors) >> 11));
-        BootPrint(s);
-        sprintf(s, "Offset: %ld", hdf[0].offset);
-		BootPrint(s);
-//		printf("c3: %x\n",CheckSum());
-	}
-   	if(OpenHardfile(1))
-	{
-		switch(hdf[1].type)
+		if(OpenHardfile(1))
 		{
-			case (HDF_FILE | HDF_SYNTHRDB):
-		        sprintf(s, "\nHardfile 1 (with fake RDB): %.8s.%.3s", hdf[1].file.name, &hdf[1].file.name[8]);
-				break;
-			case HDF_FILE:
-		        sprintf(s, "\nHardfile 1: %.8s.%.3s", hdf[1].file.name, &hdf[1].file.name[8]);
-				break;
-			case HDF_CARD:
-		        sprintf(s, "\nHardfile 1: using entire SD card");
-				break;
-			default:
-		        sprintf(s, "\nHardfile 1: using SD card partition %d",hdf[1].type-HDF_CARD);	// Number from 1
-				break;
+			switch(hdf[1].type)
+			{
+				case (HDF_FILE | HDF_SYNTHRDB):
+					sprintf(s, "\nHardfile 1 (with fake RDB): %.8s.%.3s", hdf[1].file.name, &hdf[1].file.name[8]);
+					break;
+				case HDF_FILE:
+					sprintf(s, "\nHardfile 1: %.8s.%.3s", hdf[1].file.name, &hdf[1].file.name[8]);
+					break;
+				case HDF_CARD:
+					sprintf(s, "\nHardfile 1: using entire SD card");
+					break;
+				default:
+					sprintf(s, "\nHardfile 1: using SD card partition %d",hdf[1].type-HDF_CARD);	// Number from 1
+					break;
+			}
+			BootPrint(s);
+			sprintf(s, "CHS: %u.%u.%u", hdf[1].cylinders, hdf[1].heads, hdf[1].sectors);
+			BootPrint(s);
+			sprintf(s, "Size: %lu MB", ((((unsigned long) hdf[1].cylinders) * hdf[1].heads * hdf[1].sectors) >> 11));
+			BootPrint(s);
+			sprintf(s, "Offset: %ld", hdf[1].offset);
+			BootPrint(s);
 		}
-        BootPrint(s);
-        sprintf(s, "CHS: %u.%u.%u", hdf[1].cylinders, hdf[1].heads, hdf[1].sectors);
-        BootPrint(s);
-        sprintf(s, "Size: %lu MB", ((((unsigned long) hdf[1].cylinders) * hdf[1].heads * hdf[1].sectors) >> 11));
-        BootPrint(s);
-        sprintf(s, "Offset: %ld", hdf[1].offset);
-        BootPrint(s);
+		ConfigIDE(config.enable_ide, config.hardfile[0].present && config.hardfile[0].enabled,
+			config.hardfile[1].present && config.hardfile[1].enabled);
 	}
-//	printf("c4: %x\n",CheckSum());
-
-    ConfigIDE(config.enable_ide, config.hardfile[0].present && config.hardfile[0].enabled,
-		config.hardfile[1].present && config.hardfile[1].enabled);
-#if 0
-    sprintf(s, "CPU clock     : %s", config.chipset & 0x01 ? "turbo" : "normal");
-    BootPrint(s);
-    sprintf(s, "Chip RAM size : %s", config_memory_chip_msg[config.memory & 0x03]);
-    BootPrint(s);
-    sprintf(s, "Slow RAM size : %s", config_memory_slow_msg[config.memory >> 2 & 0x03]);
-    BootPrint(s);
-
-    sprintf(s, "Floppy drives : %u", config.floppy.drives + 1);
-    BootPrint(s);
-    sprintf(s, "Floppy speed  : %s", config.floppy.speed ? "fast": "normal");
-    BootPrint(s);
-
-    BootPrint("");
-
-    sprintf(s, "\nA600 IDE HDC is %s.", config.enable_ide ? "enabled" : "disabled");
-    BootPrint(s);
-    sprintf(s, "Master HDD is %s.", config.hardfile[0].present ? config.hardfile[0].enabled ? "enabled" : "disabled" : "not present");
-    BootPrint(s);
-    sprintf(s, "Slave HDD is %s.", config.hardfile[1].present ? config.hardfile[1].enabled ? "enabled" : "disabled" : "not present");
-    BootPrint(s);
-#endif
-#if 0
-    if (cluster_size < 64)
-    {
-        BootPrint("\n***************************************************");
-        BootPrint(  "*  It's recommended to reformat your memory card  *");
-        BootPrint(  "*   using 32 KB clusters to improve performance   *");
-		BootPrint(  "*           when using large hardfiles.           *");	// AMR
-        BootPrint(  "***************************************************");
-    }
-    printf("Bootloading is complete.\r");
-#endif
 
     ConfigCPU(config.cpu);
     ConfigMemory(config.memory);
@@ -419,8 +350,6 @@ void ApplyConfiguration(char reloadkickstart)
     ConfigFloppy(config.floppy.drives, config.floppy.speed);
     ConfigVideo(config.filter.hires, config.filter.lores, config.scanlines);
     ConfigMisc(config.misc);
-
-//	printf("c5: %x\n",CheckSum());
 
     if(reloadkickstart) {
 		WaitTimer(1000);

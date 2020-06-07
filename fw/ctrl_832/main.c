@@ -141,7 +141,7 @@ void ColdBoot()
 			config.kickstart.name[0]=0;
 			SetConfigurationFilename(0); // Use default config
 		    LoadConfiguration(0);	// Use slot-based config filename
-			ApplyConfiguration(0);  // Setup screenmodes, etc before loading KickStart.
+			ApplyConfiguration(0,0);  // Setup screenmodes, etc before loading KickStart.
 
 //			printf("3 Firmware checksum: %x\n",CheckSum());
 
@@ -185,7 +185,7 @@ void ColdBoot()
 			}
 
 			BootPrintEx("Loading kickstart ROM...");
-			ApplyConfiguration(1);
+			ApplyConfiguration(1,1);
 
 //			printf("5 Firmware checksum: %x\n",CheckSum());
 
