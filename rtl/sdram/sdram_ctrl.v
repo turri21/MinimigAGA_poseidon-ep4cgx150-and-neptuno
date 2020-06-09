@@ -551,33 +551,39 @@ always @ (posedge sysclk) begin
     ena7RDreg     <= #1 1'b0;
     ena7WRreg     <= #1 1'b0;
     case(sdram_state) // LATENCY=3
+		ph0 : begin
+			sdwrite <= #1 !cas_sd_we;	// Drive the bus for a single cycle
+		end
       ph2 : begin
         enaWRreg  <= #1 1'b1;
       end
       ph3 : begin
-        sdwrite   <= #1 1'b1;
+//        sdwrite   <= #1 1'b1;
       end
       ph4 : begin
-        sdwrite   <= #1 1'b1;
+//        sdwrite   <= #1 1'b1;
       end
       ph5 : begin
-        sdwrite   <= #1 1'b1;
+//        sdwrite   <= #1 1'b1;
       end
       ph6 : begin
         enaWRreg  <= #1 1'b1;
         ena7RDreg <= #1 1'b1;
       end
+		ph8 : begin
+			sdwrite <= #1 !cas_sd_we;	// Drive the bus for a single cycle
+		end
       ph10 : begin
         enaWRreg  <= #1 1'b1;
       end
       ph11 : begin
-        sdwrite   <= #1 1'b1; // access slot 2
+//        sdwrite   <= #1 1'b1; // access slot 2
       end
       ph12 : begin
-        sdwrite   <= #1 1'b1;
+//        sdwrite   <= #1 1'b1;
       end
       ph13 : begin
-        sdwrite   <= #1 1'b1;
+//        sdwrite   <= #1 1'b1;
       end
       ph14 : begin
         enaWRreg  <= #1 1'b1;
@@ -703,13 +709,23 @@ always @ (posedge sysclk) begin
     end
   end else begin
     // Time slot control
-    case(sdram_state)
-      ph0 : begin
+		case(sdram_state)
+		ph0 : begin
+			cache_fill_2          <= #1 1'b1; // slot 2
+			if(!cas_sd_we) begin // Read cycle
+				sdaddr <= #1 {1'b0, 1'b0, 1'b1, 1'b0, casaddr[9:1]}; // AUTO PRECHARGE
+				ba                    <= #1 casaddr[24:23];
+				sd_cs                 <= #1 cas_sd_cs;
+				dqm                   <= #1 cas_dqm;
+				sd_ras                <= #1 cas_sd_ras;
+				sd_cas                <= #1 cas_sd_cas;
+				sd_we                 <= #1 cas_sd_we;
+				writebuffer_hold      <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
+			end
+		end
+		ph1 : begin
         cache_fill_2          <= #1 1'b1; // slot 2
-      end
-      ph1 : begin
-        cache_fill_2          <= #1 1'b1; // slot 2
-        cas_sd_cs             <= #1 4'b1110;
+        cas_sd_cs             <= #1 4'b1111;
         cas_sd_ras            <= #1 1'b1;
         cas_sd_cas            <= #1 1'b1;
         cas_sd_we             <= #1 1'b1;
@@ -734,6 +750,7 @@ always @ (posedge sysclk) begin
           casaddr             <= #1 {1'b0, chipAddr, 1'b0};
           cas_sd_cas          <= #1 1'b0;
           cas_sd_we           <= #1 chipRW;
+			 cas_sd_cs           <= #1 4'b1110;
         end
         // next in line is refresh
         // (a refresh cycle blocks both access slots)
@@ -744,6 +761,7 @@ always @ (posedge sysclk) begin
           refreshcnt          <= #1 'd50;
           slot1_type          <= #1 REFRESH;
           refresh_pending     <= #1 1'b0;
+			 cas_sd_cs           <= #1 4'b1110;
         end
         // the Amiga CPU gets next bite of the cherry, unless the OSD CPU has been cycle-starved
         // request from write buffer
@@ -761,6 +779,7 @@ always @ (posedge sysclk) begin
           writebufferWR_reg   <= #1 writebufferWR;
           cas_sd_cas          <= #1 1'b0;
           writebuffer_hold    <= #1 1'b1; // let the write buffer know we're about to write
+          cas_sd_cs           <= #1 4'b1110;
         end
         // request from read cache
         else if(cache_req && (|hostslot_cnt || (!zce || hostena)) && (slot2_type == IDLE || slot2_bank != cpuAddr_mangled[24:23])) begin
@@ -775,6 +794,7 @@ always @ (posedge sysclk) begin
           casaddr             <= #1 {cpuAddr_mangled[24:1], 1'b0};
           cas_sd_we           <= #1 1'b1;
           cas_sd_cas          <= #1 1'b0;
+          cas_sd_cs           <= #1 4'b1110;
         end
         else if(zce && !zcachehit) begin
           hostslot_cnt        <= #1 8'b00001111;
@@ -792,38 +812,55 @@ always @ (posedge sysclk) begin
           if(zce && hostwe) begin
             cas_sd_we         <= #1 1'b0;
           end
+          cas_sd_cs             <= #1 4'b1110;
         end
         else begin
           slot1_type          <= #1 IDLE;
         end
       end
       ph2 : begin
+			if(!cas_sd_we)
+				dqm<= #1 2'b11;
         // slot 2
         cache_fill_2          <= #1 1'b1;
       end
       ph3 : begin
+			if(!cas_sd_we)
+				dqm<= #1 2'b11;
         // slot 2
         cache_fill_2          <= #1 1'b1;
       end
       ph4 : begin
-        sdaddr                <= #1 {1'b0, 1'b0, 1'b1, 1'b0, casaddr[9:1]}; // AUTO PRECHARGE
-        ba                    <= #1 casaddr[24:23];
-        sd_cs                 <= #1 cas_sd_cs;
-        if(!cas_sd_we) begin
-          dqm                 <= #1 cas_dqm;
-        end
-        sd_ras                <= #1 cas_sd_ras;
-        sd_cas                <= #1 cas_sd_cas;
-        sd_we                 <= #1 cas_sd_we;
-        writebuffer_hold      <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
-      end
+			if(cas_sd_we) begin // Read cycle
+				sdaddr                <= #1 {1'b0, 1'b0, 1'b1, 1'b0, casaddr[9:1]}; // AUTO PRECHARGE
+				ba                    <= #1 casaddr[24:23];
+				sd_cs                 <= #1 cas_sd_cs;
+				//        if(!cas_sd_we) begin
+				//          dqm                 <= #1 cas_dqm;
+				//        end
+				sd_ras                <= #1 cas_sd_ras;
+				sd_cas                <= #1 cas_sd_cas;
+				sd_we                 <= #1 cas_sd_we;
+			end
+//			writebuffer_hold      <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
+		end
       ph8 : begin
-        cache_fill_1          <= #1 1'b1;
+			if(!cas_sd_we) begin // Write cycle
+				sdaddr                <= #1 {1'b0, 1'b0, 1'b1, 1'b0, casaddr[9:1]}; // AUTO PRECHARGE
+				ba                    <= #1 casaddr[24:23];
+				sd_cs                 <= #1 cas_sd_cs;
+				dqm                   <= #1 cas_dqm;
+				sd_ras                <= #1 cas_sd_ras;
+				sd_cas                <= #1 cas_sd_cas;
+				sd_we                 <= #1 cas_sd_we;
+				writebuffer_hold      <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
+			end
+			cache_fill_1          <= #1 1'b1;
       end
       ph9 : begin
         cache_fill_1          <= #1 1'b1;
         // Access slot 2, RAS
-        cas_sd_cs             <= #1 4'b1110;
+        cas_sd_cs             <= #1 4'b1111;
         cas_sd_ras            <= #1 1'b1;
         cas_sd_cas            <= #1 1'b1;
         cas_sd_we             <= #1 1'b1;
@@ -842,6 +879,7 @@ always @ (posedge sysclk) begin
             cas_sd_we         <= #1 1'b0;
             writebufferWR_reg <= #1 writebufferWR;
             cas_sd_cas        <= #1 1'b0;
+				cas_sd_cs             <= #1 4'b1110;
             writebuffer_hold  <= #1 1'b1; // let the write buffer know we're about to write
           end
           // request from read cache
@@ -856,28 +894,35 @@ always @ (posedge sysclk) begin
             casaddr           <= #1 {cpuAddr_mangled[24:1], 1'b0};
             cas_sd_we         <= #1 1'b1;
             cas_sd_cas        <= #1 1'b0;
+				cas_sd_cs         <= #1 4'b1110;
           end
         end
       end
       ph10 : begin
+			if(!cas_sd_we)
+				dqm<= #1 2'b11;
         cache_fill_1          <= #1 1'b1;
       end
       ph11 : begin
+			if(!cas_sd_we)
+				dqm<= #1 2'b11;
         cache_fill_1          <= #1 1'b1;
       end
       // slot 2 CAS
       ph12 : begin
-        sdaddr <= #1 {1'b0, 1'b0, 1'b1, 1'b0, casaddr[9:1]}; // AUTO PRECHARGE
-        ba                    <= #1 casaddr[24:23];
-        sd_cs                 <= #1 cas_sd_cs;
-        if(!cas_sd_we) begin
-          dqm                 <= #1 cas_dqm;
-        end
-        sd_ras                <= #1 cas_sd_ras;
-        sd_cas                <= #1 cas_sd_cas;
-        sd_we                 <= #1 cas_sd_we;
-        writebuffer_hold      <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
-      end
+			if(cas_sd_we) begin // Read cycle
+				sdaddr <= #1 {1'b0, 1'b0, 1'b1, 1'b0, casaddr[9:1]}; // AUTO PRECHARGE
+				ba                    <= #1 casaddr[24:23];
+				sd_cs                 <= #1 cas_sd_cs;
+//				if(!cas_sd_we) begin
+//				 dqm                 <= #1 cas_dqm;
+//				end
+				sd_ras                <= #1 cas_sd_ras;
+				sd_cas                <= #1 cas_sd_cas;
+				sd_we                 <= #1 cas_sd_we;
+//				writebuffer_hold      <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
+			end
+		end
       default : begin
       end
     endcase
