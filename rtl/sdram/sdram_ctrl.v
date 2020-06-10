@@ -699,8 +699,9 @@ always @ (posedge sysclk) begin
           sd_cas              <= #1 1'b0;
           sd_we               <= #1 1'b0;
           //sdaddr              <= #1 13'b0001000100010; // BURST=4 LATENCY=2
-          sdaddr              <= #1 13'b0001000110010; // BURST=4 LATENCY=3
+          //sdaddr              <= #1 13'b0001000110010; // BURST=4 LATENCY=3
           //sdaddr              <= #1 13'b0001000110000; // noBURST LATENCY=3
+				sdaddr              <= #1 13'b0001000110011; // BURST=8 LATENCY=3
         end
         default : begin
           // NOP
@@ -721,6 +722,13 @@ always @ (posedge sysclk) begin
 				sd_cas                <= #1 cas_sd_cas;
 				sd_we                 <= #1 cas_sd_we;
 				writebuffer_hold      <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
+			end else begin
+				// Slot 2 only covers the CPU, so no need to terminate bursts.
+//				if (slot2_type!=IDLE) begin
+					// Burst terminate
+//					sd_cs			<= #1 1'b0;
+//					sd_we			<= #1 1'b0;
+//				end
 			end
 		end
 		ph1 : begin
@@ -819,18 +827,15 @@ always @ (posedge sysclk) begin
         end
       end
       ph2 : begin
-			if(!cas_sd_we)
-				dqm<= #1 2'b11;
         // slot 2
         cache_fill_2          <= #1 1'b1;
       end
       ph3 : begin
-			if(!cas_sd_we)
-				dqm<= #1 2'b11;
         // slot 2
         cache_fill_2          <= #1 1'b1;
       end
       ph4 : begin
+			cache_fill_2          <= #1 1'b1;
 			if(cas_sd_we) begin // Read cycle
 				sdaddr                <= #1 {1'b0, 1'b0, 1'b1, 1'b0, casaddr[9:1]}; // AUTO PRECHARGE
 				ba                    <= #1 casaddr[24:23];
@@ -844,6 +849,19 @@ always @ (posedge sysclk) begin
 			end
 //			writebuffer_hold      <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
 		end
+		ph5 : begin
+			cache_fill_2          <= #1 1'b1;
+		end
+		ph6 : begin
+			cache_fill_2          <= #1 1'b1;
+			if(!cas_sd_we)
+				dqm<= #1 2'b11;
+		end
+		ph7 : begin
+			cache_fill_2          <= #1 1'b1;
+			if(!cas_sd_we)
+				dqm<= #1 2'b11;
+		end
       ph8 : begin
 			if(!cas_sd_we) begin // Write cycle
 				sdaddr                <= #1 {1'b0, 1'b0, 1'b1, 1'b0, casaddr[9:1]}; // AUTO PRECHARGE
@@ -854,11 +872,18 @@ always @ (posedge sysclk) begin
 				sd_cas                <= #1 cas_sd_cas;
 				sd_we                 <= #1 cas_sd_we;
 				writebuffer_hold      <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
+			end else begin
+				// Allow CPU_READCACHE reads to cover an 8-word burst; truncase HOST or CHIP reads after four words
+				if (slot1_type==HOST || slot1_type==CHIP) begin
+					// Burst terminate
+					sd_cs			<= #1 1'b0;
+					sd_we			<= #1 1'b0;
+				end
 			end
 			cache_fill_1          <= #1 1'b1;
       end
       ph9 : begin
-        cache_fill_1          <= #1 1'b1;
+			cache_fill_1          <= #1 1'b1;
         // Access slot 2, RAS
         cas_sd_cs             <= #1 4'b1111;
         cas_sd_ras            <= #1 1'b1;
@@ -899,17 +924,14 @@ always @ (posedge sysclk) begin
         end
       end
       ph10 : begin
-			if(!cas_sd_we)
-				dqm<= #1 2'b11;
         cache_fill_1          <= #1 1'b1;
       end
       ph11 : begin
-			if(!cas_sd_we)
-				dqm<= #1 2'b11;
         cache_fill_1          <= #1 1'b1;
       end
       // slot 2 CAS
       ph12 : begin
+			cache_fill_1          <= #1 1'b1;
 			if(cas_sd_we) begin // Read cycle
 				sdaddr <= #1 {1'b0, 1'b0, 1'b1, 1'b0, casaddr[9:1]}; // AUTO PRECHARGE
 				ba                    <= #1 casaddr[24:23];
@@ -922,6 +944,19 @@ always @ (posedge sysclk) begin
 				sd_we                 <= #1 cas_sd_we;
 //				writebuffer_hold      <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
 			end
+		end
+		ph13 : begin
+			cache_fill_1          <= #1 1'b1;
+		end
+		ph14 : begin
+			cache_fill_1          <= #1 1'b1;
+			if(!cas_sd_we)
+				dqm<= #1 2'b11;
+		end
+		ph15 : begin
+			cache_fill_1          <= #1 1'b1;
+			if(!cas_sd_we)
+				dqm<= #1 2'b11;
 		end
       default : begin
       end
