@@ -84,6 +84,8 @@ architecture rtl of chameleon_toplevel is
 	signal pll_locked : std_logic;
 	
 -- Global signals
+	signal reset_8 : std_logic;
+	signal reset_28 : std_logic;
 	signal reset : std_logic;
 	signal reset_n : std_logic;
 	
@@ -270,12 +272,22 @@ myReset : entity work.gen_reset
 		resetCycles => reset_cycles
 	)
 	port map (
-		clk => clk_28,
+		clk => clk8,
 		enable => '1',
-		button => not (button_reset_n and pll_locked),
-		reset => reset,
-		nreset => reset_n
+		button => not button_reset_n,
+		reset => reset_8
 	);
+	
+	
+process(clk_28,reset_8)
+begin
+	if rising_edge(clk_28) then
+		reset_28<=reset_8;
+		reset<=reset_28;
+	end if;
+end process;
+
+reset_n<= not reset;
 	
 	myIO : entity work.chameleon_io
 		generic map (
@@ -350,10 +362,10 @@ myReset : entity work.gen_reset
 			c64_nmi_n => c64_nmi_n,
 
 			midi_txd => midi_txd,
-			midi_rxd => midi_rxd
+			midi_rxd => midi_rxd,
 --
---			iec_atn_out => rs232_txd,
---			iec_clk_in => rs232_rxd
+			iec_atn_out => rs232_txd,
+			iec_clk_in => rs232_rxd
 --			iec_clk_out : in std_logic := '1';
 --			iec_dat_out : in std_logic := '1';
 --			iec_srq_out : in std_logic := '1';
@@ -463,7 +475,7 @@ vga_window<='1';
 		)
 		port map(
 			clk=>clk_28,
-			invertSync=>'1',
+--			invertSync=>'1',
 			iSelcsync=>vga_selcsync,
 			iCsync=>vga_csync,
 			iHsync=>vga_hsync,

@@ -206,7 +206,7 @@ __geta4 int main(void)
 	debugmsg[0]=0;
 	debugmsg2[0]=0;
 
-	printf("Firmware checksum: %x\n",CheckSum());
+//	printf("Firmware checksum: %x\n",CheckSum());
 
     DISKLED_ON;
 

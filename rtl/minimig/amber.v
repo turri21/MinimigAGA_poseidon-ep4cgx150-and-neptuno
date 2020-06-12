@@ -81,7 +81,9 @@ module amber
   output reg  [  8-1:0] blue_out=0,     // blue component video out
   output reg            _hsync_out=0,   // horizontal synchronisation out
   output reg            _vsync_out=0,   // vertical synchronisation out
-  output wire            selcsync=0
+  output wire            selcsync=0,
+  output wire				osd_blank_out,
+  output wire				osd_pixel_out
 );
 
 
@@ -353,8 +355,8 @@ wire           bm_osd_blank;
 wire           bm_osd_pixel;
 
 assign selcsync     = dblscan ? 1'b0 : varbeamen ? 1'b0 : 1'b1;
-assign bm_hsync     = dblscan ? sd_lbuf_o_d[29] : _hsync_in;
-assign bm_vsync     = dblscan ? _vsync_in       : _vsync_in;
+assign bm_hsync     = dblscan ? !sd_lbuf_o_d[29] : _hsync_in;
+assign bm_vsync     = dblscan ? !_vsync_in       : _vsync_in;
 //assign bm_hsync     = dblscan ? sd_lbuf_o_d[29] : varbeamen ? _hsync_in : ns_csync;
 //assign bm_vsync     = dblscan ? _vsync_in       : varbeamen ? _vsync_in : 1'b1;
 assign bm_r         = dblscan ? sl_r            : varbeamen ? red_in    : ns_r;
@@ -362,25 +364,30 @@ assign bm_g         = dblscan ? sl_g            : varbeamen ? green_in  : ns_g;
 assign bm_b         = dblscan ? sl_b            : varbeamen ? blue_in   : ns_b;
 assign bm_osd_blank = dblscan ? sd_lbuf_o_d[28] : varbeamen ? osd_blank : ns_osd_blank;
 assign bm_osd_pixel = dblscan ? sd_lbuf_o_d[27] : varbeamen ? osd_pixel : ns_osd_pixel;
+assign osd_blank_out = dblscan ? sd_lbuf_o_d[28] : osd_blank;
+assign osd_pixel_out = dblscan ? sd_lbuf_o_d[27] : osd_pixel;
 
 
 //// osd ////
-wire [  8-1:0] osd_r;
-wire [  8-1:0] osd_g;
-wire [  8-1:0] osd_b;
+//wire [  8-1:0] osd_r;
+//wire [  8-1:0] osd_g;
+//wire [  8-1:0] osd_b;
 
-assign osd_r = (bm_osd_blank ? (bm_osd_pixel ? OSD_R : {2'b00, bm_r[7:2]}) : bm_r);
-assign osd_g = (bm_osd_blank ? (bm_osd_pixel ? OSD_G : {2'b00, bm_g[7:2]}) : bm_g);
-assign osd_b = (bm_osd_blank ? (bm_osd_pixel ? OSD_B : {2'b10, bm_b[7:2]}) : bm_b);
+//assign osd_r = (bm_osd_blank ? (bm_osd_pixel ? OSD_R : {2'b00, bm_r[7:2]}) : bm_r);
+//assign osd_g = (bm_osd_blank ? (bm_osd_pixel ? OSD_G : {2'b00, bm_g[7:2]}) : bm_g);
+//assign osd_b = (bm_osd_blank ? (bm_osd_pixel ? OSD_B : {2'b10, bm_b[7:2]}) : bm_b);
 
 
 //// output registers ////
 always @ (posedge clk) begin
   _hsync_out <= #1 bm_hsync;
   _vsync_out <= #1 bm_vsync;
-  red_out    <= #1 osd_r;
-  green_out  <= #1 osd_g;
-  blue_out   <= #1 osd_b;
+  red_out    <= #1 bm_r;
+  green_out  <= #1 bm_g;
+  blue_out   <= #1 bm_b;
+//  red_out    <= #1 osd_r;
+//  green_out  <= #1 osd_g;
+//  blue_out   <= #1 osd_b;
 end
 
 

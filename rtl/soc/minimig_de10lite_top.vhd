@@ -100,6 +100,8 @@ architecture RTL of DE10liteToplevel is
 	signal vga_hsync : std_logic;
 	signal vga_vsync : std_logic;
 	signal vbl : std_logic;
+	signal osd_window : std_logic;
+	signal osd_pixel : std_logic;
 	
 	
 -- RS232 serial
@@ -305,7 +307,6 @@ mydither : entity work.video_vga_dither
 	port map(
 		clk=>sysclk,
 		vidEna=>vga_window,
-		invertSync=>'1',
 		iSelcsync=>vga_selcsync,
 		iCsync=>vga_csync,
 		iHsync=>vga_hsync,

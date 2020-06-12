@@ -249,7 +249,10 @@ module minimig
   output  floppy_fwr,
   output  floppy_frd,
   output  hd_fwr,
-  output  hd_frd
+  output  hd_frd,
+  output  blank_out,
+  output  osd_blank_out,	// Let the toplevel dither module handle drawing the OSD.
+  output  osd_pixel_out
 );
 
 //--------------------------------------------------------------------------------------
@@ -432,6 +435,7 @@ wire           sys_reset;    //reset output from minimig_syscontrol.v
 assign reset = sys_reset | ~_cpu_reset_in; // both tg68k and minimig_syscontrol hold the reset signal for some clicks
 
 assign _csync = _csync_i;
+assign blank_out = blank;
 
 //--------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------
@@ -740,7 +744,9 @@ amber AMBER1
 	.green_out(green),
 	._hsync_out(_hsync),
 	._vsync_out(_vsync),
-	.selcsync(selcsync)
+	.selcsync(selcsync),
+	.osd_blank_out(osd_blank_out),
+	.osd_pixel_out(osd_pixel_out)
 );
 
 //instantiate cia A

@@ -251,40 +251,41 @@ end
 always @ (*) begin
 	zmAddr = {2'b00, ~hostAddr[22], hostAddr[21], ~hostAddr[20], ~hostAddr[19], hostAddr[18:0]};
 	zcachehit = 1'b0;
-  if(!hostwe && zequal && zvalid[0]) begin
+//  if(!hostwe && zequal && zvalid[0]) begin
     case ({hostAddr[2:1], zcache_addr[2:1]})
       4'b0000,
       4'b0101,
       4'b1010,
       4'b1111 : begin
-        zcachehit = zvalid[0];
+        zcachehit = !hostwe & zequal & zvalid[0];
         hostRD    = zcache[63:48];
       end
       4'b0100,
       4'b1001,
       4'b1110,
       4'b0011 : begin
-        zcachehit = zvalid[1];
+        zcachehit = !hostwe & zequal & zvalid[1];
         hostRD    = zcache[47:32];
       end
       4'b1000,
       4'b1101,
       4'b0010,
       4'b0111 : begin
-        zcachehit = zvalid[2];
+        zcachehit = !hostwe & zequal & zvalid[2];
         hostRD    = zcache[31:16];
       end
-      4'b1100,
-      4'b0001,
-      4'b0110,
-      4'b1011 : begin
-        zcachehit = zvalid[3];
+		default : begin
+//      4'b1100,
+//      4'b0001,
+//      4'b0110,
+//      4'b1011 : begin
+        zcachehit = !hostwe & zequal & zvalid[3];
         hostRD    = zcache[15:0];
       end
-      default : begin
-      end
+//      default : begin
+//      end
     endcase
-  end
+//  end
 end
 
 
@@ -713,7 +714,7 @@ always @ (posedge sysclk) begin
 		case(sdram_state)
 		ph0 : begin
 			cache_fill_2          <= #1 1'b1; // slot 2
-			if(!cas_sd_we) begin // Read cycle
+			if(!cas_sd_we) begin // Write cycle
 				sdaddr <= #1 {1'b0, 1'b0, 1'b1, 1'b0, casaddr[9:1]}; // AUTO PRECHARGE
 				ba                    <= #1 casaddr[24:23];
 				sd_cs                 <= #1 cas_sd_cs;
@@ -873,7 +874,7 @@ always @ (posedge sysclk) begin
 				sd_we                 <= #1 cas_sd_we;
 				writebuffer_hold      <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
 			end else begin
-				// Allow CPU_READCACHE reads to cover an 8-word burst; truncase HOST or CHIP reads after four words
+				// Allow CPU_READCACHE reads to cover an 8-word burst; truncate HOST or CHIP reads after four words
 				if (slot1_type==HOST || slot1_type==CHIP) begin
 					// Burst terminate
 					sd_cs			<= #1 1'b0;

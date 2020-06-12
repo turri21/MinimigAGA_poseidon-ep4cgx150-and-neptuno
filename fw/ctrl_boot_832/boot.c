@@ -78,6 +78,11 @@ int main(int argc,char **argv)
 	int i;
 	int err=0;
 
+	EnableOsd();
+	HW_SPI(OSD_CMD_RST);
+	HW_SPI(SPI_RST_CPU|SPI_CPU_HLT);
+	DisableOsd();
+
 	while(1)
 	{
 		puts("Initializing SD card\n");

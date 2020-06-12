@@ -164,6 +164,7 @@ reg            hs_reg;
 reg  [  8-1:0] red_reg;
 reg  [  8-1:0] green_reg;
 reg  [  8-1:0] blue_reg;
+wire           blank_out;
 
 // sdram
 wire           reset_out;
@@ -217,12 +218,20 @@ always @ (posedge CLK_28) begin
   blue_reg  <= #1 blue;
 end
 
+wire osd_window;
+wire osd_pixel;
+wire [1:0] osd_r;
+wire [1:0] osd_g;
+wire [1:0] osd_b;
+assign osd_r = osd_pixel ? 2'b11 : 2'b00;
+assign osd_g = osd_pixel ? 2'b11 : 2'b00;
+assign osd_b = osd_pixel ? 2'b11 : 2'b10;
 assign VGA_CS           = cs_reg;
 assign VGA_VS           = vs_reg;
 assign VGA_HS           = hs_reg;
-assign VGA_R[7:0]       = red_reg[7:0];
-assign VGA_G[7:0]       = green_reg[7:0];
-assign VGA_B[7:0]       = blue_reg[7:0];
+assign VGA_R[7:0]       = osd_window ? {osd_r,red_reg[7:2]} : red_reg[7:0];
+assign VGA_G[7:0]       = osd_window ? {osd_g,green_reg[7:2]} : green_reg[7:0];
+assign VGA_B[7:0]       = osd_window ? {osd_b,blue_reg[7:2]} : blue_reg[7:0];
 
 
 //// amiga clocks ////
@@ -477,7 +486,10 @@ minimig minimig (
   .floppy_fwr   (                 ),  // floppy fifo writing
   .floppy_frd   (                 ),  // floppy fifo reading
   .hd_fwr       (                 ),  // hd fifo writing
-  .hd_frd       (                 )   // hd fifo  ading
+  .hd_frd       (                 ),  // hd fifo  ading
+  .blank_out    (blank_out        ),
+  .osd_blank_out(osd_window       ),  // Let the toplevel dither module handle drawing the OSD.
+  .osd_pixel_out(osd_pixel        )
 );
 
 

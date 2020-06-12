@@ -454,7 +454,7 @@ vga_window<='1';
 virtual_top : COMPONENT minimig_virtual_top
 generic map
 	(
-		debug => 0
+		debug => 1
 	)
 PORT map
 	(
@@ -530,7 +530,7 @@ audio_r(0)<='0';
 		)
 		port map(
 			clk=>clk_28,
-			invertSync=>'1',
+--			invertSync=>'1',
 			iSelcsync=>vga_selcsync,
 			iCsync=>vga_csync,
 			iHsync=>vga_hsync,
