@@ -454,7 +454,7 @@ vga_window<='1';
 virtual_top : COMPONENT minimig_virtual_top
 generic map
 	(
-		debug => 1
+		debug => 0
 	)
 PORT map
 	(
