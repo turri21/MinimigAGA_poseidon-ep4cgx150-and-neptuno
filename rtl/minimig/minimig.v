@@ -193,7 +193,9 @@ module minimig
 	input	[15:0]_joy4,		//joystick 4 [fire7:fire,up,down,left,right]
   input mouse_btn1, // mouse button 1
   input mouse_btn2, // mouse button 2
-  input [2:0] mouse_btn, // mouse buttons
+  input [2:0] mouse0_btn, // mouse buttons
+  input [2:0] mouse1_btn, // mouse buttons
+  input mouse_idx,       // mouse buttons
   input kbd_reset_n,
   input kbd_mouse_strobe,
   input kms_level,
@@ -636,7 +638,7 @@ userio USERIO1
 	.c3(c3),
 	.sol(sol),
 	.sof(sof),
-  .varbeamen(varbeamen),
+	.varbeamen(varbeamen),
 	.reg_address_in(reg_address),
 	.data_in(custom_data_in),
 	.data_out(user_data_out),
@@ -646,19 +648,21 @@ userio USERIO1
 	.ps2mclk_o(msclk_o),
 	._fire0(_fire0),
 	._fire1(_fire1),
-  ._fire0_dat(_fire0_dat),
-  ._fire1_dat(_fire1_dat),
-  .aflock(aflock),
+	._fire0_dat(_fire0_dat),
+	._fire1_dat(_fire1_dat),
+	.aflock(aflock),
 	._joy1(_joy1),
 	._joy2(_joy2 & {10'b1111111111,kb_joy2}),
-  .mouse_btn(mouse_btn),
-  ._lmb(kb_lmb & mouse_btn1),
-  ._rmb(kb_rmb & mouse_btn2),
-  .mou_emu (mou_emu),
-  .kbd_mouse_type(kbd_mouse_type),
-  .kbd_mouse_strobe(kbd_mouse_strobe),
-  .kms_level(kms_level),
-  .kbd_mouse_data(kbd_mouse_data), 
+	.mouse0_btn(mouse0_btn),
+	.mouse1_btn(mouse1_btn),
+	.mouse_idx(mouse_idx),
+	._lmb(kb_lmb & mouse_btn1),
+	._rmb(kb_rmb & mouse_btn2),
+	.mou_emu (mou_emu),
+	.kbd_mouse_type(kbd_mouse_type),
+	.kbd_mouse_strobe(kbd_mouse_strobe),
+	.kms_level(kms_level),
+	.kbd_mouse_data(kbd_mouse_data), 
 	.osd_ctrl(osd_ctrl),
 	.keyboard_disabled(keyboard_disabled),
 	._scs(_scs[1]),
