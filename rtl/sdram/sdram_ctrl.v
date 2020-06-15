@@ -65,6 +65,11 @@ module sdram_ctrl(
   input  wire [ 16-1:0] chipWR,
   output reg  [ 16-1:0] chipRD,
   output wire [ 48-1:0] chip48,
+  // RTG
+  input wire     [21:0] rtgAddr,
+  input wire            rtgce,
+  output wire           rtgfill,
+  output wire    [15:0] rtgRd,
   // cpu
   input  wire    [24:1] cpuAddr,
   input  wire [  6-1:0] cpustate,
@@ -100,7 +105,8 @@ localparam [2:0]
   CPU_READCACHE = 2,
   CPU_WRITECACHE = 3,
   HOST = 4,
-  IDLE = 5;
+  RTG = 5,
+  IDLE = 6;
 
 localparam [3:0]
   ph0 = 0,
@@ -237,6 +243,12 @@ end
 assign reset_out = init_done;
 
 
+// RTG access
+
+//always @ (posedge sysclk) begin
+assign rtgRd=sdata_reg;
+assign rtgfill=slot2_type==RTG ? cache_fill_2 : 1'b0;
+//end
 
 ////////////////////////////////////////
 // host access
@@ -930,7 +942,20 @@ always @ (posedge sysclk) begin
         cas_sd_we             <= #1 1'b1;
         slot2_type            <= #1 IDLE;
         if(!refresh_pending && slot1_type != REFRESH) begin
-          if(writebuffer_req && |writebufferAddr[24:23] && (slot1_type == IDLE || slot1_bank != writebufferAddr[24:23])) begin // reserve bank 0 for slot 1
+				if(rtgce && (slot1_type == IDLE || slot1_bank != 2'b11)) begin 
+					slot2_type        <= #1 RTG;
+					sdaddr            <= #1 {1'b0,rtgAddr[21:10]};
+					ba                <= #1 2'b11;
+					slot2_bank        <= #1 2'b11;
+					cas_dqm           <= #1 2'b11;
+					sd_cs             <= #1 4'b1110; // ACTIVE
+					sd_ras            <= #1 1'b0;
+					casaddr           <= #1 {3'b110,rtgAddr[21:0]};
+					cas_sd_we         <= #1 1'b1;
+					cas_sd_cas        <= #1 1'b0;
+					cas_sd_cs             <= #1 4'b1110;
+			 end
+          else if(writebuffer_req && |writebufferAddr[24:23] && (slot1_type == IDLE || slot1_bank != writebufferAddr[24:23])) begin // reserve bank 0 for slot 1
             // We only yield to the OSD CPU if it's both cycle-starved and ready to go.
             slot2_type        <= #1 CPU_WRITECACHE;
             sdaddr            <= #1 writebufferAddr[22:10];

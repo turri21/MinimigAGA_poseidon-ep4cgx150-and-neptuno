@@ -209,13 +209,75 @@ assign pll_rst          = 1'b0;
 assign sdctl_rst        = PLL_LOCKED & RESET_N;
 
 // VGA data
+wire rtg_ena;
+wire rtg_act;
+
+// RTG
+reg [2:0] rtg_pixelctr;
+wire [2:0] rtg_pixelwidth;
+wire rtg_pixel;
+wire rtg_tof;
+reg [15:0] counter;
+wire [7:0] rtg_r;
+wire [7:0] rtg_g;
+wire [7:0] rtg_b;
+reg rtg_act_d;
+
+assign rtg_pixelwidth=3'b0010;	// Default to 29.4MHz (001 -> 56.8MHz) pixel clock.
+
+assign rtg_pixel=((rtg_act || rtg_act_d) && rtg_pixelctr==rtg_pixelwidth) ? 1'b1 : 1'b0;
+assign rtg_tof=rtg_ena & !(vs & !vs_reg);
+
+always @(posedge CLK_114) begin
+	rtg_act_d<=rtg_act;
+	if(!rtg_act || rtg_pixel) begin
+		rtg_pixelctr<=3'b0;
+	end else begin
+		rtg_pixelctr<=rtg_pixelctr+1;
+	end
+	
+	if(vs_reg && !vs) begin
+		counter<=16'b0;
+	end else if(rtg_pixel) begin
+		counter<=counter+1;
+	end
+end
+
+assign rtg_r=rtg_act ? {rtg_dat[15:11],rtg_dat[15:13]} : 16'b0 ;
+assign rtg_g=rtg_act ? {rtg_dat[10:5],rtg_dat[10:9]} : 16'b0 ;
+assign rtg_b=rtg_act ? {rtg_dat[4:0],rtg_dat[4:2]} : 16'b0 ;
+
+wire [21:0] rtg_addr;
+wire [15:0] rtg_dat;
+
+wire rtg_ramreq;
+wire [15:0] rtg_fromram;
+wire rtg_fill;
+
+VideoStream myvs
+(
+	.clk(CLK_114),
+	.reset_n(rtg_tof),
+	.enable(rtg_ena),
+	.baseaddr(22'h0),
+	// SDRAM interface
+	.a(rtg_addr),
+	.req(rtg_ramreq),
+	.d(rtg_fromram),
+	.fill(rtg_fill),
+	// Display interface
+	.rdreq(rtg_pixel),
+	.q(rtg_dat)
+);
+
+
 always @ (posedge CLK_28) begin
   cs_reg    <= #1 cs;
   vs_reg    <= #1 vs;
   hs_reg    <= #1 hs;
-  red_reg   <= #1 red;
-  green_reg <= #1 green;
-  blue_reg  <= #1 blue;
+  red_reg   <= #1 rtg_ena ? rtg_r : red;
+  green_reg <= #1 rtg_ena ? rtg_g : green;
+  blue_reg  <= #1 rtg_ena ? rtg_b : blue;
 end
 
 wire osd_window;
@@ -359,6 +421,11 @@ sdram_ctrl sdram (
   .chipRD       (ramdata_in       ),
   .chip48       (chip48           ),
 
+  .rtgAddr      (rtg_addr         ),
+  .rtgce        (rtg_ramreq          ),
+  .rtgfill      (rtg_fill         ),
+  .rtgRd        (rtg_fromram      ),
+
   .reset_out    (reset_out        ),
   .enaRDreg     (                 ),
   .enaWRreg     (tg68_enaWR       ),
@@ -489,7 +556,9 @@ minimig minimig (
   .hd_frd       (                 ),  // hd fifo  ading
   .blank_out    (blank_out        ),
   .osd_blank_out(osd_window       ),  // Let the toplevel dither module handle drawing the OSD.
-  .osd_pixel_out(osd_pixel        )
+  .osd_pixel_out(osd_pixel        ),
+  .rtg_ena      (rtg_ena          ),
+  .rtg_act      (rtg_act          )
 );
 
 

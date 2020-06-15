@@ -49,8 +49,10 @@ module agnus_beamcounter
 	output	eof,					// end of video frame
 	output	reg vbl_int,			// vertical interrupt request (for Paula)
 	output	[8:0] htotal_out,			// video line length
-  output harddis_out,
-  output varbeamen_out
+	output harddis_out,
+	output varbeamen_out,
+	output rtg_ena,
+	output rtg_act
 );
 
 // local beam position counters
@@ -419,12 +421,12 @@ always @ (posedge clk) begin
     vbl_reg <= #1 1'b0;
   else if (vpos == vbstrt)
     vbl_reg <= #1 1'b1;
-  else if (vpos == vbstop)
+  else if (vpos == vbstop+1)
     vbl_reg <= #1 1'b0;
 end
 
-assign vbl = (vpos <= vbstop) ? 1'b1 : 1'b0;
-//assign vbl = vbl_reg; // TODO
+//assign vbl = (vpos <= vbstop) ? 1'b1 : 1'b0;
+assign vbl = vbl_reg; // TODO
 
 //vertical blanking end (last line)
 assign vblend = vpos==vbstop ? 1'b1 : 1'b0;
@@ -439,6 +441,8 @@ always @(posedge clk)
     blank <= vbl;
   end
 
-
+// Abuse the DUAL bit in BEAMCON0 to enable the RTG mode
+assign rtg_ena = displaydual;
+assign rtg_act = !blank;
 endmodule
 

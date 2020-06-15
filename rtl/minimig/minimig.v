@@ -252,7 +252,9 @@ module minimig
   output  hd_frd,
   output  blank_out,
   output  osd_blank_out,	// Let the toplevel dither module handle drawing the OSD.
-  output  osd_pixel_out
+  output  osd_pixel_out,
+  output  rtg_ena,
+  output  rtg_act
 );
 
 //--------------------------------------------------------------------------------------
@@ -533,7 +535,9 @@ agnus AGNUS1
 	.ecs(|chipset_config[4:3]),
   .aga(chipset_config[4]),
 	.floppy_speed(floppy_config[0]),
-	.turbo(turbo)
+	.turbo(turbo),
+	.rtg_ena(rtg_ena),
+	.rtg_act(rtg_act)
 );
 
 //instantiate paula
