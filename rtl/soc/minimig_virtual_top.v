@@ -215,23 +215,35 @@ wire rtg_act;
 // RTG
 reg [2:0] rtg_pixelctr;
 wire [2:0] rtg_pixelwidth;
+wire rtg_clut;
+wire [7:0] rtg_clut_idx;
 wire rtg_pixel;
 wire rtg_tof;
 reg [15:0] counter;
 wire [7:0] rtg_r;
 wire [7:0] rtg_g;
 wire [7:0] rtg_b;
+reg rtg_clut_in_sel;
+wire rtg_ext;
+wire [7:0] rtg_clut_r;
+wire [7:0] rtg_clut_g;
+wire [7:0] rtg_clut_b;
 reg rtg_act_d;
 
-assign rtg_pixelwidth=3'b0010;	// Default to 29.4MHz (001 -> 56.8MHz) pixel clock.
+//assign rtg_pixelwidth=3'b0010;	// Default to 29.4MHz (001 -> 56.8MHz) pixel clock.
 
 assign rtg_pixel=((rtg_act || rtg_act_d) && rtg_pixelctr==rtg_pixelwidth) ? 1'b1 : 1'b0;
 assign rtg_tof=rtg_ena & !(vs & !vs_reg);
 
 always @(posedge CLK_114) begin
 	rtg_act_d<=rtg_act;
+	
+	if(rtg_pixelctr=={1'b0,rtg_pixelwidth[2:1]})
+		rtg_clut_in_sel<=1'b1;
+	
 	if(!rtg_act || rtg_pixel) begin
 		rtg_pixelctr<=3'b0;
+		rtg_clut_in_sel<=1'b0;
 	end else begin
 		rtg_pixelctr<=rtg_pixelctr+1;
 	end
@@ -243,10 +255,12 @@ always @(posedge CLK_114) begin
 	end
 end
 
+assign rtg_clut_idx = rtg_clut_in_sel ? rtg_dat[15:8] : rtg_dat[7:0];
 assign rtg_r=rtg_act ? {rtg_dat[15:11],rtg_dat[15:13]} : 16'b0 ;
 assign rtg_g=rtg_act ? {rtg_dat[10:5],rtg_dat[10:9]} : 16'b0 ;
 assign rtg_b=rtg_act ? {rtg_dat[4:0],rtg_dat[4:2]} : 16'b0 ;
 
+wire [24:4] rtg_baseaddr;
 wire [21:0] rtg_addr;
 wire [15:0] rtg_dat;
 
@@ -259,7 +273,7 @@ VideoStream myvs
 	.clk(CLK_114),
 	.reset_n(rtg_tof),
 	.enable(rtg_ena),
-	.baseaddr(22'h0),
+	.baseaddr({rtg_baseaddr[21:4],4'b0}),
 	// SDRAM interface
 	.a(rtg_addr),
 	.req(rtg_ramreq),
@@ -275,9 +289,9 @@ always @ (posedge CLK_28) begin
   cs_reg    <= #1 cs;
   vs_reg    <= #1 vs;
   hs_reg    <= #1 hs;
-  red_reg   <= #1 rtg_ena ? rtg_r : red;
-  green_reg <= #1 rtg_ena ? rtg_g : green;
-  blue_reg  <= #1 rtg_ena ? rtg_b : blue;
+  red_reg   <= #1 rtg_ena ? rtg_clut ? rtg_clut_r : rtg_r : red;
+  green_reg <= #1 rtg_ena ? rtg_clut ? rtg_clut_g : rtg_g : green;
+  blue_reg  <= #1 rtg_ena ? rtg_clut ? rtg_clut_b : rtg_b : blue;
 end
 
 wire osd_window;
@@ -353,7 +367,17 @@ TG68K tg68k (
   .ramlds       (tg68_clds        ),
   .ramuds       (tg68_cuds        ),
   .CACR_out     (tg68_CACR_out    ),
-  .VBR_out      (tg68_VBR_out     )
+  .VBR_out      (tg68_VBR_out     ),
+  // RTG signals
+	.rtg_addr(rtg_baseaddr),
+	.rtg_vbend(rtg_vbend),
+	.rtg_ext(rtg_ext),
+	.rtg_pixelclock(rtg_pixelwidth),
+	.rtg_clut(rtg_clut),
+	.rtg_clut_idx(rtg_clut_idx),
+	.rtg_clut_r(rtg_clut_r),
+	.rtg_clut_g(rtg_clut_g),
+	.rtg_clut_b(rtg_clut_b)
 );
 
 
@@ -554,7 +578,7 @@ minimig minimig (
   .floppy_frd   (                 ),  // floppy fifo reading
   .hd_fwr       (                 ),  // hd fifo writing
   .hd_frd       (                 ),  // hd fifo  ading
-  .blank_out    (blank_out        ),
+  .hblank_out   (blank_out        ),
   .osd_blank_out(osd_window       ),  // Let the toplevel dither module handle drawing the OSD.
   .osd_pixel_out(osd_pixel        ),
   .rtg_ena      (rtg_ena          ),

@@ -52,7 +52,8 @@ module agnus_beamcounter
 	output harddis_out,
 	output varbeamen_out,
 	output rtg_ena,
-	output rtg_act
+	output rtg_act,
+	output reg hblank_out
 );
 
 // local beam position counters
@@ -434,11 +435,13 @@ assign vblend = vpos==vbstop ? 1'b1 : 1'b0;
 //composite display blanking		
 always @(posedge clk)
   if (clk7_en) begin
-  	if (hpos==hbstrt + 8'd12)//start of blanking (active line=51.88us)
+  	if (hpos==hbstrt + 8'd12) begin//start of blanking (active line=51.88us)
+		hblank_out<=1'b1;
   		blank <= 1'b1;
-  	else if (hpos==hbstop + 8'd12)//end of blanking (back porch=5.78us)
+	end else if (hpos==hbstop + 8'd12)//end of blanking (back porch=5.78us)
 // TODO 		blank <= vbl_reg;
-    blank <= vbl;
+		hblank_out<=1'b0;
+		blank <= vbl;
   end
 
 // Abuse the DUAL bit in BEAMCON0 to enable the RTG mode

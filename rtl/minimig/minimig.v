@@ -250,7 +250,8 @@ module minimig
   output  floppy_frd,
   output  hd_fwr,
   output  hd_frd,
-  output  blank_out,
+  output  hblank_out,
+  output  vblank_out,
   output  osd_blank_out,	// Let the toplevel dither module handle drawing the OSD.
   output  osd_pixel_out,
   output  rtg_ena,
@@ -338,9 +339,9 @@ wire		index;					//disk index interrupt
 
 //local video signals
 wire		blank;					//blanking signal
-wire		sol;					//start of video line
-wire		sof;					//start of video frame
-wire    vbl_int;        // vertical blanking interrupt
+wire		sol;						//start of video line
+wire		sof;						//start of video frame
+wire     vbl_int;					// vertical blanking interrupt
 wire		strhor_denise;			//horizontal strobe for Denise
 wire		strhor_paula;			//horizontal strobe for Paula
 wire		[7:0]red_i;				//denise red (internal)
@@ -437,7 +438,7 @@ wire           sys_reset;    //reset output from minimig_syscontrol.v
 assign reset = sys_reset | ~_cpu_reset_in; // both tg68k and minimig_syscontrol hold the reset signal for some clicks
 
 assign _csync = _csync_i;
-assign blank_out = blank;
+assign vblank_out = vbl_int;
 
 //--------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------
@@ -537,7 +538,8 @@ agnus AGNUS1
 	.floppy_speed(floppy_config[0]),
 	.turbo(turbo),
 	.rtg_ena(rtg_ena),
-	.rtg_act(rtg_act)
+	.rtg_act(rtg_act),
+	.hblank_out(hblank_out)
 );
 
 //instantiate paula
