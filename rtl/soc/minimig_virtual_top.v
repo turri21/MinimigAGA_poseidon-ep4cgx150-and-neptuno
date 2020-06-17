@@ -224,6 +224,7 @@ wire [7:0] rtg_r;
 wire [7:0] rtg_g;
 wire [7:0] rtg_b;
 reg rtg_clut_in_sel;
+reg rtg_clut_in_sel_d;
 wire rtg_ext;
 wire [7:0] rtg_clut_r;
 wire [7:0] rtg_clut_g;
@@ -232,12 +233,14 @@ reg rtg_act_d;
 
 //assign rtg_pixelwidth=3'b0010;	// Default to 29.4MHz (001 -> 56.8MHz) pixel clock.
 
-assign rtg_pixel=((rtg_act || rtg_act_d) && rtg_pixelctr==rtg_pixelwidth) ? 1'b1 : 1'b0;
+assign rtg_pixel=((rtg_act || (rtg_act_d && rtg_ext)) && rtg_pixelctr==rtg_pixelwidth) ? 1'b1 : 1'b0;
 assign rtg_tof=rtg_ena & !(vs & !vs_reg);
 
 always @(posedge CLK_114) begin
 	rtg_act_d<=rtg_act;
 	
+	rtg_clut_in_sel_d<=rtg_clut_in_sel;
+
 	if(rtg_pixelctr=={1'b0,rtg_pixelwidth[2:1]})
 		rtg_clut_in_sel<=1'b1;
 	
@@ -255,7 +258,7 @@ always @(posedge CLK_114) begin
 	end
 end
 
-assign rtg_clut_idx = rtg_clut_in_sel ? rtg_dat[15:8] : rtg_dat[7:0];
+assign rtg_clut_idx = rtg_clut_in_sel_d ? rtg_dat[15:8] : rtg_dat[7:0];
 assign rtg_r=rtg_act ? {rtg_dat[15:11],rtg_dat[15:13]} : 16'b0 ;
 assign rtg_g=rtg_act ? {rtg_dat[10:5],rtg_dat[10:9]} : 16'b0 ;
 assign rtg_b=rtg_act ? {rtg_dat[4:0],rtg_dat[4:2]} : 16'b0 ;
@@ -289,9 +292,9 @@ always @ (posedge CLK_28) begin
   cs_reg    <= #1 cs;
   vs_reg    <= #1 vs;
   hs_reg    <= #1 hs;
-  red_reg   <= #1 rtg_ena ? rtg_clut ? rtg_clut_r : rtg_r : red;
-  green_reg <= #1 rtg_ena ? rtg_clut ? rtg_clut_g : rtg_g : green;
-  blue_reg  <= #1 rtg_ena ? rtg_clut ? rtg_clut_b : rtg_b : blue;
+  red_reg   <= #1 rtg_ena && rtg_act ? rtg_clut ? rtg_clut_r : rtg_r : red;
+  green_reg <= #1 rtg_ena && rtg_act ? rtg_clut ? rtg_clut_g : rtg_g : green;
+  blue_reg  <= #1 rtg_ena && rtg_act ? rtg_clut ? rtg_clut_b : rtg_b : blue;
 end
 
 wire osd_window;
