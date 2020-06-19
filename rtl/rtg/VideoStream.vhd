@@ -17,8 +17,8 @@ port
 	reset_n : in std_logic;
 	enable : in std_logic;
 	-- RAM interface
-	baseaddr : in std_logic_vector(21 downto 0);
-	a : out std_logic_vector(21 downto 0);
+	baseaddr : in std_logic_vector(24 downto 0);
+	a : out std_logic_vector(24 downto 0);
 	req : out std_logic;
 	d : in std_logic_vector(15 downto 0);
 	fill : in std_logic;
@@ -34,7 +34,7 @@ type samplebuffer is array(0 to 511) of std_logic_vector(15 downto 0);
 signal samplebuf : samplebuffer;
 signal inptr : unsigned(8 downto 0);
 signal outptr : unsigned(8 downto 0);
-signal address : unsigned(21 downto 0);
+signal address : unsigned(24 downto 0);
 signal first_fill : std_logic;
 signal fill_d : std_logic;
 signal full : std_logic;
@@ -44,14 +44,14 @@ begin
 -- The req signal should be high any time the output process
 -- is in the same half of the buffer as the fill process.
 
-req<=enable and (first_fill or (inptr(8) xor outptr(8) xor full));
+req<=reset_n and enable and (first_fill or (inptr(8) xor outptr(8) xor full));
 
 -- Need to drop the req signal a few cycles early when the buffer fills up.
 full <= '1' when address(7 downto 2)="111111" else '0';
 
 -- Fill from RAM
 a<=std_logic_vector(address);
-inptr<=address(8 downto 0);
+inptr<=address(9 downto 1);
 
 process(clk)
 begin
@@ -63,8 +63,8 @@ begin
 			first_fill<='1';
 		elsif fill='1' then
 			samplebuf(to_integer(inptr))<=d;
-			address<=address+1;
-			if address(8)='1' then
+			address<=address+2;
+			if address(9)='1' then
 				first_fill<='0';
 			end if;
 		end if;
@@ -82,6 +82,7 @@ begin
 		end if;
 		if reset_n='0' then
 			outptr<=(others=>'0');
+			outptr(8)<=baseaddr(9);
 		end if;
 		q<=samplebuf(to_integer(outptr));
 	end if;

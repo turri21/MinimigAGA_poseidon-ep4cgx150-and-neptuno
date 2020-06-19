@@ -164,7 +164,6 @@ reg            hs_reg;
 reg  [  8-1:0] red_reg;
 reg  [  8-1:0] green_reg;
 reg  [  8-1:0] blue_reg;
-wire           blank_out;
 
 // sdram
 wire           reset_out;
@@ -208,75 +207,97 @@ assign SDRAM_BA         = sdram_ba;
 assign pll_rst          = 1'b0;
 assign sdctl_rst        = PLL_LOCKED & RESET_N;
 
-// VGA data
-wire rtg_ena;
-wire rtg_act;
 
-// RTG
-reg [2:0] rtg_pixelctr;
-wire [2:0] rtg_pixelwidth;
-wire rtg_clut;
-wire [7:0] rtg_clut_idx;
-wire rtg_pixel;
-wire rtg_tof;
-reg [15:0] counter;
-wire [7:0] rtg_r;
+// RTG support...
+
+wire rtg_ena;	// RTG screen on/off
+wire rtg_clut;	// Are we in high-colour or 8-bit CLUT mode?
+
+reg [2:0] rtg_pixelctr;	// Counter, compared against rtg_pixelwidth
+wire [2:0] rtg_pixelwidth; // Number of clocks per fetch - 1
+wire [7:0] rtg_clut_idx;	// The currently selected colour in indexed mode
+wire rtg_pixel;	// Strobe the next pixel from the FIFO
+
+wire hblank_out;
+wire vblank_out;
+reg rtg_vblank;
+wire rtg_blank;
+reg rtg_blank_d;
+reg [4:0] rtg_vbcounter;	// Vvbco counter
+reg [4:0] rtg_vbend; // Size of VBlank area
+
+
+wire [7:0] rtg_r;	// 16-bit mode RGB data
 wire [7:0] rtg_g;
 wire [7:0] rtg_b;
-reg rtg_clut_in_sel;
+reg rtg_clut_in_sel;	// Select first or second byte of 16-bit word as CLUT index
 reg rtg_clut_in_sel_d;
-wire rtg_ext;
-wire [7:0] rtg_clut_r;
+wire rtg_ext;	// Extend the active area by one clock.
+wire [7:0] rtg_clut_r;	// RGB data from CLUT
 wire [7:0] rtg_clut_g;
 wire [7:0] rtg_clut_b;
-reg rtg_act_d;
 
-//assign rtg_pixelwidth=3'b0010;	// Default to 29.4MHz (001 -> 56.8MHz) pixel clock.
 
-assign rtg_pixel=((rtg_act || (rtg_act_d && rtg_ext)) && rtg_pixelctr==rtg_pixelwidth) ? 1'b1 : 1'b0;
-assign rtg_tof=rtg_ena & !(vs & !vs_reg);
+// RTG data fetch strobe
+assign rtg_pixel=(rtg_ena && (!rtg_blank || (!rtg_blank_d && rtg_ext)) && rtg_pixelctr==rtg_pixelwidth) ? 1'b1 : 1'b0;
+
 
 always @(posedge CLK_114) begin
-	rtg_act_d<=rtg_act;
-	
+
+	// Delayed copies of signals
+	rtg_blank_d<=rtg_blank;
 	rtg_clut_in_sel_d<=rtg_clut_in_sel;
 
+	// Alternate colour index at twice the fetch clock.
 	if(rtg_pixelctr=={1'b0,rtg_pixelwidth[2:1]})
 		rtg_clut_in_sel<=1'b1;
 	
-	if(!rtg_act || rtg_pixel) begin
+	// Increment the fetch clock, reset during blank.
+	if(rtg_blank || rtg_pixel) begin
 		rtg_pixelctr<=3'b0;
 		rtg_clut_in_sel<=1'b0;
 	end else begin
 		rtg_pixelctr<=rtg_pixelctr+1;
 	end
-	
-	if(vs_reg && !vs) begin
-		counter<=16'b0;
-	end else if(rtg_pixel) begin
-		counter<=counter+1;
+
+	// Handle vblank manually, since the OS makes it awkward to use the chipset for this.
+	if(vblank_out) begin
+		rtg_vblank<=1'b1;
+		rtg_vbcounter<=5'b0;
+	end else if(rtg_vbcounter==rtg_vbend) begin
+		rtg_vblank<=1'b0;
+	end else if(hs & !hs_reg) begin
+		rtg_vbcounter<=rtg_vbcounter+1;
 	end
 end
 
+assign rtg_blank = rtg_vblank | hblank_out;
+
 assign rtg_clut_idx = rtg_clut_in_sel_d ? rtg_dat[15:8] : rtg_dat[7:0];
-assign rtg_r=rtg_act ? {rtg_dat[15:11],rtg_dat[15:13]} : 16'b0 ;
-assign rtg_g=rtg_act ? {rtg_dat[10:5],rtg_dat[10:9]} : 16'b0 ;
-assign rtg_b=rtg_act ? {rtg_dat[4:0],rtg_dat[4:2]} : 16'b0 ;
+assign rtg_r=!rtg_blank ? {rtg_dat[15:11],rtg_dat[15:13]} : 16'b0 ;
+assign rtg_g=!rtg_blank ? {rtg_dat[10:5],rtg_dat[10:9]} : 16'b0 ;
+assign rtg_b=!rtg_blank ? {rtg_dat[4:0],rtg_dat[4:2]} : 16'b0 ;
 
 wire [24:4] rtg_baseaddr;
-wire [21:0] rtg_addr;
+wire [24:0] rtg_addr;
 wire [15:0] rtg_dat;
 
 wire rtg_ramreq;
 wire [15:0] rtg_fromram;
 wire rtg_fill;
 
+// Replicate the CPU's address mangling.
+wire [24:0] rtg_addr_mangled;
+assign rtg_addr_mangled[24]=rtg_addr[24];
+assign rtg_addr_mangled[23]=rtg_addr[23]^(rtg_addr[22]|rtg_addr[21]);
+assign rtg_addr_mangled[22:0]=rtg_addr[22:0];
+
 VideoStream myvs
 (
 	.clk(CLK_114),
-	.reset_n(rtg_tof),
+	.reset_n((!vblank_out) & rtg_ena),
 	.enable(rtg_ena),
-	.baseaddr({rtg_baseaddr[21:4],4'b0}),
+	.baseaddr({rtg_baseaddr[24:4],4'b0}),
 	// SDRAM interface
 	.a(rtg_addr),
 	.req(rtg_ramreq),
@@ -292,10 +313,14 @@ always @ (posedge CLK_28) begin
   cs_reg    <= #1 cs;
   vs_reg    <= #1 vs;
   hs_reg    <= #1 hs;
-  red_reg   <= #1 rtg_ena && rtg_act ? rtg_clut ? rtg_clut_r : rtg_r : red;
-  green_reg <= #1 rtg_ena && rtg_act ? rtg_clut ? rtg_clut_g : rtg_g : green;
-  blue_reg  <= #1 rtg_ena && rtg_act ? rtg_clut ? rtg_clut_b : rtg_b : blue;
+  red_reg   <= #1 rtg_ena && !rtg_blank ? rtg_clut ? rtg_clut_r : rtg_r : red;
+  green_reg <= #1 rtg_ena && !rtg_blank ? rtg_clut ? rtg_clut_g : rtg_g : green;
+  blue_reg  <= #1 rtg_ena && !rtg_blank ? rtg_clut ? rtg_clut_b : rtg_b : blue;
 end
+
+
+// 
+
 
 wire osd_window;
 wire osd_pixel;
@@ -448,8 +473,8 @@ sdram_ctrl sdram (
   .chipRD       (ramdata_in       ),
   .chip48       (chip48           ),
 
-  .rtgAddr      (rtg_addr         ),
-  .rtgce        (rtg_ramreq          ),
+  .rtgAddr      (rtg_addr_mangled ),
+  .rtgce        (rtg_ramreq       ),
   .rtgfill      (rtg_fill         ),
   .rtgRd        (rtg_fromram      ),
 
@@ -487,105 +512,106 @@ assign SPI_SS2 = SPI_CS[4];
 
 //// minimig top ////
 minimig minimig (
-  //m68k pins
-  .cpu_address  (tg68_adr[23:1]   ), // M68K address bus
-  .cpu_data     (tg68_dat_in      ), // M68K data bus
-  .cpudata_in   (tg68_dat_out     ), // M68K data in
-  ._cpu_ipl     (tg68_IPL         ), // M68K interrupt request
-  ._cpu_as      (tg68_as          ), // M68K address strobe
-  ._cpu_uds     (tg68_uds         ), // M68K upper data strobe
-  ._cpu_lds     (tg68_lds         ), // M68K lower data strobe
-  .cpu_r_w      (tg68_rw          ), // M68K read / write
-  ._cpu_dtack   (tg68_dtack       ), // M68K data acknowledge
-  ._cpu_reset   (tg68_rst         ), // M68K reset
-  ._cpu_reset_in(tg68_nrst_out    ), // M68K reset out
-  .cpu_vbr      (tg68_VBR_out     ), // M68K VBR
-  .ovr          (tg68_ovr         ), // NMI override address decoding
-  //sram pins
-  .ram_data     (ram_data         ), // SRAM data bus
-  .ramdata_in   (ramdata_in       ), // SRAM data bus in
-  .ram_address  (ram_address[22:1]), // SRAM address bus
-  ._ram_bhe     (_ram_bhe         ), // SRAM upper byte select
-  ._ram_ble     (_ram_ble         ), // SRAM lower byte select
-  ._ram_we      (_ram_we          ), // SRAM write enable
-  ._ram_oe      (_ram_oe          ), // SRAM output enable
-  .chip48       (chip48           ), // big chipram read
-  //system  pins
-  .rst_ext      (!RESET_N         ), // reset from ctrl block
-  .rst_out      (                 ), // minimig reset status
-  .clk          (CLK_28           ), // output clock c1 ( 28.687500MHz)
-  .clk7_en      (clk7_en          ), // 7MHz clock enable
-  .clk7n_en     (clk7n_en         ), // 7MHz negedge clock enable
-  .c1           (c1               ), // clk28m clock domain signal synchronous with clk signal
-  .c3           (c3               ), // clk28m clock domain signal synchronous with clk signal delayed by 90 degrees
-  .cck          (cck              ), // colour clock output (3.54 MHz)
-  .eclk         (eclk             ), // 0.709379 MHz clock enable output (clk domain pulse)
-  //rs232 pins
-  .rxd          (AMIGA_RX         ),  // RS232 receive
-  .txd          (AMIGA_TX         ),  // RS232 send
-  .cts          (1'b0             ),  // RS232 clear to send
-  .rts          (                 ),  // RS232 request to send
-  //I/O
-  ._joy1        (JOYA             ),  // joystick 1 [fire7:fire,up,down,left,right] (default mouse port)
-  ._joy2        (JOYB             ),  // joystick 2 [fire7:fire,up,down,left,right] (default joystick port)
-  ._joy3        (JOYC             ),  // joystick 3 [fire7:fire,up,down,left,right]
-  ._joy4        (JOYD             ),  // joystick 4 [fire7:fire,up,down,left,right]
-  .mouse_btn1   (1'b1             ), // mouse button 1
-  .mouse_btn2   (1'b1             ), // mouse button 2
-//  .mouse_btn    (mouse_buttons    ),  // mouse buttons
-//  .kbd_mouse_data (kbd_mouse_data ),  // mouse direction data, keycodes
-//  .kbd_mouse_type (kbd_mouse_type ),  // type of data
-  .kbd_mouse_strobe (1'b0         ), // kbd_mouse_strobe), // kbd/mouse data strobe
-  .kms_level    (1'b0             ), // kms_level        ),
-  ._15khz       (_15khz           ), // scandoubler disable
-  .pwr_led      (LED_POWER        ), // power led
-  .disk_led     (LED_DISK         ), // power led
-  .msdat_i      (PS2_MDAT_I       ), // PS2 mouse data
-  .msclk_i      (PS2_MCLK_I       ), // PS2 mouse clk
-  .kbddat_i     (PS2_DAT_I        ), // PS2 keyboard data
-  .kbdclk_i     (PS2_CLK_I        ), // PS2 keyboard clk
-  .msdat_o      (PS2_MDAT_O       ), // PS2 mouse data
-  .msclk_o      (PS2_MCLK_O       ), // PS2 mouse clk
-  .kbddat_o     (PS2_DAT_O        ), // PS2 keyboard data
-  .kbdclk_o     (PS2_CLK_O        ), // PS2 keyboard clk
-  //host controller interface (SPI)
-  ._scs         ( {SPI_SS4,SPI_SS3,SPI_SS2}  ),  // SPI chip select spi_chipselect(6 downto 4),
-  .direct_sdi   (SD_MISO          ),  // SD Card direct in  SPI_SDO
-  .sdi          (SPI_DI           ),  // SPI data input
-  .sdo          (SPI_DO           ),  // SPI data output
-  .sck          (SPI_SCK          ),  // SPI clock
-  //video
-  .selcsync     (VGA_SELCS        ),
-  ._csync       (cs               ),  // horizontal sync
-  ._hsync       (hs               ),  // horizontal sync
-  ._vsync       (vs               ),  // vertical sync
-  .red          (red              ),  // red
-  .green        (green            ),  // green
-  .blue         (blue             ),  // blue
-  //audio
-  .left         (                 ),  // audio bitstream left
-  .right        (                 ),  // audio bitstream right
-  .ldata        (AUDIO_L          ),  // left DAC data
-  .rdata        (AUDIO_R          ),  // right DAC data
-  //user i/o
-  .cpu_config   (cpu_config       ), // CPU config
-  .memcfg       (memcfg           ), // memory config
-  .turbochipram (turbochipram     ), // turbo chipRAM
-  .turbokick    (turbokick        ), // turbo kickstart
-  .init_b       (                 ), // vertical sync for MCU (sync OSD update)
-  .fifo_full    (                 ),
-  // fifo / track display
-  .trackdisp    (                 ),  // floppy track number
-  .secdisp      (                 ),  // sector
-  .floppy_fwr   (                 ),  // floppy fifo writing
-  .floppy_frd   (                 ),  // floppy fifo reading
-  .hd_fwr       (                 ),  // hd fifo writing
-  .hd_frd       (                 ),  // hd fifo  ading
-  .hblank_out   (blank_out        ),
-  .osd_blank_out(osd_window       ),  // Let the toplevel dither module handle drawing the OSD.
-  .osd_pixel_out(osd_pixel        ),
-  .rtg_ena      (rtg_ena          ),
-  .rtg_act      (rtg_act          )
+	//m68k pins
+	.cpu_address  (tg68_adr[23:1]   ), // M68K address bus
+	.cpu_data     (tg68_dat_in      ), // M68K data bus
+	.cpudata_in   (tg68_dat_out     ), // M68K data in
+	._cpu_ipl     (tg68_IPL         ), // M68K interrupt request
+	._cpu_as      (tg68_as          ), // M68K address strobe
+	._cpu_uds     (tg68_uds         ), // M68K upper data strobe
+	._cpu_lds     (tg68_lds         ), // M68K lower data strobe
+	.cpu_r_w      (tg68_rw          ), // M68K read / write
+	._cpu_dtack   (tg68_dtack       ), // M68K data acknowledge
+	._cpu_reset   (tg68_rst         ), // M68K reset
+	._cpu_reset_in(tg68_nrst_out    ), // M68K reset out
+	.cpu_vbr      (tg68_VBR_out     ), // M68K VBR
+	.ovr          (tg68_ovr         ), // NMI override address decoding
+	//sram pins
+	.ram_data     (ram_data         ), // SRAM data bus
+	.ramdata_in   (ramdata_in       ), // SRAM data bus in
+	.ram_address  (ram_address[22:1]), // SRAM address bus
+	._ram_bhe     (_ram_bhe         ), // SRAM upper byte select
+	._ram_ble     (_ram_ble         ), // SRAM lower byte select
+	._ram_we      (_ram_we          ), // SRAM write enable
+	._ram_oe      (_ram_oe          ), // SRAM output enable
+	.chip48       (chip48           ), // big chipram read
+	//system  pins
+	.rst_ext      (!RESET_N         ), // reset from ctrl block
+	.rst_out      (                 ), // minimig reset status
+	.clk          (CLK_28           ), // output clock c1 ( 28.687500MHz)
+	.clk7_en      (clk7_en          ), // 7MHz clock enable
+	.clk7n_en     (clk7n_en         ), // 7MHz negedge clock enable
+	.c1           (c1               ), // clk28m clock domain signal synchronous with clk signal
+	.c3           (c3               ), // clk28m clock domain signal synchronous with clk signal delayed by 90 degrees
+	.cck          (cck              ), // colour clock output (3.54 MHz)
+	.eclk         (eclk             ), // 0.709379 MHz clock enable output (clk domain pulse)
+	//rs232 pins
+	.rxd          (AMIGA_RX         ),  // RS232 receive
+	.txd          (AMIGA_TX         ),  // RS232 send
+	.cts          (1'b0             ),  // RS232 clear to send
+	.rts          (                 ),  // RS232 request to send
+	//I/O
+	._joy1        (JOYA             ),  // joystick 1 [fire7:fire,up,down,left,right] (default mouse port)
+	._joy2        (JOYB             ),  // joystick 2 [fire7:fire,up,down,left,right] (default joystick port)
+	._joy3        (JOYC             ),  // joystick 3 [fire7:fire,up,down,left,right]
+	._joy4        (JOYD             ),  // joystick 4 [fire7:fire,up,down,left,right]
+	.mouse_btn1   (1'b1             ), // mouse button 1
+	.mouse_btn2   (1'b1             ), // mouse button 2
+	//  .mouse_btn    (mouse_buttons    ),  // mouse buttons
+	//  .kbd_mouse_data (kbd_mouse_data ),  // mouse direction data, keycodes
+	//  .kbd_mouse_type (kbd_mouse_type ),  // type of data
+	.kbd_mouse_strobe (1'b0         ), // kbd_mouse_strobe), // kbd/mouse data strobe
+	.kms_level    (1'b0             ), // kms_level        ),
+	._15khz       (_15khz           ), // scandoubler disable
+	.pwr_led      (LED_POWER        ), // power led
+	.disk_led     (LED_DISK         ), // power led
+	.msdat_i      (PS2_MDAT_I       ), // PS2 mouse data
+	.msclk_i      (PS2_MCLK_I       ), // PS2 mouse clk
+	.kbddat_i     (PS2_DAT_I        ), // PS2 keyboard data
+	.kbdclk_i     (PS2_CLK_I        ), // PS2 keyboard clk
+	.msdat_o      (PS2_MDAT_O       ), // PS2 mouse data
+	.msclk_o      (PS2_MCLK_O       ), // PS2 mouse clk
+	.kbddat_o     (PS2_DAT_O        ), // PS2 keyboard data
+	.kbdclk_o     (PS2_CLK_O        ), // PS2 keyboard clk
+	//host controller interface (SPI)
+	._scs         ( {SPI_SS4,SPI_SS3,SPI_SS2}  ),  // SPI chip select spi_chipselect(6 downto 4),
+	.direct_sdi   (SD_MISO          ),  // SD Card direct in  SPI_SDO
+	.sdi          (SPI_DI           ),  // SPI data input
+	.sdo          (SPI_DO           ),  // SPI data output
+	.sck          (SPI_SCK          ),  // SPI clock
+	//video
+	.selcsync     (VGA_SELCS        ),
+	._csync       (cs               ),  // horizontal sync
+	._hsync       (hs               ),  // horizontal sync
+	._vsync       (vs               ),  // vertical sync
+	.red          (red              ),  // red
+	.green        (green            ),  // green
+	.blue         (blue             ),  // blue
+	//audio
+	.left         (                 ),  // audio bitstream left
+	.right        (                 ),  // audio bitstream right
+	.ldata        (AUDIO_L          ),  // left DAC data
+	.rdata        (AUDIO_R          ),  // right DAC data
+	//user i/o
+	.cpu_config   (cpu_config       ), // CPU config
+	.memcfg       (memcfg           ), // memory config
+	.turbochipram (turbochipram     ), // turbo chipRAM
+	.turbokick    (turbokick        ), // turbo kickstart
+	.init_b       (                 ), // vertical sync for MCU (sync OSD update)
+	.fifo_full    (                 ),
+	// fifo / track display
+	.trackdisp    (                 ),  // floppy track number
+	.secdisp      (                 ),  // sector
+	.floppy_fwr   (                 ),  // floppy fifo writing
+	.floppy_frd   (                 ),  // floppy fifo reading
+	.hd_fwr       (                 ),  // hd fifo writing
+	.hd_frd       (                 ),  // hd fifo  ading
+	.hblank_out   (hblank_out       ),
+	.vblank_out   (vblank_out       ),
+	.osd_blank_out(osd_window       ),  // Let the toplevel dither module handle drawing the OSD.
+	.osd_pixel_out(osd_pixel        ),
+	.rtg_ena      (rtg_ena          ),
+	.rtg_act      (rtg_act          )
 );
 
 

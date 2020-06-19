@@ -66,7 +66,7 @@ module sdram_ctrl(
   output reg  [ 16-1:0] chipRD,
   output wire [ 48-1:0] chip48,
   // RTG
-  input wire     [21:0] rtgAddr,
+  input wire     [24:0] rtgAddr,
   input wire            rtgce,
   output wire           rtgfill,
   output wire    [15:0] rtgRd,
@@ -814,7 +814,9 @@ always @ (posedge sysclk) begin
         end
         // the Amiga CPU gets next bite of the cherry, unless the OSD CPU has been cycle-starved
         // request from write buffer
-        else if(writebuffer_req && (|hostslot_cnt || (!zce || hostena)) && (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23])) begin
+        else if(writebuffer_req && (|hostslot_cnt || (!zce || hostena))
+				&& (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23])
+					&& (!rtgce || writebufferAddr[24:23]!=rtgAddr[24:23])) begin
           // We only yield to the OSD CPU if it's both cycle-starved and ready to go.
           slot1_type          <= #1 CPU_WRITECACHE;
           sdaddr              <= #1 writebufferAddr[22:10];
@@ -831,7 +833,7 @@ always @ (posedge sysclk) begin
           cas_sd_cs           <= #1 4'b1110;
         end
         // request from read cache
-        else if(cache_req && !zatn && cpureq1) begin // (slot2_type == IDLE || slot2_bank != cpuAddr_mangled[24:23])) begin
+        else if(cache_req && !zatn && cpureq1 && (!rtgce || cpuAddr_mangled[24:23]!=rtgAddr[24:23])) begin // (slot2_type == IDLE || slot2_bank != cpuAddr_mangled[24:23])) begin
           // we only yield to the OSD CPU if it's both cycle-starved and ready to go
           slot1_type          <= #1 CPU_READCACHE;
           sdaddr              <= #1 cpuAddr_mangled[22:10];
@@ -944,16 +946,16 @@ always @ (posedge sysclk) begin
         if(!refresh_pending && slot1_type != REFRESH) begin
 				if(rtgce && (slot1_type == IDLE || slot1_bank != 2'b11)) begin 
 					slot2_type        <= #1 RTG;
-					sdaddr            <= #1 {1'b0,rtgAddr[21:10]};
-					ba                <= #1 2'b11;
-					slot2_bank        <= #1 2'b11;
+					sdaddr            <= #1 rtgAddr[22:10];
+					ba                <= #1 rtgAddr[24:23];
+					slot2_bank        <= #1 rtgAddr[24:23];
 					cas_dqm           <= #1 2'b11;
 					sd_cs             <= #1 4'b1110; // ACTIVE
 					sd_ras            <= #1 1'b0;
-					casaddr           <= #1 {3'b110,rtgAddr[21:0]};
+					casaddr           <= #1 rtgAddr[24:0];
 					cas_sd_we         <= #1 1'b1;
 					cas_sd_cas        <= #1 1'b0;
-					cas_sd_cs             <= #1 4'b1110;
+					cas_sd_cs         <= #1 4'b1110;
 			 end
           else if(writebuffer_req && |writebufferAddr[24:23] && (slot1_type == IDLE || slot1_bank != writebufferAddr[24:23])) begin // reserve bank 0 for slot 1
             // We only yield to the OSD CPU if it's both cycle-starved and ready to go.

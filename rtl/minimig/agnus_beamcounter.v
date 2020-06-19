@@ -426,7 +426,7 @@ always @ (posedge clk) begin
     vbl_reg <= #1 1'b0;
 end
 
-//assign vbl = (vpos <= vbstop) ? 1'b1 : 1'b0;
+// assign vbl = (vpos <= vbstop) ? 1'b1 : 1'b0;
 assign vbl = vbl_reg; // TODO
 
 //vertical blanking end (last line)
@@ -434,15 +434,20 @@ assign vblend = vpos==vbstop ? 1'b1 : 1'b0;
 
 //composite display blanking		
 always @(posedge clk)
-  if (clk7_en) begin
-  	if (hpos==hbstrt + 8'd12) begin//start of blanking (active line=51.88us)
-		hblank_out<=1'b1;
-  		blank <= 1'b1;
-	end else if (hpos==hbstop + 8'd12)//end of blanking (back porch=5.78us)
-// TODO 		blank <= vbl_reg;
-		hblank_out<=1'b0;
-		blank <= vbl;
-  end
+begin
+	if (clk7_en) begin
+		if (hpos==hbstrt)
+			hblank_out<=1'b1;
+		else if (hpos==hbstrt + 8'd12) //start of blanking (active line=51.88us)
+			blank <= 1'b1;
+		else if (hpos==hbstop)
+			hblank_out<=1'b0;	
+		else if (hpos==hbstop + 8'd12) begin//end of blanking (back porch=5.78us)
+			// TODO 		blank <= vbl_reg;
+			blank <= vbl;
+		end
+	end
+end
 
 // Abuse the DUAL bit in BEAMCON0 to enable the RTG mode
 assign rtg_ena = displaydual;
