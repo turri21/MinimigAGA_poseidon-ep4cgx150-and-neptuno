@@ -131,7 +131,7 @@ wire           turbochipram;
 wire           turbokick;
 wire           cache_inhibit;
 wire [ 32-1:0] tg68_cad;
-wire [  6-1:0] tg68_cpustate;
+wire [  7-1:0] tg68_cpustate;
 wire           tg68_nrst_out;
 //wire           tg68_cdma;
 wire           tg68_clds;
@@ -333,9 +333,11 @@ assign osd_b = osd_pixel ? 2'b11 : 2'b10;
 assign VGA_CS           = cs_reg;
 assign VGA_VS           = vs_reg;
 assign VGA_HS           = hs_reg;
-assign VGA_R[7:0]       = osd_window ? {osd_r,red_reg[7:2]} : red_reg[7:0];
+//assign VGA_R[7:0]       = osd_window ? {osd_r,red_reg[7:2]} : red_reg[7:0];
 assign VGA_G[7:0]       = osd_window ? {osd_g,green_reg[7:2]} : green_reg[7:0];
 assign VGA_B[7:0]       = osd_window ? {osd_b,blue_reg[7:2]} : blue_reg[7:0];
+// The lengths we go to in order to make an otherwise unused signal visible in signaltap!
+assign VGA_R[7:0]       = osd_window ? {osd_r,red_reg[7:6],debug_sdr} : red_reg[7:0];
 
 
 //// amiga clocks ////
@@ -423,6 +425,8 @@ wire           hostwe;
 wire           hostreq;
 wire           hostack;
 wire           hostce;
+wire [3:0]     debug_sdr;
+
 
 always @(posedge CLK_114) begin
 	hostaddr_d<=hostaddr;
@@ -482,7 +486,8 @@ sdram_ctrl sdram (
   .enaRDreg     (                 ),
   .enaWRreg     (tg68_enaWR       ),
   .ena7RDreg    (tg68_ena7RD      ),
-  .ena7WRreg    (tg68_ena7WR      )
+  .ena7WRreg    (tg68_ena7WR      ),
+  .debug        (debug_sdr        )
 );
 
 
@@ -610,8 +615,7 @@ minimig minimig (
 	.vblank_out   (vblank_out       ),
 	.osd_blank_out(osd_window       ),  // Let the toplevel dither module handle drawing the OSD.
 	.osd_pixel_out(osd_pixel        ),
-	.rtg_ena      (rtg_ena          ),
-	.rtg_act      (rtg_act          )
+	.rtg_ena      (rtg_ena          )
 );
 
 

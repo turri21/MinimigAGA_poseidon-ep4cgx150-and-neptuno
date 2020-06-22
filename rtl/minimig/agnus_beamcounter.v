@@ -52,7 +52,6 @@ module agnus_beamcounter
 	output harddis_out,
 	output varbeamen_out,
 	output rtg_ena,
-	output rtg_act,
 	output reg hblank_out
 );
 
@@ -432,25 +431,35 @@ assign vbl = vbl_reg; // TODO
 //vertical blanking end (last line)
 assign vblend = vpos==vbstop ? 1'b1 : 1'b0;
 
+// We don't want to delay hblank by 12 7Mhz clks in RTG mode
+// Rather than use two lots of comaparators, delay the chipset
+// blank signal with a shift register.
+reg [11:0] hblank_delay;
+reg hblank_tmp;
 //composite display blanking		
 always @(posedge clk)
 begin
 	if (clk7_en) begin
-		if (hpos==hbstrt)
+		blank<=hblank_delay[11];
+		hblank_delay<={hblank_delay[10:0],hblank_tmp};
+		if (hpos==hbstrt) begin
+			hblank_tmp<=1'b1;
 			hblank_out<=1'b1;
-		else if (hpos==hbstrt + 8'd12) //start of blanking (active line=51.88us)
-			blank <= 1'b1;
-		else if (hpos==hbstop)
-			hblank_out<=1'b0;	
-		else if (hpos==hbstop + 8'd12) begin//end of blanking (back porch=5.78us)
-			// TODO 		blank <= vbl_reg;
-			blank <= vbl;
 		end
+		else if (hpos==hbstop) begin
+			hblank_out<=1'b0;	
+			hblank_tmp<=vbl;
+		end
+//		if (hpos==hbstrt + 8'd12) //start of blanking (active line=51.88us)
+//			blank <= 1'b1;
+//		else if (hpos==hbstop + 8'd12) begin//end of blanking (back porch=5.78us)
+			// TODO 		blank <= vbl_reg;
+//			blank <= vbl;
+//		end
 	end
 end
 
 // Abuse the DUAL bit in BEAMCON0 to enable the RTG mode
 assign rtg_ena = displaydual;
-assign rtg_act = !blank;
 endmodule
 

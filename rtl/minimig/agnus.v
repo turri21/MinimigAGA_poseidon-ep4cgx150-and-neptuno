@@ -94,7 +94,6 @@ module agnus
   input  floppy_speed,        // allocates refresh slots for disk DMA
   input  turbo,            // alows blitter to take extra DMA slots
   output rtg_ena,
-  output rtg_act,
   output hblank_out
 );
 
@@ -482,7 +481,6 @@ agnus_beamcounter  bc1
   .harddis_out(harddis),
   .varbeamen_out(varbeamen),
   .rtg_ena(rtg_ena),
-  .rtg_act(rtg_act),
   .hblank_out(hblank_out)
 );
 

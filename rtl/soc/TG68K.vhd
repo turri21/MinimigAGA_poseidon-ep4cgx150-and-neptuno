@@ -62,7 +62,7 @@ port(
 	cache_inhibit : out     std_logic;
 	--    ovr           : in      std_logic;
 	ramaddr       : out     std_logic_vector(31 downto 0);
-	cpustate      : out     std_logic_vector(5 downto 0);
+	cpustate      : out     std_logic_vector(6 downto 0);
 	nResetOut     : buffer  std_logic;
 	skipFetch     : buffer  std_logic;
 	--    cpuDMA        : buffer  std_logic;
@@ -107,6 +107,7 @@ SIGNAL wr               : std_logic;
 SIGNAL uds_in           : std_logic;
 SIGNAL lds_in           : std_logic;
 SIGNAL state            : std_logic_vector(1 downto 0);
+signal longword         : std_logic;
 SIGNAL clkena           : std_logic;
 SIGNAL vmaena           : std_logic;
 SIGNAL eind             : std_logic;
@@ -216,7 +217,7 @@ BEGIN
 
   ramcs <= (NOT sel_ram) or slower(0);-- OR (state(0) AND NOT state(1));
 --  cpuDMA <= sel_ram;
-  cpustate <= clkena&slower(1 downto 0)&ramcs&state(1)&(state(0) and not sel_undecoded);
+  cpustate <= longword&clkena&slower(1 downto 0)&ramcs&state(1)&(state(0) and not sel_undecoded); -- Prevent writes to undecoded areas
   ramlds <= lds_in;
   ramuds <= uds_in;
 
@@ -288,6 +289,7 @@ pf68K_Kernel_inst: work.TG68KdotC_Kernel
     addr_out        => addrtg68,      -- : buffer std_logic_vector(31 downto 0);
     data_write      => data_write,    -- : out std_logic_vector(15 downto 0);
     busstate        => state,         -- : buffer std_logic_vector(1 downto 0);
+	 longword        => longword,
     nWr             => wr,            -- : out std_logic;
     nUDS            => uds_in,
     nLDS            => lds_in,        -- : out std_logic;

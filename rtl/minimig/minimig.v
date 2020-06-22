@@ -254,8 +254,7 @@ module minimig
   output  vblank_out,
   output  osd_blank_out,	// Let the toplevel dither module handle drawing the OSD.
   output  osd_pixel_out,
-  output  rtg_ena,
-  output  rtg_act
+  output  rtg_ena
 );
 
 //--------------------------------------------------------------------------------------
@@ -538,7 +537,6 @@ agnus AGNUS1
 	.floppy_speed(floppy_config[0]),
 	.turbo(turbo),
 	.rtg_ena(rtg_ena),
-	.rtg_act(rtg_act),
 	.hblank_out(hblank_out)
 );
 

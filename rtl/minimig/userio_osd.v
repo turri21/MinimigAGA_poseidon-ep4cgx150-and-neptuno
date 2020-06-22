@@ -82,9 +82,12 @@ always @(posedge clk)
       chipset_config <= t_chipset_config;
       ide_config <= t_ide_config;
       cpu_config[1:0] <= t_cpu_config[1:0];
-      memory_config[5:0] <= t_memory_config[5:0];
+//      memory_config[5:0] <= t_memory_config[5:0];
     end
+// Temporarily update memory configuration immediately.
+	 memory_config[5:0] <= t_memory_config[5:0];
   end
+
 
 always @(posedge clk) begin
   if (clk7_en) begin
