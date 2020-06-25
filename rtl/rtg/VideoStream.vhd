@@ -44,10 +44,13 @@ begin
 -- The req signal should be high any time the output process
 -- is in the same half of the buffer as the fill process.
 
-req<=reset_n and enable and (first_fill or (inptr(8) xor outptr(8) xor full));
+-- req<=reset_n and enable and (first_fill or (inptr(8) xor outptr(8) xor full));
+req<=reset_n and enable and (first_fill or not full);
+
+full<='1' when inptr(8 downto 4) = outptr(8 downto 4) else '0';
 
 -- Need to drop the req signal a few cycles early when the buffer fills up.
-full <= '1' when address(7 downto 2)="111111" else '0';
+-- full <= '1' when address(8 downto 2)="1111111" else '0';
 
 -- Fill from RAM
 a<=std_logic_vector(address);
@@ -64,7 +67,7 @@ begin
 		elsif fill='1' then
 			samplebuf(to_integer(inptr))<=d;
 			address<=address+2;
-			if address(9)='1' then
+			if address(9)/=baseaddr(9) then
 				first_fill<='0';
 			end if;
 		end if;

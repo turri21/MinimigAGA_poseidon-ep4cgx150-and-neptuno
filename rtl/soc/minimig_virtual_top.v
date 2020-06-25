@@ -259,7 +259,10 @@ always @(posedge CLK_114) begin
 	end else begin
 		rtg_pixelctr<=rtg_pixelctr+1;
 	end
+end
 
+always @(posedge CLK_114)
+begin
 	// Handle vblank manually, since the OS makes it awkward to use the chipset for this.
 	if(vblank_out) begin
 		rtg_vblank<=1'b1;
@@ -273,7 +276,7 @@ end
 
 assign rtg_blank = rtg_vblank | hblank_out;
 
-assign rtg_clut_idx = rtg_clut_in_sel_d ? rtg_dat[15:8] : rtg_dat[7:0];
+assign rtg_clut_idx = rtg_clut_in_sel_d ? rtg_dat[7:0] : rtg_dat[15:8];
 assign rtg_r=!rtg_blank ? {rtg_dat[15:11],rtg_dat[15:13]} : 16'b0 ;
 assign rtg_g=!rtg_blank ? {rtg_dat[10:5],rtg_dat[10:9]} : 16'b0 ;
 assign rtg_b=!rtg_blank ? {rtg_dat[4:0],rtg_dat[4:2]} : 16'b0 ;
@@ -309,7 +312,7 @@ VideoStream myvs
 );
 
 
-always @ (posedge CLK_28) begin
+always @ (posedge CLK_114) begin
   cs_reg    <= #1 cs;
   vs_reg    <= #1 vs;
   hs_reg    <= #1 hs;

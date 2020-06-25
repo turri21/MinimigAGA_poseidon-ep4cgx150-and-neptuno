@@ -1003,7 +1003,8 @@ always @ (posedge sysclk) begin
 			cas_sd_cas            <= #1 1'b1;
 			cas_sd_we             <= #1 1'b1;
 			slot2_type            <= #1 IDLE;
-			if(!refresh_pending && slot1_type != REFRESH) begin
+//			if(!refresh_pending && slot1_type != REFRESH) begin
+			if(!refresh_pending) begin
 				if(rtgce && (slot1_type == IDLE || slot1_bank != rtgAddr[24:23])) begin 
 					slot2_type        <= #1 RTG;
 					sdaddr            <= #1 rtgAddr[22:10];
