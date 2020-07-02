@@ -219,7 +219,7 @@ always @ (posedge clk) begin
         HCENTER[8:1] : hcenter_reg <= #1 {data_in[ 7:0], 1'b0};
         HBSTRT [8:1] : hbstrt_reg  <= #1 {data_in[ 7:0], 1'b0}; // TODO fix this
         HBSTOP [8:1] : hbstop_reg  <= #1 {data_in[ 7:0], 1'b0};
-        VTOTAL [8:1] : vtotal_reg  <= #1 {data_in[10:0]};
+        VTOTAL [8:1] : vtotal_reg  <= #1 displaydual ? vtotal_reg : {data_in[10:0]}; // Block update to vtotal when RTG is on
         VSSTRT [8:1] : vsstrt_reg  <= #1 {data_in[10:0]};
         VSSTOP [8:1] : vsstop_reg  <= #1 {data_in[10:0]};
         VBSTRT [8:1] : vbstrt_reg  <= #1 {data_in[10:0]};

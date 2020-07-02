@@ -869,6 +869,7 @@ void GetHardfileGeometry(hdfTYPE *pHDF)
     pHDF->cylinders = (unsigned short)cyl;
     pHDF->heads = (unsigned short)head;
     pHDF->sectors = (unsigned short)spt;
+	printf("Total sectors: %d, cyl: %d, heads: %d, sectors: %d\n",total, cyl, head,spt);
 }
 
 void BuildHardfileIndex(hdfTYPE *pHDF)
