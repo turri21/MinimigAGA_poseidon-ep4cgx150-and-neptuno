@@ -812,14 +812,7 @@ always @ (posedge sysclk) begin
 				sd_cas                <= #1 cas_sd_cas;
 				sd_we                 <= #1 cas_sd_we;
 				writebuffer_hold      <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
-			end// else begin
-				// Slot 2 only covers the CPU, so no need to terminate bursts.
-//				if (slot2_type!=IDLE) begin
-					// Burst terminate
-//					sd_cs			<= #1 1'b0;
-//					sd_we			<= #1 1'b0;
-//				end
-//			end
+			end
 		end
 		ph1 : begin
 			if(slot2_write)
@@ -946,30 +939,20 @@ always @ (posedge sysclk) begin
 			if(slot1_type!=IDLE && cas_sd_we==1'b1) begin // Read cycle
 				ba                    <= #1 casaddr[24:23];
 				sd_cs                 <= #1 cas_sd_cs;
-				//        if(!cas_sd_we) begin
-				//          dqm                 <= #1 cas_dqm;
-				//        end
 				sd_ras                <= #1 cas_sd_ras;
 				sd_cas                <= #1 cas_sd_cas;
 				sd_we                 <= #1 cas_sd_we;
 				sdaddr                <= #1 {1'b0, 1'b0, 1'b1, 1'b0, casaddr[9:1]}; // AUTO PRECHARGE
 			end
-//			writebuffer_hold      <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
 		end
 		ph5 : begin
 			cache_fill_2          <= #1 1'b1;
-//			if(slot1_write)
-//				dqm<= #1 2'b11;
 		end
 		ph6 : begin
 			cache_fill_2          <= #1 1'b1;
-//			if(slot1_write)
-//				dqm<= #1 2'b11;
 		end
 		ph7 : begin
 			cache_fill_2          <= #1 1'b1;
-//			if(slot1_write)
-//				dqm<= #1 2'b11;
 		end
       ph8 : begin
 			if(slot1_write) begin // Write cycle
@@ -981,13 +964,6 @@ always @ (posedge sysclk) begin
 				sd_cas                <= #1 cas_sd_cas;
 				sd_we                 <= #1 cas_sd_we;
 				writebuffer_hold      <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
-			end else begin
-				// Allow CPU_READCACHE reads to cover an 8-word burst; truncate HOST or CHIP reads after four words
-//				if (slot1_type==HOST || slot1_type==CHIP) begin
-					// Burst terminate
-//					sd_cs			<= #1 1'b0;
-//					sd_we			<= #1 1'b0;
-//				end
 			end
 			cache_fill_1          <= #1 1'b1;
       end
@@ -1003,7 +979,6 @@ always @ (posedge sysclk) begin
 			cas_sd_cas            <= #1 1'b1;
 			cas_sd_we             <= #1 1'b1;
 			slot2_type            <= #1 IDLE;
-//			if(!refresh_pending && slot1_type != REFRESH) begin
 			if(!refresh_pending) begin
 				if(rtgce && (slot1_type == IDLE || slot1_bank != rtgAddr[24:23])) begin 
 					slot2_type        <= #1 RTG;
@@ -1078,29 +1053,19 @@ always @ (posedge sysclk) begin
 				sdaddr <= #1 {1'b0, 1'b0, 1'b1, 1'b0, casaddr[9:1]}; // AUTO PRECHARGE
 				ba                    <= #1 casaddr[24:23];
 				sd_cs                 <= #1 cas_sd_cs;
-//				if(!cas_sd_we) begin
-//				 dqm                 <= #1 cas_dqm;
-//				end
 				sd_ras                <= #1 cas_sd_ras;
 				sd_cas                <= #1 cas_sd_cas;
 				sd_we                 <= #1 cas_sd_we;
-//				writebuffer_hold      <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
 			end
 		end
 		ph13 : begin
 			cache_fill_1          <= #1 1'b1;
-//			if(slot2_write)
-//				dqm<= #1 2'b11;
 		end
 		ph14 : begin
 			cache_fill_1          <= #1 1'b1;
-//			if(slot2_write)
-//				dqm<= #1 2'b11;
 		end
 		ph15 : begin
 			cache_fill_1          <= #1 1'b1;
-//			if(slot2_write)
-//				dqm<= #1 2'b11;
 		end
       default : begin
       end

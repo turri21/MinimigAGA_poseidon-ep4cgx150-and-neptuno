@@ -440,7 +440,7 @@ reg hblank_tmp;
 always @(posedge clk)
 begin
 	if (clk7_en) begin
-		blank<=hblank_delay[11];
+		blank<=displaydual | hblank_delay[11]; // Blank while RTG is enabled
 		hblank_delay<={hblank_delay[10:0],hblank_tmp};
 		if (hpos==hbstrt) begin
 			hblank_tmp<=1'b1;
