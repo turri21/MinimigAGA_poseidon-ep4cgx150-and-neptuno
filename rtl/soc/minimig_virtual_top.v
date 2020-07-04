@@ -414,14 +414,13 @@ TG68K tg68k (
 );
 
 
-wire [ 16-1:0] hostRD;
-wire [ 16-1:0] hostWR;
+wire [ 32-1:0] hostRD;
+wire [ 32-1:0] hostWR;
 wire [ 32-1:0] hostaddr;
 reg  [ 32-1:0] hostaddr_d;
 wire [  3-1:0] hostState;
-wire           hostL;
-wire           hostU;
-reg  [ 16-1:0] hostdata;
+wire [3:0]     hostbytesel;
+reg  [ 32-1:0] hostdata;
 wire           hostramena;
 wire           hostena;
 wire           hostwe;
@@ -453,11 +452,9 @@ sdram_ctrl sdram (
   
   .hostWR       (hostWR           ),
   .hostAddr     (hostaddr_d[23:0] ),
-//  .hostState    (hostState        ),
   .hostwe       (hostwe           ),
   .hostce       (hostce           ),
-  .hostL        (hostL            ),
-  .hostU        (hostU            ),
+  .hostbytesel  (hostbytesel      ),
   .hostRD       (hostRD           ),
   .hostena      (hostramena       ),
 
@@ -626,18 +623,14 @@ EightThirtyTwo_Bridge #( debug ? "true" : "false") hostcpu
 (
 	.clk(CLK_114),
 	.nReset(reset_out),
-//	.clkena_in(hostena),
 	.data_in(hostdata),
-	.addr(hostaddr),
+	.addr(hostaddr[31:2]),
 	.data_write(hostWR),
-//	.nWr( open, -- uses busstate instead?
-	.nUDS(hostU),
-	.nLDS(hostL),
 	.req(hostreq),
+	.bytesel(hostbytesel),
 	.ack(hostack),
 	.wr(hostwe)
-//	.busstate(hostState[1:0])
-	);
+);
 
 
 cfide #(.spimux(spimux ? "true" : "false")) mycfide
@@ -650,8 +643,7 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.memdata_in(hostRD),
 		.addr(hostaddr),
 		.cpudata_in(hostWR),
-		.lds(hostL),
-		.uds(hostU),
+		.cpu_bytesel(hostbytesel),
 		.cpu_req(hostreq),
 		.cpu_wr(hostwe),
 		.cpu_ack(hostack),

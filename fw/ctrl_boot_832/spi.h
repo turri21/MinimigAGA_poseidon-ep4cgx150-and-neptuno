@@ -5,9 +5,9 @@
 #define HW_SPI(x) *(volatile unsigned char *)(SPIBASE+x)
 
 /* SPI registers */
-#define HW_SPI_CS 0x05
-#define HW_SPI_DATA 0x01 /* Blocks on both reads and writes, making BUSY signal redundant. */
-#define HW_SPI_SPEED 0x09
+#define HW_SPI_CS 0x07
+#define HW_SPI_DATA 0x03 /* Blocks on both reads and writes, making BUSY signal redundant. */
+#define HW_SPI_SPEED 0x0b
 
 #define EnableOsd()   HW_SPI(HW_SPI_CS)=0x20
 #define DisableOsd()  HW_SPI(HW_SPI_CS)=0x21

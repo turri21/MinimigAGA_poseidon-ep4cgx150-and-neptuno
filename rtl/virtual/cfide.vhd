@@ -27,7 +27,6 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.STD_LOGIC_UNSIGNED.all;
 
- 
 entity cfide is
 	generic (
 		spimux : in boolean
@@ -36,18 +35,17 @@ entity cfide is
 		sysclk: in std_logic;	
 		n_reset: in std_logic;	
 		cpuena_in: in std_logic;			
-		memdata_in: in std_logic_vector(15 downto 0);		
+		memdata_in: in std_logic_vector(31 downto 0);		
 		addr: in std_logic_vector(31 downto 0);
-		cpudata_in: in std_logic_vector(15 downto 0);	
+		cpudata_in: in std_logic_vector(31 downto 0);	
 		cpu_req : in std_logic;
 		cpu_wr : in std_logic;
 		cpu_ack : out std_logic;
-		lds: in std_logic;			
-		uds: in std_logic;
+		cpu_bytesel : in std_logic_vector(3 downto 0);
 		sd_di		: in std_logic;
 			
 		memce: out std_logic;			
-		cpudata: out std_logic_vector(15 downto 0);		
+		cpudata: out std_logic_vector(31 downto 0);		
 		sd_cs 		: out std_logic_vector(7 downto 0);
 		sd_clk 		: out std_logic;
 		sd_do		: out std_logic;
@@ -100,7 +98,7 @@ signal spi_speed: std_logic_vector(7 downto 0);
 signal spi_wait : std_logic;
 signal spi_wait_d : std_logic;
 
-signal rom_data: std_logic_vector(15 downto 0);
+signal rom_data: std_logic_vector(31 downto 0);
 
 signal timecnt: std_logic_vector(15 downto 0);
 signal timeprecnt: std_logic_vector(19 downto 0);
@@ -121,18 +119,17 @@ cpu_ack<=cpu_ack_r;
 srom: entity work.OSDBoot_832_ROM
 	generic map
 	(
-		maxAddrBitBRAM => 12
+		maxAddrBitBRAM => 14
 	)
 	PORT MAP 
 	(
-		addr => addr(12 downto 0),	--: IN STD_LOGIC_VECTOR (11 DOWNTO 0);
-		lds_n	=> lds,			--	: IN STD_LOGIC_VECTOR (1 DOWNTO 0),
-		uds_n	=> uds,			--	: IN STD_LOGIC_VECTOR (1 DOWNTO 0),
+		addr => addr(14 downto 2),	--: IN STD_LOGIC_VECTOR (11 DOWNTO 0);
 		clk   => sysclk,								--: IN STD_LOGIC ;
 		d	=> cpudata_in,		--	: IN STD_LOGIC_VECTOR (15 DOWNTO 0),
-		we_n	=> not RAM_write,		-- 	: IN STD_LOGIC ,
+		we	=> RAM_write,		-- 	: IN STD_LOGIC ,
+		bytesel => cpu_bytesel,
 		q		=> rom_data									--: OUT STD_LOGIC_VECTOR (15 DOWNTO 0)
-    );
+	);
 
 -- Slow down accesses
 process(sysclk)
@@ -145,9 +142,9 @@ end process;
 cpu_req_r<=cpu_req and cpu_req_d and not cpu_ack_r;
 
 cpudata <=  rom_data WHEN ROM_select='1' ELSE 
-			IOdata WHEN rs232_select='1' or SPI_select='1' ELSE
-			timecnt when timer_select='1' ELSE 
-			part_in when platform_select='1' else
+			X"0000" & IOdata WHEN rs232_select='1' or SPI_select='1' ELSE
+			X"0000" & timecnt when timer_select='1' ELSE 
+			X"0000" & part_in when platform_select='1' else
 			memdata_in;
 part_in <=  X"000"&"001"&menu_button; -- Reconfig not currently supported, 32 meg of RAM, menu button.
 			
@@ -171,7 +168,7 @@ begin
 	end if;
 end process;
 
---sd_in(15 downto 8) <= sd_in_shift(15 downto 8) WHEN lds='0' ELSE sd_in_shift(7 downto 0); 
+
 sd_in(15 downto 8) <= (others=>'0');
 sd_in(7 downto 0) <= sd_in_shift(7 downto 0);
 
@@ -266,10 +263,8 @@ end process;
 		IF SPI_select='1' AND cpu_req_r='1' and cpu_wr='1' AND SD_busy='0' THEN	 --SD write
 			case addr(3 downto 0) is				
 				when X"8" =>
---						IF addr(3)='1' THEN				--DA4008
 					spi_speed <= cpudata_in(7 downto 0);
 				when X"4" =>
---						ELSIF addr(2)='1' THEN				--DA4004
 					scs(0) <= not cpudata_in(0);
 					IF cpudata_in(7)='1' THEN
 						scs(7) <= not cpudata_in(0);
@@ -304,23 +299,17 @@ end process;
 					else
 						spi_div(8 downto 1) <= spi_speed;
 					end if;
---					sd_out <= cpudata_in(15 downto 0);
 					IF scs(6)='1' THEN		-- SPI direkt Mode
 						shiftcnt <= "10111111111111";
 						sd_out <= X"FFFF";
---					ELSIF uds='0' AND lds='0' THEN
---						shiftcnt <= "10000000001111";
 					ELSE
 						shiftcnt <= "10000000000111";
---						IF lds='0' THEN
 						sd_out(15 downto 8) <= cpudata_in(7 downto 0);
---						END IF;
 					END IF;
 					sck <= '1';
 				when others =>
 					null;
 			end case;
---				END IF;
 		ELSE
 			IF spi_div="0000000000" THEN
 				if scs(1)='1' THEN -- Wait for io component to propagate signals.

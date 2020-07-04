@@ -40,14 +40,13 @@ module sdram_ctrl(
   output reg  [  2-1:0] dqm,
   inout  wire [ 16-1:0] sdata,
   // host
-  input  wire [ 16-1:0] hostWR,
+  input  wire [ 32-1:0] hostWR,
   input  wire [ 24-1:0] hostAddr,
 //  input  wire [  3-1:0] hostState,
   input  wire           hostce,
   input  wire           hostwe,
-  input  wire           hostL,
-  input  wire           hostU,
-  output reg  [ 16-1:0] hostRD,
+  input  wire [ 4-1:0 ] hostbytesel,
+  output reg  [ 32-1:0] hostRD,
   output wire           hostena,
   //input  wire           host_cs,
   //input  wire [ 24-1:0] host_adr,
@@ -166,7 +165,7 @@ reg           zcache_fill;
 reg           zcachehit;
 reg  [ 4-1:0] zvalid;
 reg           zequal;
-reg  [16-1:0] hostRDd;
+reg  [32-1:0] hostRDd;
 reg           cena;
 wire [64-1:0] ccache;
 wire [25-1:0] ccache_addr;
@@ -360,32 +359,34 @@ always @ (posedge sysclk) begin
     ph9 : begin
 		if(slot1_type==HOST) begin
 //      if(zcache_fill) begin
-			hostRD <= #1 sdata_reg;
-			zena <= #1 1'b1;
-
+			hostRD[31:16] <= #1 sdata_reg;
+      end
+    end
 //        zcache[63:48] <= #1 sdata_reg;
 //		  zvalid[0]<=1'b1;
-      end
-    end
     ph10 : begin
-      if(zcache_fill) begin
-        zcache[47:32] <= #1 sdata_reg;
-		  zvalid[1]<=1'b1;
-      end
+		if(slot1_type==HOST) begin
+			hostRD[15:0] <= #1 sdata_reg;
+			zena <= #1 1'b1;
+		end
+//      if(zcache_fill) begin
+//        zcache[47:32] <= #1 sdata_reg;
+//		  zvalid[1]<=1'b1;
+//      end
     end
     ph11 : begin
-      if(zcache_fill) begin
-        zcache[31:16] <= #1 sdata_reg;
-		  zvalid[2]<=1'b1;
-      end
+//      if(zcache_fill) begin
+//        zcache[31:16] <= #1 sdata_reg;
+//		  zvalid[2]<=1'b1;
+//      end
     end
     ph12 : begin
-      if(zcache_fill) begin
-        zcache[15:0]  <= #1 sdata_reg;
-		  zvalid[3]<=1'b1;
+//      if(zcache_fill) begin
+//        zcache[15:0]  <= #1 sdata_reg;
+//		  zvalid[3]<=1'b1;
 //        zvalid        <= #1 4'b1111;
-      end
-      zcache_fill     <= #1 1'b0;
+//      end
+//      zcache_fill     <= #1 1'b0;
     end
     default : begin
     end
@@ -570,36 +571,39 @@ end
 
 //// write data reg ////
 always @ (posedge sysclk) begin
-  if(sdram_state == ph3) begin
-    case(slot1_type)
-      CHIP : begin
-        datawr <= #1 chipWR;
-      end
-      CPU_WRITECACHE : begin
-        datawr <= #1 writebufferWR_reg;
-      end
-      default : begin
-        datawr <= #1 hostWR;
-      end
-    endcase
-  end else if(sdram_state == ph10) begin
-    if (slot1_type==CPU_WRITECACHE)
-        datawr <= #1 writebufferWR2_reg;
-  end else if(sdram_state == ph11) begin
-    case(slot2_type)
-      CHIP : begin
-        datawr <= #1 chipWR;
-      end
-      CPU_WRITECACHE : begin
-        datawr <= #1 writebufferWR_reg;
-      end
-      default : begin
-        datawr <= #1 hostWR;
-      end
-    endcase
-  end else if(sdram_state == ph2) begin
-    if (slot2_type==CPU_WRITECACHE)
-        datawr <= #1 writebufferWR2_reg;
+	if(sdram_state == ph3) begin
+		case(slot1_type)
+			CHIP : begin
+				datawr <= #1 chipWR;
+			end
+			CPU_WRITECACHE : begin
+				datawr <= #1 writebufferWR_reg;
+			end
+			default : begin
+				datawr <= #1 hostWR[31:16];
+			end
+		endcase
+	end else if(sdram_state == ph10) begin
+		if (slot1_type==CPU_WRITECACHE)
+			datawr <= #1 writebufferWR2_reg;
+		else
+			datawr <= #1 hostWR[15:0];
+	end else if(sdram_state == ph11) begin
+		// Only the writebuffer can write during slot 2.
+//		case(slot2_type)
+//			CHIP : begin
+//				datawr <= #1 chipWR;
+//			end
+//			CPU_WRITECACHE : begin
+				datawr <= #1 writebufferWR_reg;
+//			end
+//			default : begin
+//				datawr <= #1 hostWR[31:16];
+//			end
+//		endcase
+	end else if(sdram_state == ph2) begin
+//		if (slot2_type==CPU_WRITECACHE)
+			datawr <= #1 writebufferWR2_reg;
 	end
 end
 
@@ -907,8 +911,8 @@ always @ (posedge sysclk) begin
 				ba                  <= #1 2'b00;
 				// Always bank zero for SPI host CPU
 				slot1_bank          <= #1 2'b00;
-				slot1_dqm           <= #1 {hostU,hostL};
-            slot1_dqm2			  <= #1 2'b11;
+				slot1_dqm           <= #1 {!hostbytesel[0],!hostbytesel[1]};
+            slot1_dqm2			  <= #1 {!hostbytesel[2],!hostbytesel[3]};
 				sd_cs               <= #1 4'b1110;
 				// ACTIVE
 				sd_ras              <= #1 1'b0;
@@ -1079,23 +1083,23 @@ end
 
 
 //// slots ////
-//        Slot 1                    Slot 2
-// ph0    (read)                    (Read 0 in sdata)
-// ph1    Slot alloc, RAS (read)    Read0
-// ph2    ... (read)                Read1
-// ph3    ... (write)               Read2 (read3 in sdata)
-// ph4    CAS, write0 (write)       Read3
-// ph5    write1 (write)
-// ph6    write2 (write)
-// ph7    write3 (read)
-// ph8    (read0 in sdata) (rd)
-// ph9    read0 in sdata_reg (rd)   Slot alloc, RAS
-// ph10   read1  (read)             ...
-// ph11   read2 (rd3 in sdata, wr)  ...
-// ph12   read3 (write)             CAS, write 0
-// ph13   (write)                   write1
-// ph14   (write)                   write2
-// ph15   (read)                    write3
+//        Slot 1                       Slot 2
+// ph0    read7                        CAS for writes (col-1)
+// ph1    Slot alloc, RAS              read0 / mask off write
+// ph2                                 read1 / write 0
+// ph3                                 read2 / write 1
+// ph4    CAS for read			         read3 / write terminate
+// ph5                                 read4
+// ph6                                 read5
+// ph7                                 read6
+// ph8    CAS for writes (col-1)       read7
+// ph9    read0 / mask off write       Slot alloc, RAS
+// ph10   read1 / write0            
+// ph11   read2 / write1            
+// ph12   read3 / write terminate      CAS for read
+// ph13   read4                     
+// ph14   read5                     
+// ph15   read6                     
 
 
 endmodule
