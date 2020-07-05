@@ -277,8 +277,8 @@ end
 assign rtg_blank = rtg_vblank | hblank_out;
 
 assign rtg_clut_idx = rtg_clut_in_sel_d ? rtg_dat[7:0] : rtg_dat[15:8];
-assign rtg_r=!rtg_blank ? {rtg_dat[15:11],rtg_dat[15:13]} : 16'b0 ;
-assign rtg_g=!rtg_blank ? {rtg_dat[10:5],rtg_dat[10:9]} : 16'b0 ;
+assign rtg_r=!rtg_blank ? {rtg_dat[14:10],rtg_dat[14:12]} : 16'b0 ;
+assign rtg_g=!rtg_blank ? {rtg_dat[9:5],rtg_dat[9:7]} : 16'b0 ;
 assign rtg_b=!rtg_blank ? {rtg_dat[4:0],rtg_dat[4:2]} : 16'b0 ;
 
 wire [24:4] rtg_baseaddr;

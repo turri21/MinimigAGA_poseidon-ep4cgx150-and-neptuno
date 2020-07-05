@@ -224,7 +224,7 @@ ps2_keyboard_clk <= '0' when ps2_keyboard_clk_out='0' else 'Z';
 virtual_top : COMPONENT minimig_virtual_top
 generic map
 	(
-		debug => true
+		debug => false
 	)
 PORT map
 	(

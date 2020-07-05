@@ -539,16 +539,22 @@ unsigned char GetData(void)
             do
             {
 				SPIN;
+				SPIN;
                 c = SPI(0);
                 checksum[0] ^= c;
                 *p++ = (c & 0x55) << 1;
+				SPIN;
+				SPIN;
                 c = SPI(0);
                 checksum[1] ^= c;
                 *p++ = (c & 0x55) << 1;
 				SPIN;
+				SPIN;
                 c = SPI(0);
                 checksum[2] ^= c;
                 *p++ = (c & 0x55) << 1;
+				SPIN;
+				SPIN;
                 c = SPI(0);
                 checksum[3] ^= c;
                 *p++ = (c & 0x55) << 1;

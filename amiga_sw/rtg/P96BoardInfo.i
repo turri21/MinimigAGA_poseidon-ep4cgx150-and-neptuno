@@ -161,4 +161,5 @@ CardData_VSStop = PSSO_BoardInfo_CardData+12
 CardData_VBStop = PSSO_BoardInfo_CardData+14
 CardData_Beamcon0 = PSSO_BoardInfo_CardData+16
 CardData_Control = PSSO_BoardInfo_CardData+18
+CardData_HWTrigger = PSSO_BoardInfo_CardData+20
 

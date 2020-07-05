@@ -4,7 +4,7 @@
 --
 -- 512 words of 16 bit each to fill one M9K
 -- On vblank, reset inpointer and start filling.
--- Thereafter, compare inptr(8) with outptr(8) and fill any time they differ.
+-- Thereafter, compare inptr with outptr and fill any time they differ.
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -47,10 +47,8 @@ begin
 -- req<=reset_n and enable and (first_fill or (inptr(8) xor outptr(8) xor full));
 req<=reset_n and enable and (first_fill or not full);
 
-full<='1' when inptr(8 downto 4) = outptr(8 downto 4) else '0';
-
 -- Need to drop the req signal a few cycles early when the buffer fills up.
--- full <= '1' when address(8 downto 2)="1111111" else '0';
+full<='1' when inptr(8 downto 4) = outptr(8 downto 4) else '0';
 
 -- Fill from RAM
 a<=std_logic_vector(address);
@@ -84,8 +82,9 @@ begin
 			outptr<=outptr+1;
 		end if;
 		if reset_n='0' then
-			outptr<=(others=>'0');
-			outptr(8)<=baseaddr(9);
+--			outptr<=(others=>'0');
+--			outptr(8)<=baseaddr(9);
+			outptr<=unsigned(baseaddr(9 downto 1));
 		end if;
 		q<=samplebuf(to_integer(outptr));
 	end if;

@@ -52,7 +52,7 @@
 //   Bit 1 -> 32meg supported
 //   Bit 8 -> Reconfig supportred 
 
-#define PLATFORM (*(volatile unsigned short *)0xffffffc0)
+#define PLATFORM (*(volatile unsigned short *)0xffffffc2)
 #define PLATFORM_MENUBUTTON 0
 #define PLATFORM_32MEG 1
 #define PLATFORM_RECONFIG 8
