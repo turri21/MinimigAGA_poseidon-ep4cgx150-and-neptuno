@@ -42,19 +42,11 @@ module sdram_ctrl(
   // host
   input  wire [ 32-1:0] hostWR,
   input  wire [ 24-1:0] hostAddr,
-//  input  wire [  3-1:0] hostState,
   input  wire           hostce,
   input  wire           hostwe,
   input  wire [ 4-1:0 ] hostbytesel,
   output reg  [ 32-1:0] hostRD,
   output wire           hostena,
-  //input  wire           host_cs,
-  //input  wire [ 24-1:0] host_adr,
-  //input  wire           host_we,
-  //input  wire [  2-1:0] host_bs,
-  //input  wire [ 16-1:0] host_wdat,
-  //output reg  [ 16-1:0] host_rdat,
-  //output wire           host_ack,
   // chip
   input  wire    [23:1] chipAddr,
   input  wire           chipL,
@@ -159,12 +151,6 @@ reg  [16-1:0] sdata_reg;
 reg  [25-1:0] zmAddr;
 reg           zce;
 reg           zena;
-reg  [64-1:0] zcache;
-reg  [24-1:0] zcache_addr;
-reg           zcache_fill;
-reg           zcachehit;
-reg  [ 4-1:0] zvalid;
-reg           zequal;
 reg  [32-1:0] hostRDd;
 reg           cena;
 wire [64-1:0] ccache;
@@ -225,13 +211,6 @@ wire [25-1:1] cpuAddr_mangled;
 // address mangling
 ////////////////////////////////////////
 
-// Let's try some bank-interleaving.
-// For addresses in the upper 16 meg we shift bits around
-// so that one bank bit comes from addr(3).  This should allow
-// bank interleaving to make things more efficient.
-// Turns out this is counter-productive
-//cpuAddr_mangled<=cpuAddr(24)&cpuAddr(3)&cpuAddr(22 downto 4)&cpuAddr(23)&cpuAddr(2 downto 1)
-//  when cpuAddr(24)='1' else cpuAddr;
 assign cpuAddr_mangled = cpuAddr;
 
 assign cpuLongword = cpustate[6];
@@ -266,130 +245,47 @@ assign reset_out = init_done;
 
 // RTG access
 
-//always @ (posedge sysclk) begin
 assign rtgRd=sdata_reg;
 assign rtgfill=slot2_type==RTG ? cache_fill_2 : 1'b0;
-//end
 
 ////////////////////////////////////////
 // host access
 ////////////////////////////////////////
 
-//assign hostena = zena || hostState[1:0] == 2'b01 || zcachehit ? 1'b1 : 1'b0;
-assign hostena = zce & (zena | zcachehit);
+assign hostena = zce & zena;
 
 // map host processor's address space to 0x580000
-always @ (posedge sysclk) begin
-	zequal <= (zmAddr[23:3] == zcache_addr[23:3]) ? 1'b1 : 1'b0;
-end
-
 always @ (*) begin
 	zmAddr = {2'b00, ~hostAddr[22], hostAddr[21], ~hostAddr[20], ~hostAddr[19], hostAddr[18:0]};
-	zcachehit = 1'b0;
-//  if(!hostwe && zequal && zvalid[0]) begin
-//    case ({hostAddr[2:1], zcache_addr[2:1]})
-//      4'b0000,
-//      4'b0101,
-//      4'b1010,
-//      4'b1111 : begin
-////        zcachehit = zvalid[0];
-////        hostRD    = zcache[63:48];
-//      end
-//      4'b0100,
-//      4'b1001,
-//      4'b1110,
-//      4'b0011 : begin
-////        zcachehit = zvalid[1];
-////        hostRD    = zcache[47:32];
-//      end
-//      4'b1000,
-//      4'b1101,
-//      4'b0010,
-//      4'b0111 : begin
-////        zcachehit = zvalid[2];
-////        hostRD    = zcache[31:16];
-//      end
-//      4'b1100,
-//      4'b0001,
-//      4'b0110,
-//      4'b1011 : begin
-////        zcachehit = zvalid[3];
-////        hostRD    = zcache[15:0];
-//      end
-//      default : begin
-//      end
-//    endcase
-//  end
 end
 
 
 //// host data read ////
 always @ (posedge sysclk) begin
   if(!reset) begin
-    zcache_fill       <= #1 1'b0;
     zena              <= #1 1'b0;
-    zvalid            <= #1 4'b0000;
   end else begin
     zce <= #1 hostce;
-
-//    if(hostwe && sdram_state == ph7 && slot1_type == HOST) begin
-//      zena            <= #1 1'b1;
-//    end
-	 
-    if(zequal && hostwe && hostce) begin
-      zvalid          <= #1 4'b0000;
-    end
-
+ 
  	 if(hostce==1'b0) begin
 		zena<=#1 1'b0;
 	 end
 
     case(sdram_state)
-    ph8 : begin
-//		if(slot1_type==HOST) begin
-//			if(hostwe)  // Write - don't ack until data is about to be written.
-//				zena <= #1 1'b1;
-//			else begin  // Read cache
-//				zcache_addr   <= #1 casaddr[23:0];
-//				zcache_fill   <= #1 1'b1;
-//				zvalid        <= #1 4'b0000;
-//			end
-//		end
-    end
-    ph9 : begin
-		if(slot1_type==HOST) begin
-//      if(zcache_fill) begin
-			hostRD[31:16] <= #1 sdata_reg;
-      end
-    end
-//        zcache[63:48] <= #1 sdata_reg;
-//		  zvalid[0]<=1'b1;
-    ph10 : begin
-		if(slot1_type==HOST) begin
-			hostRD[15:0] <= #1 sdata_reg;
-			zena <= #1 1'b1;
-		end
-//      if(zcache_fill) begin
-//        zcache[47:32] <= #1 sdata_reg;
-//		  zvalid[1]<=1'b1;
-//      end
-    end
-    ph11 : begin
-//      if(zcache_fill) begin
-//        zcache[31:16] <= #1 sdata_reg;
-//		  zvalid[2]<=1'b1;
-//      end
-    end
-    ph12 : begin
-//      if(zcache_fill) begin
-//        zcache[15:0]  <= #1 sdata_reg;
-//		  zvalid[3]<=1'b1;
-//        zvalid        <= #1 4'b1111;
-//      end
-//      zcache_fill     <= #1 1'b0;
-    end
-    default : begin
-    end
+		 ph9 : begin
+			if(slot1_type==HOST) begin
+				hostRD[31:16] <= #1 sdata_reg;
+			end
+		 end
+
+		 ph10 : begin
+			if(slot1_type==HOST) begin
+				hostRD[15:0] <= #1 sdata_reg;
+				zena <= #1 1'b1;
+			end
+		 end
+		 default : begin
+		 end
     endcase
   end
 end
@@ -590,20 +486,9 @@ always @ (posedge sysclk) begin
 			datawr <= #1 hostWR[15:0];
 	end else if(sdram_state == ph11) begin
 		// Only the writebuffer can write during slot 2.
-//		case(slot2_type)
-//			CHIP : begin
-//				datawr <= #1 chipWR;
-//			end
-//			CPU_WRITECACHE : begin
-				datawr <= #1 writebufferWR_reg;
-//			end
-//			default : begin
-//				datawr <= #1 hostWR[31:16];
-//			end
-//		endcase
+		datawr <= #1 writebufferWR_reg;
 	end else if(sdram_state == ph2) begin
-//		if (slot2_type==CPU_WRITECACHE)
-			datawr <= #1 writebufferWR2_reg;
+		datawr <= #1 writebufferWR2_reg;
 	end
 end
 
@@ -623,9 +508,6 @@ always @ (posedge sysclk) begin
     ena7RDreg     <= #1 1'b0;
     ena7WRreg     <= #1 1'b0;
     case(sdram_state) // LATENCY=3
-		ph0 : begin
-//			sdwrite <= #1 slot2_write;	// Drive the bus for a single cycle
-		end
 		ph1 : begin
 			sdwrite <= #1 slot2_write;	// Drive the bus for a single cycle
 		end
@@ -633,50 +515,21 @@ always @ (posedge sysclk) begin
 			sdwrite <= #1 slot2_write;	// Drive the bus for a single cycle
         enaWRreg  <= #1 1'b1;
       end
-      ph3 : begin
-//			sdwrite <= #1 slot2_write;	// Drive the bus for a single cycle
-//        sdwrite   <= #1 1'b1;
-      end
-      ph4 : begin
-//        sdwrite   <= #1 1'b1;
-      end
-      ph5 : begin
-//        sdwrite   <= #1 1'b1;
-      end
       ph6 : begin
         enaWRreg  <= #1 1'b1;
         ena7RDreg <= #1 1'b1;
       end
-		ph7 : begin
-//			sdwrite <= #1 slot1_write;	// Drive the bus for a single cycle
-		end
-		ph8 : begin
-//			sdwrite <= #1 slot1_write;	// Drive the bus for a single cycle
-		end
 		ph9 : begin
 			sdwrite <= #1 slot1_write;	// Drive the bus for a single cycle
 		end
       ph10 : begin
 			sdwrite <= #1 slot1_write;	// Drive the bus for a single cycle
-        enaWRreg  <= #1 1'b1;
-      end
-      ph11 : begin
-//			sdwrite <= #1 slot1_write;	// Drive the bus for a single cycle
-//        sdwrite   <= #1 1'b1; // access slot 2
-      end
-      ph12 : begin
-//        sdwrite   <= #1 1'b1;
-      end
-      ph13 : begin
-//        sdwrite   <= #1 1'b1;
+			enaWRreg  <= #1 1'b1;
       end
       ph14 : begin
-        enaWRreg  <= #1 1'b1;
-        ena7WRreg <= #1 1'b1;
+			enaWRreg  <= #1 1'b1;
+			ena7WRreg <= #1 1'b1;
       end
-//		ph15 : begin
-//			sdwrite <= #1 slot2_write;	// Drive the bus for a single cycle
-//		end
       default : begin
       end
     endcase
@@ -737,8 +590,8 @@ reg zreq;
 reg cpureq1;
 
 always @(posedge sysclk) begin
-	zatn <= !(|hostslot_cnt) && zce && !hostena && !zcachehit;
-	zreq <= zce && !hostena && !zcachehit;
+	zatn <= !(|hostslot_cnt) && zce && !hostena;
+	zreq <= zce && !hostena;
 	cpureq1 <= (slot2_type == IDLE || slot2_bank != cpuAddr_mangled[24:23]) ? 1'b1 : 1'b0;
 end
 
@@ -812,11 +665,10 @@ always @ (posedge sysclk) begin
 		ph0 : begin
 			cache_fill_2          <= #1 1'b1; // slot 2
 			if(slot2_write) begin // Write cycle
-				sdaddr[12:3] <= #1 {1'b0, 1'b0, 1'b1, 1'b0, casaddr[9:4]}; // AUTO PRECHARGE
+				sdaddr[12:3] <= #1 {1'b0, 1'b0, 1'b0, 1'b0, casaddr[9:4]}; // Can't auto-precharge, since we need to interrupt the burst
 				sdaddr[2:0] <= #1 casaddr[3:1]+3'b111;
 				ba                    <= #1 casaddr[24:23];
 				sd_cs                 <= #1 cas_sd_cs;
-//				dqm                   <= #1 cas_dqm;
 				dqm						 <= #1 2'b11;
 				sd_ras                <= #1 cas_sd_ras;
 				sd_cas                <= #1 cas_sd_cas;
@@ -953,6 +805,13 @@ always @ (posedge sysclk) begin
 			end
 		end
 		ph5 : begin
+			if(slot2_write) begin
+				sd_we			<= #1 1'b0;	// Precharge
+				sd_ras		<= #1 1'b0;
+				ba			<= #1 slot2_bank;
+				sdaddr[10] <= #1 1'b0; // Just this bank
+				sd_cs			<= #1 4'b1110;
+			end
 			cache_fill_2          <= #1 1'b1;
 		end
 		ph6 : begin
@@ -963,9 +822,8 @@ always @ (posedge sysclk) begin
 		end
       ph8 : begin
 			if(slot1_write) begin // Write cycle
-				sdaddr[12:3] <= #1 {1'b0, 1'b0, 1'b1, 1'b0, casaddr[9:4]}; // AUTO PRECHARGE
+				sdaddr[12:3] <= #1 {1'b0, 1'b0, 1'b0, 1'b0, casaddr[9:4]}; // Can't auto-precharge, since we need to interrupt the burst
 				sdaddr[2:0] <= #1 casaddr[3:1]+3'b111;
-//				sdaddr                <= #1 {1'b0, 1'b0, 1'b1, 1'b0, casaddr[9:1]}; // AUTO PRECHARGE
 				ba                    <= #1 casaddr[24:23];
 				sd_cs                 <= #1 cas_sd_cs;
 				dqm                   <= #1 2'b11; // cas_dqm;
@@ -1067,6 +925,13 @@ always @ (posedge sysclk) begin
 			end
 		end
 		ph13 : begin
+			if(slot1_write) begin
+				sd_we			<= #1 1'b0;	// Precharge
+				sd_ras		<= #1 1'b0;
+				ba			<= #1 slot1_bank;
+				sdaddr[10] <= #1 1'b0; // Just this bank
+				sd_cs			<= #1 4'b1110;
+			end
 			cache_fill_1          <= #1 1'b1;
 		end
 		ph14 : begin
@@ -1081,25 +946,42 @@ always @ (posedge sysclk) begin
   end
 end
 
+//// Access slots ////
 
-//// slots ////
-//        Slot 1                       Slot 2
-// ph0    read7                        CAS for writes (col-1)
-// ph1    Slot alloc, RAS              read0 / mask off write
-// ph2                                 read1 / write 0
-// ph3                                 read2 / write 1
-// ph4    CAS for read			         read3 / write terminate
-// ph5                                 read4
-// ph6                                 read5
-// ph7                                 read6
-// ph8    CAS for writes (col-1)       read7
-// ph9    read0 / mask off write       Slot alloc, RAS
-// ph10   read1 / write0            
-// ph11   read2 / write1            
-// ph12   read3 / write terminate      CAS for read
-// ph13   read4                     
-// ph14   read5                     
-// ph15   read6                     
+// We have two slots which can operate concurrently as long as they're accessing
+// different banks. A refresh cycle on slot 1 finishes quickly enough that it need
+// not block slot 2.
+
+// The burst size is 8-words, but we only ever write to two words (32-bits) in a single
+// operation.
+
+// Reads are done in auto-precharge mode, writes are not, since it's not legal to
+// terminate an auto-precharge write before the burst is complete.
+
+// To avoid the CAS of write cycles clashing with the RAS of the other slot, we start
+// the write one cycle early, subtracting 1 from the lower 3 bits of the column address,
+// and set DQM so that the first word is ignored.  We burst-terminate after the second
+// word of actual data has been written, so we don't need to mask while the other slot's
+// read CAS is happening, then we precharge two cycles later, when the bus is free.
+
+//	      Slot 1 read         Slot 1 write           Slot 2 read         Slot 2 write
+//
+// ph0	read7                                                          CAS (col-1, mask dqm)
+// ph1	Slot alloc, RAS (both R & W)               read0               1st actual word
+// ph2                                              read1               2nd word
+// ph3                                              read2               burst terminate (mask)
+// ph4   CAS, auto p/c                              read3              
+// ph5                                              read4               precharge
+// ph6                                              read5
+// ph7                                              read6
+// ph8                       CAS (col-1, mask)      read7
+// ph9   read0               1st actual word        Slot alloc, RAS (both R & W)
+// ph10  read1               2nd word            
+// ph11  read2               burst terminate (mask)            
+// ph12  read3                                      CAS, auto p/c
+// ph13  read4               precharge
+// ph14  read5                     
+// ph15  read6                     
 
 
 endmodule
