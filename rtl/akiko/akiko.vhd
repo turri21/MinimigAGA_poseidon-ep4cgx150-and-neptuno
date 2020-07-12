@@ -14,9 +14,9 @@ port (
 	q : out std_logic_vector(15 downto 0);
 	-- RTG signals
 	rtg_addr : out std_logic_vector(24 downto 4);
-	rtg_vbend : out std_logic_vector(4 downto 0);
+	rtg_vbend : out std_logic_vector(6 downto 0);
 	rtg_ext : out std_logic;
-	rtg_pixelclock : out std_logic_vector(2 downto 0);
+	rtg_pixelclock : out std_logic_vector(3 downto 0);
 	rtg_clut : out std_logic;
 	rtg_clut_idx : in std_logic_vector(7 downto 0);
 	rtg_clut_r : out std_logic_vector(7 downto 0);
@@ -96,8 +96,8 @@ begin
 					when X"1" =>
 						rtg_addr(15 downto 4)<=d(15 downto 4);
 					when X"2" =>
-						rtg_pixelclock<=d(2 downto 0);
-						rtg_vbend<=d(12 downto 8);
+						rtg_pixelclock<=d(3 downto 0);
+						rtg_vbend<=d(rtg_vbend'high + 6 downto 6);
 						rtg_clut<=d(15);
 						rtg_ext<=d(14);
 					when others =>

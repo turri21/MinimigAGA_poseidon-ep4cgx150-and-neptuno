@@ -72,9 +72,9 @@ port(
 	VBR_out       : buffer  std_logic_vector(31 downto 0);
 	-- RTG interface
 	rtg_addr : out std_logic_vector(24 downto 4);
-	rtg_vbend : out std_logic_vector(4 downto 0);
+	rtg_vbend : out std_logic_vector(6 downto 0);
 	rtg_ext : out std_logic;
-	rtg_pixelclock : out std_logic_vector(2 downto 0);
+	rtg_pixelclock : out std_logic_vector(3 downto 0);
 	rtg_clut : out std_logic;
 	rtg_clut_idx : in std_logic_vector(7 downto 0) := X"00";
 	rtg_clut_r : out std_logic_vector(7 downto 0);

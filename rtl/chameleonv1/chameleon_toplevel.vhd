@@ -362,10 +362,10 @@ reset_n<= not reset;
 			c64_nmi_n => c64_nmi_n,
 
 			midi_txd => midi_txd,
-			midi_rxd => midi_rxd,
+			midi_rxd => midi_rxd
 --
-			iec_atn_out => rs232_txd,
-			iec_clk_in => rs232_rxd
+--			iec_atn_out => rs232_txd,
+--			iec_clk_in => rs232_rxd
 --			iec_clk_out : in std_logic := '1';
 --			iec_dat_out : in std_logic := '1';
 --			iec_srq_out : in std_logic := '1';

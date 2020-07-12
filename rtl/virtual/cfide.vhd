@@ -34,6 +34,8 @@ entity cfide is
    port ( 
 		sysclk: in std_logic;	
 		n_reset: in std_logic;	
+		enaWR : in std_logic;
+
 		cpuena_in: in std_logic;			
 		memdata_in: in std_logic_vector(31 downto 0);		
 		addr: in std_logic_vector(31 downto 0);
@@ -297,7 +299,7 @@ end process;
 							spi_div(8 downto 1) <= spi_speed+2;
 						end if;
 					else
-						spi_div(8 downto 1) <= spi_speed;
+						spi_div(8 downto 1) <= spi_speed+2;
 					end if;
 					IF scs(6)='1' THEN		-- SPI direkt Mode
 						shiftcnt <= "10111111111111";

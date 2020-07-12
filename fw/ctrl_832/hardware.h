@@ -22,6 +22,11 @@
 #define HW_SPI_DATA 3
 #define HW_SPI_SPEED 11
 
+#define RS232(x) (*(volatile unsigned char *)0xfffffff3)=x
+
+#define TIMER (*(volatile unsigned short *)0xffffffd2)
+#define SPIN {int v=TIMER;}	// Waste a few cycles to let the FPGA catch up
+
 #define EnableCard()  HW_SPI(HW_SPI_CS)=0x02
 #define DisableCard() HW_SPI(HW_SPI_CS)=0x03
 #define EnableFpga()  HW_SPI(HW_SPI_CS)=0x10
@@ -40,11 +45,6 @@
 
 #define SPI(x) (HW_SPI(HW_SPI_DATA)=x,HW_SPI(HW_SPI_DATA))
 #define RDSPI  HW_SPI(HW_SPI_DATA)
-
-#define RS232(x) (*(volatile unsigned char *)0xfffffff3)=x
-
-#define TIMER (*(volatile unsigned short *)0xffffffd2)
-#define SPIN {int v=TIMER;}	// Waste a few cycles to let the FPGA catch up
 
 // A 16-bit register for platform-specific config.
 // On read:

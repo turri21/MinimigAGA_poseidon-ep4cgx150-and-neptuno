@@ -213,8 +213,8 @@ assign sdctl_rst        = PLL_LOCKED & RESET_N;
 wire rtg_ena;	// RTG screen on/off
 wire rtg_clut;	// Are we in high-colour or 8-bit CLUT mode?
 
-reg [2:0] rtg_pixelctr;	// Counter, compared against rtg_pixelwidth
-wire [2:0] rtg_pixelwidth; // Number of clocks per fetch - 1
+reg [3:0] rtg_pixelctr;	// Counter, compared against rtg_pixelwidth
+wire [3:0] rtg_pixelwidth; // Number of clocks per fetch - 1
 wire [7:0] rtg_clut_idx;	// The currently selected colour in indexed mode
 wire rtg_pixel;	// Strobe the next pixel from the FIFO
 
@@ -223,8 +223,8 @@ wire vblank_out;
 reg rtg_vblank;
 wire rtg_blank;
 reg rtg_blank_d;
-reg [4:0] rtg_vbcounter;	// Vvbco counter
-reg [4:0] rtg_vbend; // Size of VBlank area
+reg [6:0] rtg_vbcounter;	// Vvbco counter
+wire [6:0] rtg_vbend; // Size of VBlank area
 
 
 wire [7:0] rtg_r;	// 16-bit mode RGB data
@@ -249,7 +249,7 @@ always @(posedge CLK_114) begin
 	rtg_clut_in_sel_d<=rtg_clut_in_sel;
 
 	// Alternate colour index at twice the fetch clock.
-	if(rtg_pixelctr=={1'b0,rtg_pixelwidth[2:1]})
+	if(rtg_pixelctr=={1'b0,rtg_pixelwidth[3:1]})
 		rtg_clut_in_sel<=1'b1;
 	
 	// Increment the fetch clock, reset during blank.
@@ -637,6 +637,7 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 ( 
 		.sysclk(CLK_114),
 		.n_reset(reset_out),
+		.enaWR(tg68_enaWR),
 
 		.memce(hostce),
 		.cpuena_in(hostramena),

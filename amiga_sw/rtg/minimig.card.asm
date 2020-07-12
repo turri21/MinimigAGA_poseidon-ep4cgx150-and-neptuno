@@ -302,10 +302,6 @@ FindCard:
 ;  BOOL FindCard(struct BoardInfo *bi)
 ;
 
-; FIXME - for minimig, allocate a buffer at the tail end of fast RAM,
-; and attach either a sempahore or message port, so it can be stored
-; within a system list.
-
 ;  FindCard is called in the first stage of the board initialisation and
 ;  configuration and is used to look if there is a free and unconfigured
 ;  board of the type the driver is capable of managing. If it finds one,
@@ -326,11 +322,18 @@ FindCard:
         move.l  $4.w,a6
         move.l  #MEMORY_SIZE,d0
         addi.l  #$00001FF,d0            ; add 512 bytes-1
-        move.l  #MEMF_PUBLIC|MEMF_FAST|MEMF_REVERSE,d1
+        move.l  #MEMF_24BITDMA|MEMF_FAST|MEMF_REVERSE,d1        ; Try $200000 RAM first
         jsr     _LVOAllocMem(a6)
 
         tst.l   d0
-        beq.b   .exit                   ; found REPLAY tagged mem
+        bne.b   .ok
+
+        move.l  #MEMORY_SIZE,d0
+        addi.l  #$1ff,d0
+        move.l  #MEMF_FAST|MEMF_REVERSE,d1
+        jsr     _LVOAllocMem(a6)
+        tst.l   d0
+        beq     .exit
 
 .ok
         addi.l  #$000001FF,d0           ; add 512-1
@@ -352,6 +355,46 @@ ScreenToFrontPatch:
         rts
 OrigScreenToFront:
         dc.l    0
+
+
+; This turns out to cause memory corruption and crashes the host CPU
+; so I'll backtrack on this.
+;------------
+;AllocCardMem:
+;------------
+;  a0:  struct BoardInfo
+;  d0:  ulong size
+;  d1:  bool force
+;  d2:  bool system
+
+;        move.l  a6,-(a7)
+;        move.l  4,a6
+;        move.l  d0,-(a7)
+;        move.l  #MEMF_24BITDMA,d1 ; Prefer $200000 RAM
+;        or.l    #MEMF_FAST,d1     ; leaving the larger 32-bit
+;        or.l    #MEMF_REVERSE,d1  ; RAM chunk unbroken
+;        jsr     _LVOAllocVec(a6)
+;        tst.l   d0
+;        bne     .done
+;        move.l  (a7),d0
+;        move.l  #MEMF_FAST,d1
+;        or.l    #MEMF_REVERSE,d1
+;        jsr     _LVOAllocVec(a6)
+;.done
+;        add.l   #4,a7
+;        move.l  (a7)+,a6
+;        rts
+
+;-----------
+;FreeCardMem:
+;-----------
+; a0 - struct BoardInfo
+; a1 - membase
+;        move.l  a6,-(a7)
+;        jsr     _LVOFreeVec(a6)
+;        move.l  (a7)+,a6
+;        rts
+
 
 ;------------------------------------------------------------------------------
 InitCard:
@@ -378,8 +421,6 @@ InitCard:
         move.l  #0,PSSO_BoardInfo_GraphicsControllerType(a2)
         move.l  #0,PSSO_BoardInfo_PaletteChipType(a2)
 
-;       ori.w   #$3FF2,PSSO_BoardInfo_RGBFormats(a2)
-;       ori.w   #$3FFE,PSSO_BoardInfo_RGBFormats(a2)
         ori.w   #2,PSSO_BoardInfo_RGBFormats(a2) ; CLUT
         ori.w   #2048,PSSO_BoardInfo_RGBFormats(a2) ; R5G5B5
 
@@ -432,6 +473,11 @@ InitCard:
         move.l  a1,PSSO_BoardInfo_ResolvePixelClock(a2)
         lea     GetPixelClock(pc),a1
         move.l  a1,PSSO_BoardInfo_GetPixelClock(a2)
+
+;        lea     AllocCardMem(pc),a1
+;        move.l  a1,PSSO_BoardInfo_AllocCardMem(a2)
+;        lea     FreeCardMem(pc),a1
+;        move.l  a1,PSSO_BoardInfo_FreeCardMem(a2)
 
         move.l  #113440000,PSSO_BoardInfo_MemoryClock(a2)
 
@@ -661,7 +707,7 @@ SetGC:
         BUG     "VBStop: %ld",d3
 
         move.w  PSSO_ModeInfo_first_union(a1),d4
-        lsl     #8,d3
+        lsl     #6,d3
         or.w    d3,d4
         move.w  d4,CardData_Control(a0)
         BUG     "Mode: %lx",d4
@@ -993,12 +1039,6 @@ GetPixelClock:
         move.b  .gpc_BytesPerPixel(pc,d7.l),d1
         rts
 
-;       lea     PixelClockTable(pc),a0
-;       move.l  (a0,d0.l*4),d0
-;       moveq   #0,d1
-;       move.b  .gpc_BytesPerPixel(pc,d7.l),d1
-;       rts
-
 .gpc_BytesPerPixel:
 
         dc.b    1       ; RGBFB_NONE
@@ -1017,15 +1057,6 @@ GetPixelClock:
         dc.b    2       ; RGBFB_B5G5R5PC
         dc.b    2       ; RGBFB_Y4U2V2
         dc.b    1       ; RGBFB_Y4U1V1
-; base clocks
-
-; 28.625 MHz 0
-; 40.000 MHz 1
-; 50.000 MHz 2
-; 74.250 MHz 3
-; 82.000 MHz 4
-;108.000 MHz 5
-;114.500 MHz 6
 
 ControlWords_invalid equ 0
 ControlWordsByFormat:
@@ -1047,34 +1078,34 @@ ControlWordsByFormat:
         dc.l    ControlWords_invalid    ; RGBFB_Y4U1V1
 
 ControlWords_8bit:
-        dc.w    $c00d           ; clk/14 * 2
-        dc.w    $c00c           ; clk/13 * 2
-        dc.w    $c00b           ; clk/12 * 2
-        dc.w    $c00a           ; clk/11 * 2
+        dc.w    $800d           ; clk/14 * 2
+        dc.w    $800c           ; clk/13 * 2
+        dc.w    $800b           ; clk/12 * 2
+        dc.w    $800a           ; clk/11 * 2
 
-        dc.w    $c009           ; clk/10 * 2
-        dc.w    $c008           ; clk/9 * 2
-        dc.w    $c007           ; clk/8 * 2
-        dc.w    $c006           ; clk/7 * 2
+        dc.w    $8009           ; clk/10 * 2
+        dc.w    $8008           ; clk/9 * 2
+        dc.w    $8007           ; clk/8 * 2
+        dc.w    $8006           ; clk/7 * 2
 
-        dc.w    $c005           ; clk/6 * 2
-        dc.w    $c004           ; clk/5 * 2
-        dc.w    $c003           ; clk/4 * 2
-        dc.w    $c002           ; clk/3 * 2
+        dc.w    $8005           ; clk/6 * 2
+        dc.w    $8004           ; clk/5 * 2
+        dc.w    $8003           ; clk/4 * 2
+        dc.w    $8002           ; clk/3 * 2
 
-        dc.w    $c001           ; clk/2 * 2
+        dc.w    $8001           ; clk/2 * 2
 
         dc.w    0
 
 ControlWords_16bit:
-        dc.w    $4006           ; clk/7
+        dc.w    $0006           ; clk/7
 
-        dc.w    $4005           ; clk/6
-        dc.w    $4004           ; clk/5
-        dc.w    $4003           ; clk/4
-        dc.w    $4002           ; clk/3
+        dc.w    $0005           ; clk/6
+        dc.w    $0004           ; clk/5
+        dc.w    $0003           ; clk/4
+        dc.w    $0002           ; clk/3
 
-        dc.w    $4001           ; clk/2
+        dc.w    $0001           ; clk/2
 
         dc.w    0
 
@@ -1244,9 +1275,9 @@ SetHardware:
 ;        BUG     "Setting hardware registers"
         move.l  (PSSO_BoardInfo_RegisterBase,a0),a1
 
-        move.w  (CardData_Control,a0),(4,a1)
+        move.w  (CardData_Control,a0),d0
+        move.w  d0,(4,a1)
         lea     $dff000,a1
-;        lea     $b80000,a1
         move.w  #0,(hcenter,a1)
         move.w  (CardData_HTotal,a0),(htotal,a1)
         move.w  #0,(hbstrt,a1)

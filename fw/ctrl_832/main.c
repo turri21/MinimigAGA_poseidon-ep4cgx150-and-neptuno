@@ -180,7 +180,7 @@ void ColdBoot()
 			if(override)
 			{
 				BootPrintEx("Overriding screenmode.");
-				ApplyConfiguration(0);
+				ApplyConfiguration(0,0);
 //				OsdDoReset(SPI_RST_USR | SPI_RST_CPU | SPI_CPU_HLT,SPI_RST_CPU | SPI_CPU_HLT);
 			}
 
