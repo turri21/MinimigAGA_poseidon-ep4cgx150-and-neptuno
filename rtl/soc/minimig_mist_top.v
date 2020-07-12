@@ -431,11 +431,11 @@ sdram_ctrl sdram (
   .sd_cas       (SDRAM_nCAS       ),
   .sysclk       (clk_114          ),
   .reset_in     (sdctl_rst        ),
-  .hostWR       (16'h0            ),
-  .hostAddr     (24'h0            ),
-  .hostState    ({1'b0, 2'b01}    ),
-  .hostL        (1'b1             ),
-  .hostU        (1'b1             ),
+//  .hostWR       (16'h0            ),
+//  .hostAddr     (24'h0            ),
+//  .hostState    ({1'b0, 2'b01}    ),
+//  .hostL        (1'b1             ),
+//  .hostU        (1'b1             ),
   .cpuWR        (tg68_dat_out     ),
   .cpuAddr      (tg68_cad[24:1]   ),
   .cpuU         (tg68_cuds        ),
@@ -543,7 +543,7 @@ minimig minimig (
   .kbd_mouse_strobe (kbd_mouse_strobe), // kbd/mouse data strobe
   .kms_level    (kms_level        ),
   ._15khz       (_15khz           ),  // scandoubler disable
-  .pwrled       (led              ),  // power led
+  .pwr_led      (led              ),  // power led
   .msdat        (                 ),  // PS2 mouse data
   .msclk        (                 ),  // PS2 mouse clk
   .kbddat       (                 ),  // PS2 keyboard data

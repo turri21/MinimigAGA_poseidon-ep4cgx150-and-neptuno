@@ -1,0 +1,33 @@
+
+Experimental P96 driver for the Minimig FPGA core.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+By Alastair M. Robinson
+Huge thanks to the Replay team for releasing their own
+P96 driver as open-source - this driver is based heavily
+upon their work, and is thus under the same license - LGPL2.1.
+
+
+Installation
+~~~~~~~~~~~~
+
+* Install P96 using its installer.  You'll be prompted to pick a card
+  (any card!) - it shouldn't matter which you choose, but I'll
+  assume for the rest of these instructions that you chose PicassoIV)
+
+  The P96 installer will create a new monitor file in Devs:Monitors
+
+* Rename the newly-created "PicassoIV" monitor file to "Minimig"
+
+* Edit the monitor file's tooltypes, changing the BOARDTYPE tooltype
+  to minimig then save the changes.
+
+* Copy the minimig.card file to libs:picasso96/
+
+* Optionally, copy the Picasso96Settings file to Devs:
+  (The Picasso96Settings file contains some pre-defined screenmodes
+  which all work nicely on my Dell U2311H monitor - but may need
+  tweaking, or just outright fail to work on other monitors.)
+
+* Reboot, and you should be able to run Picasso96Mode to try out the
+  various screenmodes, or select them from within applications.
+

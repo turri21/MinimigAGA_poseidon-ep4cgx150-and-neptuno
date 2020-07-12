@@ -29,48 +29,58 @@ use ieee.std_logic_unsigned.all;
 
 
 entity TG68K is
-  port(
-    clk           : in      std_logic;
-    reset         : in      std_logic;
-    clkena_in     : in      std_logic:='1';
-    IPL           : in      std_logic_vector(2 downto 0):="111";
-    dtack         : in      std_logic;
-    vpa           : in      std_logic:='1';
-    ein           : in      std_logic:='1';
-    addr          : buffer  std_logic_vector(31 downto 0);
-    data_read     : in      std_logic_vector(15 downto 0);
-    data_write    : buffer  std_logic_vector(15 downto 0);
-    as            : out     std_logic;
-    uds           : out     std_logic;
-    lds           : out     std_logic;
-    rw            : out     std_logic;
-    vma           : buffer  std_logic:='1';
-    wrd           : out     std_logic;
-    ena7RDreg     : in      std_logic:='1';
-    ena7WRreg     : in      std_logic:='1';
-    enaWRreg      : in      std_logic:='1';
-    fromram       : in      std_logic_vector(15 downto 0);
-    ramready      : in      std_logic:='0';
-    cpu           : in      std_logic_vector(1 downto 0);
-    fastramcfg    : in      std_logic_vector(2 downto 0);
-    eth_en        : in      std_logic:='0';
-    sel_eth       : buffer  std_logic;
-    frometh       : in      std_logic_vector(15 downto 0);
-    ethready      : in      std_logic;
-    turbochipram  : in      std_logic;
-    turbokick     : in      std_logic;
-    cache_inhibit : out     std_logic;
---    ovr           : in      std_logic;
-    ramaddr       : out     std_logic_vector(31 downto 0);
-    cpustate      : out     std_logic_vector(5 downto 0);
-    nResetOut     : buffer  std_logic;
-    skipFetch     : buffer  std_logic;
---    cpuDMA        : buffer  std_logic;
-    ramlds        : out     std_logic;
-    ramuds        : out     std_logic;
-    CACR_out      : buffer  std_logic_vector(3 downto 0);
-    VBR_out       : buffer  std_logic_vector(31 downto 0)
-  );
+port(
+	clk           : in      std_logic;
+	reset         : in      std_logic;
+	clkena_in     : in      std_logic:='1';
+	IPL           : in      std_logic_vector(2 downto 0):="111";
+	dtack         : in      std_logic;
+	vpa           : in      std_logic:='1';
+	ein           : in      std_logic:='1';
+	addr          : buffer  std_logic_vector(31 downto 0);
+	data_read     : in      std_logic_vector(15 downto 0);
+	data_write    : buffer  std_logic_vector(15 downto 0);
+	as            : out     std_logic;
+	uds           : out     std_logic;
+	lds           : out     std_logic;
+	rw            : out     std_logic;
+	vma           : buffer  std_logic:='1';
+	wrd           : out     std_logic;
+	ena7RDreg     : in      std_logic:='1';
+	ena7WRreg     : in      std_logic:='1';
+	enaWRreg      : in      std_logic:='1';
+	fromram       : in      std_logic_vector(15 downto 0);
+	ramready      : in      std_logic:='0';
+	cpu           : in      std_logic_vector(1 downto 0);
+	fastramcfg    : in      std_logic_vector(2 downto 0);
+	eth_en        : in      std_logic:='0';
+	sel_eth       : buffer  std_logic;
+	frometh       : in      std_logic_vector(15 downto 0);
+	ethready      : in      std_logic;
+	turbochipram  : in      std_logic;
+	turbokick     : in      std_logic;
+	cache_inhibit : out     std_logic;
+	--    ovr           : in      std_logic;
+	ramaddr       : out     std_logic_vector(31 downto 0);
+	cpustate      : out     std_logic_vector(6 downto 0);
+	nResetOut     : buffer  std_logic;
+	skipFetch     : buffer  std_logic;
+	--    cpuDMA        : buffer  std_logic;
+	ramlds        : out     std_logic;
+	ramuds        : out     std_logic;
+	CACR_out      : buffer  std_logic_vector(3 downto 0);
+	VBR_out       : buffer  std_logic_vector(31 downto 0);
+	-- RTG interface
+	rtg_addr : out std_logic_vector(24 downto 4);
+	rtg_vbend : out std_logic_vector(6 downto 0);
+	rtg_ext : out std_logic;
+	rtg_pixelclock : out std_logic_vector(3 downto 0);
+	rtg_clut : out std_logic;
+	rtg_clut_idx : in std_logic_vector(7 downto 0) := X"00";
+	rtg_clut_r : out std_logic_vector(7 downto 0);
+	rtg_clut_g : out std_logic_vector(7 downto 0);
+	rtg_clut_b : out std_logic_vector(7 downto 0)
+);
 end TG68K;
 
 
@@ -97,6 +107,7 @@ SIGNAL wr               : std_logic;
 SIGNAL uds_in           : std_logic;
 SIGNAL lds_in           : std_logic;
 SIGNAL state            : std_logic_vector(1 downto 0);
+signal longword         : std_logic;
 SIGNAL clkena           : std_logic;
 SIGNAL vmaena           : std_logic;
 SIGNAL eind             : std_logic;
@@ -206,7 +217,7 @@ BEGIN
 
   ramcs <= (NOT sel_ram) or slower(0);-- OR (state(0) AND NOT state(1));
 --  cpuDMA <= sel_ram;
-  cpustate <= clkena&slower(1 downto 0)&ramcs&state(1)&(state(0) and not sel_undecoded);
+  cpustate <= longword&clkena&slower(1 downto 0)&ramcs&state(1)&(state(0) and not sel_undecoded); -- Prevent writes to undecoded areas
   ramlds <= lds_in;
   ramuds <= uds_in;
 
@@ -278,6 +289,7 @@ pf68K_Kernel_inst: work.TG68KdotC_Kernel
     addr_out        => addrtg68,      -- : buffer std_logic_vector(31 downto 0);
     data_write      => data_write,    -- : out std_logic_vector(15 downto 0);
     busstate        => state,         -- : buffer std_logic_vector(1 downto 0);
+	 longword        => longword,
     nWr             => wr,            -- : out std_logic;
     nUDS            => uds_in,
     nLDS            => lds_in,        -- : out std_logic;
@@ -306,13 +318,23 @@ port map
 (
 	clk => clk,
 	reset_n => reset,
-	addr => cpuaddr(7 downto 0),
+	addr => cpuaddr(10 downto 0),
 	d => akiko_d,
 	q => akiko_q,
 	wr => akiko_wr,
 	req => akiko_req,
-	ack => akiko_ack
+	ack => akiko_ack,
+	rtg_addr => rtg_addr,
+	rtg_vbend => rtg_vbend,
+	rtg_ext => rtg_ext,
+	rtg_pixelclock => rtg_pixelclock,
+	rtg_clut => rtg_clut,
+	rtg_clut_idx => rtg_clut_idx,
+	rtg_clut_r => rtg_clut_r,
+	rtg_clut_g => rtg_clut_g,
+	rtg_clut_b => rtg_clut_b
 );
+
 
 akiko_d <= data_write;
 process(clk,cpuaddr) begin

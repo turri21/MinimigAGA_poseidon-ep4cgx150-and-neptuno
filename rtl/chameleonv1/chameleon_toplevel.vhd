@@ -84,6 +84,8 @@ architecture rtl of chameleon_toplevel is
 	signal pll_locked : std_logic;
 	
 -- Global signals
+	signal reset_8 : std_logic;
+	signal reset_28 : std_logic;
 	signal reset : std_logic;
 	signal reset_n : std_logic;
 	
@@ -197,6 +199,7 @@ architecture rtl of chameleon_toplevel is
 		CLK_114		:	 out STD_LOGIC;
 		CLK_28		:	 out STD_LOGIC;
 		CLK_IN 		:   in std_logic;
+		PLL_LOCKED  :   out std_logic;
 		RESET_N 		:   in STD_LOGIC;
 		MENU_BUTTON :   IN STD_LOGIC;
 		LED_POWER	:	 OUT STD_LOGIC;
@@ -269,12 +272,22 @@ myReset : entity work.gen_reset
 		resetCycles => reset_cycles
 	)
 	port map (
-		clk => clk8,	-- Shouldn't run this from a PLL generated clock since it needs to run while the PLLs aren't yet stable.
+		clk => clk8,
 		enable => '1',
-		button => not button_reset_n, -- not (button_reset_n and pll_locked),
-		reset => reset,
-		nreset => reset_n
+		button => not button_reset_n,
+		reset => reset_8
 	);
+	
+	
+process(clk_28,reset_8)
+begin
+	if rising_edge(clk_28) then
+		reset_28<=reset_8;
+		reset<=reset_28;
+	end if;
+end process;
+
+reset_n<= not reset;
 	
 	myIO : entity work.chameleon_io
 		generic map (
@@ -393,6 +406,7 @@ PORT map
 		CLK_IN => clk8,
 		CLK_28 => clk_28,
 		CLK_114 => clk_114,
+		PLL_LOCKED => pll_locked,
 		LED_DISK => led_red,
 		LED_POWER => led_green,
 		RESET_N => reset_n,
@@ -460,8 +474,8 @@ vga_window<='1';
 			outbits => 5
 		)
 		port map(
-			clk=>clk_28,
-			invertSync=>'1',
+			clk=>clk_114,
+--			invertSync=>'1',
 			iSelcsync=>vga_selcsync,
 			iCsync=>vga_csync,
 			iHsync=>vga_hsync,

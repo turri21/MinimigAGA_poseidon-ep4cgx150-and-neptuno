@@ -529,8 +529,8 @@ audio_r(0)<='0';
 			outbits => 5
 		)
 		port map(
-			clk=>clk_28,
-			invertSync=>'1',
+			clk=>clk_114,
+--			invertSync=>'1',
 			iSelcsync=>vga_selcsync,
 			iCsync=>vga_csync,
 			iHsync=>vga_hsync,

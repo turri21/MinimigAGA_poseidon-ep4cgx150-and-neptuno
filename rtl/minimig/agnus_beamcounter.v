@@ -49,8 +49,10 @@ module agnus_beamcounter
 	output	eof,					// end of video frame
 	output	reg vbl_int,			// vertical interrupt request (for Paula)
 	output	[8:0] htotal_out,			// video line length
-  output harddis_out,
-  output varbeamen_out
+	output harddis_out,
+	output varbeamen_out,
+	output rtg_ena,
+	output reg hblank_out
 );
 
 // local beam position counters
@@ -217,7 +219,7 @@ always @ (posedge clk) begin
         HCENTER[8:1] : hcenter_reg <= #1 {data_in[ 7:0], 1'b0};
         HBSTRT [8:1] : hbstrt_reg  <= #1 {data_in[ 7:0], 1'b0}; // TODO fix this
         HBSTOP [8:1] : hbstop_reg  <= #1 {data_in[ 7:0], 1'b0};
-        VTOTAL [8:1] : vtotal_reg  <= #1 {data_in[10:0]};
+        VTOTAL [8:1] : vtotal_reg  <= #1 displaydual ? vtotal_reg : {data_in[10:0]}; // Block update to vtotal when RTG is on
         VSSTRT [8:1] : vsstrt_reg  <= #1 {data_in[10:0]};
         VSSTOP [8:1] : vsstop_reg  <= #1 {data_in[10:0]};
         VBSTRT [8:1] : vbstrt_reg  <= #1 {data_in[10:0]};
@@ -378,18 +380,18 @@ always @(posedge clk)
 always @(posedge clk)
   if (clk7_en) begin
   	if (hpos==hsstrt)//start of sync pulse (front porch = 1.69us)
-  		_hsync <= 1'b0;
+  		_hsync <= hsynctrue;
   	else if (hpos==hsstop)//end of sync pulse (sync pulse = 4.65us)
-  		_hsync <= 1'b1;
+  		_hsync <= !hsynctrue;
   end
 
 //vertical sync and vertical blanking
 always @(posedge clk)
   if (clk7_en) begin
   	if ((vpos==vsstrt && hpos==hsstrt && !long_frame) || (vpos==vsstrt && hpos==hcenter && long_frame))
-  		_vsync <= 1'b0;
+  		_vsync <= vsynctrue;
   	else if ((vpos==vsstop && hpos==hcenter && !long_frame) || (vpos==vsstop+1 && hpos==hsstrt && long_frame))
-  		_vsync <= 1'b1;		
+  		_vsync <= !vsynctrue;		
   end
 
 //apparently generating csync from vsync alligned with leading edge of hsync results in malfunction of the AD724 CVBS/S-Video encoder (no colour in interlaced mode)
@@ -419,26 +421,45 @@ always @ (posedge clk) begin
     vbl_reg <= #1 1'b0;
   else if (vpos == vbstrt)
     vbl_reg <= #1 1'b1;
-  else if (vpos == vbstop)
+  else if (vpos == vbstop+1)
     vbl_reg <= #1 1'b0;
 end
 
-assign vbl = (vpos <= vbstop) ? 1'b1 : 1'b0;
-//assign vbl = vbl_reg; // TODO
+// assign vbl = (vpos <= vbstop) ? 1'b1 : 1'b0;
+assign vbl = vbl_reg; // TODO
 
 //vertical blanking end (last line)
 assign vblend = vpos==vbstop ? 1'b1 : 1'b0;
 
+// We don't want to delay hblank by 12 7Mhz clks in RTG mode
+// Rather than use two lots of comaparators, delay the chipset
+// blank signal with a shift register.
+reg [11:0] hblank_delay;
+reg hblank_tmp;
 //composite display blanking		
 always @(posedge clk)
-  if (clk7_en) begin
-  	if (hpos==hbstrt + 8'd12)//start of blanking (active line=51.88us)
-  		blank <= 1'b1;
-  	else if (hpos==hbstop + 8'd12)//end of blanking (back porch=5.78us)
-// TODO 		blank <= vbl_reg;
-    blank <= vbl;
-  end
+begin
+	if (clk7_en) begin
+		blank<=displaydual | hblank_delay[11]; // Blank while RTG is enabled
+		hblank_delay<={hblank_delay[10:0],hblank_tmp};
+		if (hpos==hbstrt) begin
+			hblank_tmp<=1'b1;
+			hblank_out<=1'b1;
+		end
+		else if (hpos==hbstop) begin
+			hblank_out<=1'b0;	
+			hblank_tmp<=vbl;
+		end
+//		if (hpos==hbstrt + 8'd12) //start of blanking (active line=51.88us)
+//			blank <= 1'b1;
+//		else if (hpos==hbstop + 8'd12) begin//end of blanking (back porch=5.78us)
+			// TODO 		blank <= vbl_reg;
+//			blank <= vbl;
+//		end
+	end
+end
 
-
+// Abuse the DUAL bit in BEAMCON0 to enable the RTG mode
+assign rtg_ena = displaydual;
 endmodule
 

@@ -57,7 +57,7 @@ unsigned short entries_per_cluster;     // number of directory entries per clust
 
 // internal global variables
 unsigned char fattype;              	// volume format 
-unsigned char fat32 = 0;                // volume format is FAT32
+unsigned char fat32;                // volume format is FAT32
 unsigned long boot_sector;              // partition boot sector
 unsigned long fat_start;                // start LBA of first FAT table
 unsigned long data_start;               // start LBA of data field
@@ -81,10 +81,10 @@ unsigned long buffered_fat_index;       // index of buffered FAT sector
 char DirEntryLFN[MAXDIRENTRIES][261];
 DIRENTRY DirEntry[MAXDIRENTRIES];
 unsigned char sort_table[MAXDIRENTRIES];
-unsigned char nDirEntries = 0;          // entries in DirEntry table
-unsigned char iSelectedEntry = 0;       // selected entry index
-unsigned long iCurrentDirectory = 0;    // cluster number of current directory, 0 for root
-unsigned long iPreviousDirectory = 0;   // cluster number of previous directory
+unsigned char nDirEntries;          // entries in DirEntry table
+unsigned char iSelectedEntry;       // selected entry index
+unsigned long iCurrentDirectory;    // cluster number of current directory, 0 for root
+unsigned long iPreviousDirectory;   // cluster number of previous directory
 
 // temporary storage buffers
 char t_DirEntryLFN[MAXDIRENTRIES][261];
@@ -1230,7 +1230,6 @@ RAMFUNC unsigned char FileNextSector(fileTYPE *file)
             buffered_fat_index = sb;
         }
 
-//        file->cluster = fat32 ? fat_buffer.fat32[i] & 0x0FFFFFFF: fat_buffer.fat16[i]; // get FAT link
         file->cluster = fat32 ? SwapBBBB(fat_buffer.fat32[i]) & 0x0FFFFFFF : SwapBB(fat_buffer.fat16[i]); // get FAT link for 68000 
     }
 
@@ -1284,8 +1283,6 @@ unsigned char FileSeek(fileTYPE *file, unsigned long offset, unsigned long origi
             buffered_fat_index = sb; // remember current buffer index
         }
 
-//        file->cluster = fat32 ? fat_buffer.fat32[i] & 0x0FFFFFFF : fat_buffer.fat16[i]; // get FAT-link
-//        file->cluster = fat32 ? SwapBBBB(fat_buffer.fat32[i]) & 0x0FFFFFFF : SwapBB(fat_buffer.fat16[i]); // get FAT-link for 68000
         if (fat32)
         {
             file->cluster = SwapBBBB(fat_buffer.fat32[i]) & 0x0FFFFFFF; // get FAT32 link
@@ -1349,6 +1346,7 @@ unsigned char FileReadEx(fileTYPE *file, unsigned char *pBuffer, unsigned long n
     return 1;
 }
 
+
 unsigned char FileWrite(fileTYPE *file,unsigned char *pBuffer)
 {
     unsigned long sector;
@@ -1362,6 +1360,7 @@ unsigned char FileWrite(fileTYPE *file,unsigned char *pBuffer)
     else
         return(1);
 }
+
 
 unsigned char FileCreate(unsigned long iDirectory, fileTYPE *file)
 {
@@ -1473,12 +1472,6 @@ unsigned char FileCreate(unsigned long iDirectory, fileTYPE *file)
                             pEntry->AccessDate = SwapBB(FILEDATE(2009, 9, 1));
                             pEntry->ModifyDate = SwapBB(FILEDATE(2009, 9, 1));
                             pEntry->ModifyTime = SwapBB(FILETIME(0, 0, 0));
-//                            pEntry->StartCluster = (unsigned short)(((cluster>>8)&0xFF)|((cluster<<8)&0xFF00)); // for 68000
-//                            pEntry->HighCluster = fat32 ? (unsigned short)(((cluster & 0x0F000000)>>24)|((cluster & 0xFF0000)>>8)) : 0; // for 68000
-//                            pEntry->FileSize = ((file->size>>24)&0xFF)|((file->size>>8)&0xFF00)|((file->size<<8)&0xFF0000)|((file->size<<24)&0xFF000000); // for 68000 
-//                            pEntry->StartCluster = (unsigned short)cluster;
-//                            pEntry->HighCluster = fat32 ? (unsigned short)(cluster >> 16) : 0;
-//                            pEntry->FileSize = file->size;
                             pEntry->StartCluster = (unsigned short)SwapBB(cluster); // for 68000
                             pEntry->HighCluster = fat32 ? (unsigned short)SwapBB(cluster >> 16) : 0; // for 68000
 							printf("FileCreate() filesize (before endian swap) is %lx\n",file->size);
@@ -1527,6 +1520,7 @@ unsigned char FileCreate(unsigned long iDirectory, fileTYPE *file)
     return(0);
 }
 
+
 // changing of allocated cluster number is not supported - new size must be within current cluster number
 unsigned char UpdateEntry(fileTYPE *file)
 {
@@ -1552,7 +1546,6 @@ unsigned char UpdateEntry(fileTYPE *file)
         return(0);
     }
 
-//    pEntry->FileSize = file->size;
       pEntry->FileSize = SwapBBBB(file->size); // for 68000
 
     if (!MMC_Write(file->entry.sector, sector_buffer))

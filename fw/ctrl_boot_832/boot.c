@@ -19,7 +19,6 @@
 #include "minfat.h"
 #include "checksum.h"
 #include "small_printf.h"
-#include "fpga.h"
 #include "uart.h"
 
 void _boot()
@@ -78,6 +77,11 @@ int main(int argc,char **argv)
 	int i;
 	int err=0;
 
+	EnableOsd();
+	HW_SPI(OSD_CMD_RST);
+	HW_SPI(SPI_RST_CPU|SPI_CPU_HLT);
+	DisableOsd();
+
 	while(1)
 	{
 		puts("Initializing SD card\n");
@@ -99,16 +103,16 @@ int main(int argc,char **argv)
 					_boot();
 				}
 				else
-					BootPrint("Can't load firmware\n");
+					puts("Can't load firmware\n");
 			}
 			else
 			{
-				BootPrint("Unable to locate partition\n");
+				puts("Unable to locate partition\n");
 				puts("Unable to locate partition\n");
 			}
 		}
 		else
-			BootPrint("Failed to initialize SD card\n");
+			puts("Failed to initialize SD card\n");
 		ErrorCode(err);
 	}
 	return(0);

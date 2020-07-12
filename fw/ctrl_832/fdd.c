@@ -34,9 +34,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 
-unsigned char DEBUG = 0;
+unsigned char DEBUG=1;
 
-unsigned char drives = 0; // number of active drives reported by FPGA (may change only during reset)
+unsigned char drives; // number of active drives reported by FPGA (may change only during reset)
 adfTYPE *pdfx;            // drive select pointer
 adfTYPE df[4];            // drive 0 information structure
 
@@ -373,42 +373,42 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
                 break;
             }
 
-			SPIN;
+//			SPIN;
 
             c = SPI(0);
             checksum[0] = c;
             c1 = (c & 0x55) << 1;
-			SPIN;
+//			SPIN;
             c = SPI(0);
             checksum[1] = c;
             c2 = (c & 0x55) << 1;
 
-			SPIN;
+//			SPIN;
 
             c = SPI(0);
             checksum[2] = c;
             c3 = (c & 0x55) << 1;
-			SPIN;
+//			SPIN;
             c = SPI(0);
             checksum[3] = c;
             c4 = (c & 0x55) << 1;
 
-			SPIN;
+//			SPIN;
 
             c = SPI(0);
             checksum[0] ^= c;
             c1 |= c & 0x55;
-			SPIN;
+//			SPIN;
             c = SPI(0);
             checksum[1] ^= c;
             c2 |= c & 0x55;
 
-			SPIN;
+//			SPIN;
 
             c = SPI(0);
             checksum[2] ^= c;
             c3 |= c & 0x55;
-			SPIN;
+//			SPIN;
             c = SPI(0);
             checksum[3] ^= c;
             c4 |= c & 0x55;
@@ -437,10 +437,10 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
 
             for (i = 0; i < 8; i++)
             {
-				SPIN;
+//				SPIN;
                 checksum[0] ^= SPI(0);
                 checksum[1] ^= SPI(0);
-				SPIN;
+//				SPIN;
                 checksum[2] ^= SPI(0);
                 checksum[3] ^= SPI(0);
             }
@@ -450,19 +450,19 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
             checksum[2] &= 0x55;
             checksum[3] &= 0x55;
 
-			SPIN;
+//			SPIN;
 
             c1 = ((SPI(0)) & 0x55) << 1;
             c2 = ((SPI(0)) & 0x55) << 1;
-			SPIN;
+//			SPIN;
             c3 = ((SPI(0)) & 0x55) << 1;
             c4 = ((SPI(0)) & 0x55) << 1;
 
-			SPIN;
+//			SPIN;
 
             c1 |= (SPI(0)) & 0x55;
             c2 |= (SPI(0)) & 0x55;
-			SPIN;
+//			SPIN;
             c3 |= (SPI(0)) & 0x55;
             c4 |= (SPI(0)) & 0x55;
 
@@ -512,19 +512,19 @@ unsigned char GetData(void)
 
         if (n >= 0x204)
         {
-			SPIN;
+//			SPIN;
 
             c1 = ((SPI(0)) & 0x55) << 1;
             c2 = ((SPI(0)) & 0x55) << 1;
-			SPIN;
+//			SPIN;
             c3 = ((SPI(0)) & 0x55) << 1;
             c4 = ((SPI(0)) & 0x55) << 1;
 
-			SPIN;
+//			SPIN;
 
             c1 |= (SPI(0)) & 0x55;
             c2 |= (SPI(0)) & 0x55;
-			SPIN;
+//			SPIN;
             c3 |= (SPI(0)) & 0x55;
             c4 |= (SPI(0)) & 0x55;
 
@@ -538,17 +538,23 @@ unsigned char GetData(void)
             p = sector_buffer;
             do
             {
-				SPIN;
+//				SPIN;
+//				SPIN;
                 c = SPI(0);
                 checksum[0] ^= c;
                 *p++ = (c & 0x55) << 1;
+//				SPIN;
+//				SPIN;
                 c = SPI(0);
                 checksum[1] ^= c;
                 *p++ = (c & 0x55) << 1;
-				SPIN;
+//				SPIN;
+//				SPIN;
                 c = SPI(0);
                 checksum[2] ^= c;
                 *p++ = (c & 0x55) << 1;
+//				SPIN;
+//				SPIN;
                 c = SPI(0);
                 checksum[3] ^= c;
                 *p++ = (c & 0x55) << 1;
@@ -560,14 +566,14 @@ unsigned char GetData(void)
             p = sector_buffer;
             do
             {
-				SPIN;
+//				SPIN;
                 c = SPI(0);
                 checksum[0] ^= c;
                 *p++ |= c & 0x55;
                 c = SPI(0);
                 checksum[1] ^= c;
                 *p++ |= c & 0x55;
-				SPIN;
+//				SPIN;
                 c = SPI(0);
                 checksum[2] ^= c;
                 *p++ |= c & 0x55;
@@ -614,7 +620,11 @@ void WriteTrack(adfTYPE *drive)
     file.sector = drive->track * 11;
     sector = 0;
 
-    drive->track_prev = drive->track + 1; // just to force next read from the start of current track
+	// So much havok for such an innocent looking bug.
+	// This line is responsible for corrupted ADFs on write.  In short, writing to a track, then
+	// reading the next track would return data from the wrong track.
+	//    drive->track_prev = drive->track + 1; // just to force next read from the start of current track
+    drive->track_prev = -1;
 
     if (DEBUG)
         printf("*%u:\r", drive->track);

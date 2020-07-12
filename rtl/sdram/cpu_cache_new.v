@@ -7,6 +7,7 @@
 // whole cache size (I+D) is 8kB
 // ! requires Altera Quartus prepared memories because of the byte-selects !
 
+// AMR - adjust for 8-word bursts.
 
 module cpu_cache_new (
   // system
@@ -84,8 +85,8 @@ reg           cc_en;
 reg           cc_fr;
 reg           cc_clr;
 // cpu address
-wire [ 2-1:0] cpu_adr_blk;
-wire [ 8-1:0] cpu_adr_idx;
+wire [ 3-1:0] cpu_adr_blk;
+wire [ 7-1:0] cpu_adr_idx;
 wire [14-1:0] cpu_adr_tag;
 // idram0
 wire [10-1:0] idram0_cpu_adr;
@@ -189,7 +190,11 @@ localparam [3:0]
   CPU_SM_FILL2 = 4'd7,
   CPU_SM_FILL3 = 4'd8,
   CPU_SM_FILL4 = 4'd9,
-  CPU_SM_FILLW = 4'd10;
+  CPU_SM_FILL5 = 4'd10,
+  CPU_SM_FILL6 = 4'd11,
+  CPU_SM_FILL7 = 4'd12,
+  CPU_SM_FILL8 = 4'd13,
+  CPU_SM_FILLW = 4'd14;
 
 // sdram-side state machine
 localparam [3:0]
@@ -201,7 +206,7 @@ localparam [3:0]
   SDR_SM_FILL1 = 4'd5,
   SDR_SM_FILL2 = 4'd6,
   SDR_SM_FILL3 = 4'd7,
-  SDR_SM_WAIT  = 4'd8;
+  SDR_SM_WAIT  = 4'd12;
 
 
 //// cpu side ////
@@ -231,9 +236,9 @@ always @ (posedge clk) begin
 end 
 
 // slice up cpu address
-assign cpu_adr_blk = cpu_adr[2:1];    // cache block address (inside cache row), 2 bits for 4x16 rows
-assign cpu_adr_idx = cpu_adr[10:3];   // cache row address, 8 bits
-assign cpu_adr_tag = cpu_adr[24:11];  // tag, 14 bits
+assign cpu_adr_blk = cpu_adr[3:1];    // cache block address (inside cache row), 2 bits for 4x16 rows
+assign cpu_adr_idx = cpu_adr[10:4];   // cache row address, 8 bits
+assign cpu_adr_tag = cpu_adr[24:11];  // tag, 13 bits
 
 // cpu side state machine
 always @ (posedge clk) begin
@@ -387,7 +392,7 @@ always @ (posedge clk) begin
       CPU_SM_FILL2 : begin
         // cache line fill 2nd word
         fill <= #1 1'b1;
-        cpu_sm_adr[1:0] <= #1 cpu_sm_adr[1:0] + 2'b01;
+        cpu_sm_adr[2:0] <= #1 cpu_sm_adr[2:0] + 2'b01;
         cpu_sm_mem_dat_w <= #1 sdr_dat_r;
         cpu_sm_iram0_we <= #1  cpu_sm_ilru &&  cpu_sm_id;
         cpu_sm_iram1_we <= #1 !cpu_sm_ilru &&  cpu_sm_id;
@@ -398,7 +403,7 @@ always @ (posedge clk) begin
       CPU_SM_FILL3 : begin
         // cache line fill 3rd word
         fill <= #1 1'b1;
-        cpu_sm_adr[1:0] <= #1 cpu_sm_adr[1:0] + 2'b01;
+        cpu_sm_adr[2:0] <= #1 cpu_sm_adr[2:0] + 2'b01;
         cpu_sm_mem_dat_w <= #1 sdr_dat_r;
         cpu_sm_iram0_we <= #1  cpu_sm_ilru &&  cpu_sm_id;
         cpu_sm_iram1_we <= #1 !cpu_sm_ilru &&  cpu_sm_id;
@@ -409,7 +414,51 @@ always @ (posedge clk) begin
       CPU_SM_FILL4 : begin
         // cache line fill 4th word
         fill <= #1 1'b1;
-        cpu_sm_adr[1:0] <= #1 cpu_sm_adr[1:0] + 2'b01;
+        cpu_sm_adr[2:0] <= #1 cpu_sm_adr[2:0] + 2'b01;
+        cpu_sm_mem_dat_w <= #1 sdr_dat_r;
+        cpu_sm_iram0_we <= #1  cpu_sm_ilru &&  cpu_sm_id;
+        cpu_sm_iram1_we <= #1 !cpu_sm_ilru &&  cpu_sm_id;
+        cpu_sm_dram0_we <= #1  cpu_sm_dlru && !cpu_sm_id;
+        cpu_sm_dram1_we <= #1 !cpu_sm_dlru && !cpu_sm_id;
+        cpu_sm_state <= #1 CPU_SM_FILL5;
+      end
+      CPU_SM_FILL5 : begin
+        // cache line fill 4th word
+        fill <= #1 1'b1;
+        cpu_sm_adr[2:0] <= #1 cpu_sm_adr[2:0] + 2'b01;
+        cpu_sm_mem_dat_w <= #1 sdr_dat_r;
+        cpu_sm_iram0_we <= #1  cpu_sm_ilru &&  cpu_sm_id;
+        cpu_sm_iram1_we <= #1 !cpu_sm_ilru &&  cpu_sm_id;
+        cpu_sm_dram0_we <= #1  cpu_sm_dlru && !cpu_sm_id;
+        cpu_sm_dram1_we <= #1 !cpu_sm_dlru && !cpu_sm_id;
+        cpu_sm_state <= #1 CPU_SM_FILL6;
+      end
+      CPU_SM_FILL6 : begin
+        // cache line fill 4th word
+        fill <= #1 1'b1;
+        cpu_sm_adr[2:0] <= #1 cpu_sm_adr[2:0] + 2'b01;
+        cpu_sm_mem_dat_w <= #1 sdr_dat_r;
+        cpu_sm_iram0_we <= #1  cpu_sm_ilru &&  cpu_sm_id;
+        cpu_sm_iram1_we <= #1 !cpu_sm_ilru &&  cpu_sm_id;
+        cpu_sm_dram0_we <= #1  cpu_sm_dlru && !cpu_sm_id;
+        cpu_sm_dram1_we <= #1 !cpu_sm_dlru && !cpu_sm_id;
+        cpu_sm_state <= #1 CPU_SM_FILL7;
+      end
+      CPU_SM_FILL7 : begin
+        // cache line fill 4th word
+        fill <= #1 1'b1;
+        cpu_sm_adr[2:0] <= #1 cpu_sm_adr[2:0] + 2'b01;
+        cpu_sm_mem_dat_w <= #1 sdr_dat_r;
+        cpu_sm_iram0_we <= #1  cpu_sm_ilru &&  cpu_sm_id;
+        cpu_sm_iram1_we <= #1 !cpu_sm_ilru &&  cpu_sm_id;
+        cpu_sm_dram0_we <= #1  cpu_sm_dlru && !cpu_sm_id;
+        cpu_sm_dram1_we <= #1 !cpu_sm_dlru && !cpu_sm_id;
+        cpu_sm_state <= #1 CPU_SM_FILL8;
+      end
+      CPU_SM_FILL8 : begin
+        // cache line fill 4th word
+        fill <= #1 1'b1;
+        cpu_sm_adr[2:0] <= #1 cpu_sm_adr[2:0] + 2'b01;
         cpu_sm_mem_dat_w <= #1 sdr_dat_r;
         cpu_sm_iram0_we <= #1  cpu_sm_ilru &&  cpu_sm_id;
         cpu_sm_iram1_we <= #1 !cpu_sm_ilru &&  cpu_sm_id;

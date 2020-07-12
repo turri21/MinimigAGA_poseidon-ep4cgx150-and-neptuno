@@ -8,7 +8,7 @@ entity video_vga_dither is
 	);
 	port (
 		clk : in std_logic;
-		invertSync : in std_logic :='0';
+--		invertSync : in std_logic :='0';
 		vidEna : in std_logic :='1';
 		iCsync : in std_logic;
 		iHsync : in std_logic;
@@ -46,8 +46,8 @@ architecture rtl of video_vga_dither is
 	constant vidmax : unsigned(7 downto 0) := "11111111";
 begin
 
-	oHsync<=iCsync when iSelcsync='1' else not iHsync when invertSync='1' else iHsync;
-	oVsync<='1' when iSelcsync='1' else not iVsync when invertSync='1' else iVsync;
+	oHsync<=iCsync when iSelcsync='1' else iHsync;
+	oVsync<='1' when iSelcsync='1' else iVsync;
 
 	oRed <= red(7 downto (8-outbits)) when vid_ena_d='1' else (others=>'0');
 	oGreen <= green(7 downto (8-outbits)) when vid_ena_d='1' else (others=>'0');
@@ -125,8 +125,6 @@ end generate;
 			
 			prevhsync<=iHsync;
 			
---			ctr <= ctr+1;
---			if ctr=0 then
 			ctr(0) <= not ctr(0);
 			if ctr(0)='0' then
 				lfsr_reg<=lfsr_reg(23 downto 0) & (lfsr_reg(24) xor lfsr_reg(21));	

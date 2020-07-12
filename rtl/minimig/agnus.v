@@ -92,7 +92,9 @@ module agnus
   input  ecs,            // enable ECS features
   input aga,            // enables AGA features
   input  floppy_speed,        // allocates refresh slots for disk DMA
-  input  turbo            // alows blitter to take extra DMA slots
+  input  turbo,            // alows blitter to take extra DMA slots
+  output rtg_ena,
+  output hblank_out
 );
 
 //register names and adresses
@@ -477,7 +479,9 @@ agnus_beamcounter  bc1
   .vbl_int(vbl_int),
   .htotal_out(htotal),
   .harddis_out(harddis),
-  .varbeamen_out(varbeamen)
+  .varbeamen_out(varbeamen),
+  .rtg_ena(rtg_ena),
+  .hblank_out(hblank_out)
 );
 
 //horizontal strobe for Denise

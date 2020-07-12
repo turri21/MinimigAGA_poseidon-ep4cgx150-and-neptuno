@@ -20,8 +20,9 @@ configTYPE config;
 fileTYPE file;
 extern char s[40];
 char configfilename[12];
-char DebugMode=0;
+char DebugMode;
 
+int CheckSum();
 
 int minimig_v1()
 {
@@ -37,34 +38,20 @@ static char filename[12];
 
 void ClearKickstartMirrorE0(void)
 {
-  int i;
-  spi_osd_cmd32le_cont(OSD_CMD_WR, 0x00e00000);
-  for (i = 0; i < (0x80000 / 4); i++) {
-    SPI(0x00);
-    SPI(0x00);
-    SPIN; SPIN; SPIN; SPIN;
-    SPI(0x00);
-    SPI(0x00);
-    SPIN; SPIN; SPIN; SPIN;
-  }
-  DisableOsd();
-  SPIN; SPIN; SPIN; SPIN;
+	int i;
+	int *p=(0xe00000 & 0x7fffff) ^ 0xd80000;
+	for (i = 0; i < (0x80000 / 4); i++) {
+		*p++=0;
+	}
 }
 
 void ClearVectorTable(void)
 {
-  int i;
-  spi_osd_cmd32le_cont(OSD_CMD_WR, 0x00000000);
-  for (i = 0; i < 256; i++) {
-    SPI(0x00);
-    SPI(0x00);
-    SPIN; SPIN; SPIN; SPIN;
-    SPI(0x00);
-    SPI(0x00);
-    SPIN; SPIN; SPIN; SPIN;
-  }
-  DisableOsd();
-  SPIN; SPIN; SPIN; SPIN;
+	int i;
+	int *p=0 ^ 0xd80000;
+	for (i = 0; i < 256; i++) {
+		*p++=0;
+	}
 }
 
 //// UploadKickstart() ////
@@ -145,100 +132,52 @@ char UploadKickstart(char *name)
 //// UploadActionReplay() ////
 char UploadActionReplay()
 {
-#if 0
-  if(minimig_v1()) {
-    if (RAOpen(&romfile, "AR3     ROM")) {
-      if (romfile.file.size == 0x40000) {
-        // 256 KB Action Replay 3 ROM
-        BootPrint("\nUploading Action Replay ROM...");
-        PrepareBootUpload(0x40, 0x04);
-        SendFile(&romfile);
-        ClearMemory(0x440000, 0x40000);
-        return(1);
-      } else {
-        BootPrint("\nUnsupported AR3.ROM file size!!!");
-        /* FatalError(6); */
-        return(0);
-      }
-    }
-  } else {
-#endif
-    if (RAOpen(&romfile, "HRTMON  ROM")) {
-      int adr, data;
-      puts("Uploading HRTmon ROM... ");
-      SendFileV2(&romfile, NULL, 0, 0xa10000, (romfile.file.size+511)>>9);
-      // HRTmon config
-      adr = 0xa10000 + 20;
-      spi_osd_cmd32le_cont(OSD_CMD_WR, adr);
-      data = 0x00800000; // mon_size, 4 bytes
-      SPI((data>>24)&0xff); SPI((data>>16)&0xff); SPIN; SPIN; SPIN; SPIN; SPI((data>>8)&0xff); SPI((data>>0)&0xff);
-      data = 0x00; // col0h, 1 byte
-      SPI((data>>0)&0xff);
-      data = 0x5a; // col0l, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0x0f; // col1h, 1 byte
-      SPI((data>>0)&0xff);
-      data = 0xff; // col1l, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0xff; // right, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0x00; // keyboard, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0xff; // key, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = config.enable_ide ? 0xff : 0; // ide, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0xff; // a1200, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = config.chipset&CONFIG_AGA ? 0xff : 0; // aga, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0xff; // insert, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0x0f; // delay, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0xff; // lview, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0x00; // cd32, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = config.chipset&CONFIG_NTSC ? 1 : 0; // screenmode, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0xff; // novbr, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 0; // entered, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      data = 1; // hexmode, 1 byte
-      SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      DisableOsd();
-      SPIN; SPIN; SPIN; SPIN;
-      adr = 0xa10000 + 68;
-      spi_osd_cmd32le_cont(OSD_CMD_WR, adr);
-      data = ((config.memory&0x3) + 1) * 512 * 1024; // maxchip, 4 bytes TODO is this correct?
-      SPI((data>>24)&0xff); SPI((data>>16)&0xff); SPIN; SPIN; SPIN; SPIN; SPI((data>>8)&0xff); SPI((data>>0)&0xff);
-      SPIN; SPIN; SPIN; SPIN;
-      DisableOsd();
-      SPIN; SPIN; SPIN; SPIN;
-      return(1);
-    } else {
+
+// FIXME - migrate to direct access
+
+	if (RAOpen(&romfile, "HRTMON  ROM")) {
+		unsigned char *adr;
+		int data;
+		printf("Uploading HRTmon ROM... ");
+		SendFileV2(&romfile, NULL, 0, 0xa10000, (romfile.file.size+511)>>9);
+
+		// HRTmon config
+		adr = (unsigned char *)(((0xa10000 + 20)&0x7fffff)^0xd80000);
+
+		*adr++=0x00; *adr++=0x80; *adr++=0x00; *adr++=0x00;
+		//      data = 0x00800000; // mon_size, 4 bytes
+		*adr++ =0x00; // col0h, 1 byte
+		*adr++ =0x5a; // col0l, 1 byte
+		*adr++ =0x0f; // col1h, 1 byte
+		*adr++ =0xff; // col1l, 1 byte
+		*adr++ =0xff; // right, 1 byte
+		*adr++ =0x00; // keyboard, 1 byte
+		*adr++ =0xff; // key, 1 byte
+		*adr++ =config.enable_ide ? 0xff : 0; // ide, 1 byte
+		*adr++ =0xff; // a1200, 1 byte
+		*adr++ =config.chipset&CONFIG_AGA ? 0xff : 0; // aga, 1 byte
+		*adr++ =0xff; // insert, 1 byte
+		*adr++ =0x0f; // delay, 1 byte
+		*adr++ =0xff; // lview, 1 byte
+		*adr++ =0x00; // cd32, 1 byte
+		*adr++ =config.chipset&CONFIG_NTSC ? 1 : 0; // screenmode, 1 byte
+		*adr++ =0xff; // novbr, 1 byte
+		*adr++ =0; // entered, 1 byte
+		*adr++ =1; // hexmode, 1 byte
+
+		adr = (unsigned char *)(((0xa10000 + 68) & 0x7fffff) ^ 0xd80000);
+		data = ((config.memory&0x3) + 1) * 512 * 1024; // maxchip, 4 bytes TODO is this correct?
+		*adr++=(data>>24)&0xff;
+		*adr++=(data>>16)&0xff;
+		*adr++=(data>>8)&0xff;
+		*adr++=(data>>0)&0xff;
+
+		return(1);
+	} else {
 	  ClearError(ERROR_FILESYSTEM);
-      puts("\rhrtmon.rom not found!\r");
-      return(0);
-    }
+	  puts("\rhrtmon.rom not found!\r");
+	  return(0);
+	}
   return(0);
 }
 
@@ -266,9 +205,10 @@ unsigned char ConfigurationExists(char *filename)
 }
 
 
+static const char config_id[] = "MNMGCFGA"; /* New signature for AGA core */
+
 unsigned char LoadConfiguration(char *filename)
 {
-    static const char config_id[] = "MNMGCFGA"; /* New signature for AGA core */
 	int updatekickstart=0;
 	int result=0;
     unsigned int key;
@@ -338,98 +278,71 @@ unsigned char LoadConfiguration(char *filename)
 }
 
 
-void ApplyConfiguration(char reloadkickstart)
+void ApplyConfiguration(char reloadkickstart, char applydrives)
 {
 	int rstval=0;
 
+//	printf("c1: %x\n",CheckSum());
+
 	// Whether or not we uploaded a kickstart image we now need to set various parameters from the config.
 
-  	if(OpenHardfile(0))
+	if(applydrives)
 	{
-		switch(hdf[0].type) // Customise message for SD card access
+		if(OpenHardfile(0))
 		{
-			case (HDF_FILE | HDF_SYNTHRDB):
-		        sprintf(s, "\nHardfile 1 (with fake RDB): %.8s.%.3s", hdf[1].file.name, &hdf[1].file.name[8]);
-				break;
-			case HDF_FILE:
-		        sprintf(s, "\nHardfile 0: %.8s.%.3s", hdf[0].file.name, &hdf[0].file.name[8]);
-				break;
-			case HDF_CARD:
-		        sprintf(s, "\nHardfile 0: using entire SD card");
-				break;
-			default:
-		        sprintf(s, "\nHardfile 0: using SD card partition %d",hdf[0].type-HDF_CARD);	// Number from 1
-				break;
+		//		printf("c2: %x\n",CheckSum());
+			switch(hdf[0].type) // Customise message for SD card access
+			{
+				case (HDF_FILE | HDF_SYNTHRDB):
+					sprintf(s, "\nHardfile 1 (with fake RDB): %.8s.%.3s", hdf[1].file.name, &hdf[1].file.name[8]);
+					break;
+				case HDF_FILE:
+					sprintf(s, "\nHardfile 0: %.8s.%.3s", hdf[0].file.name, &hdf[0].file.name[8]);
+					break;
+				case HDF_CARD:
+					sprintf(s, "\nHardfile 0: using entire SD card");
+					break;
+				default:
+					sprintf(s, "\nHardfile 0: using SD card partition %d",hdf[0].type-HDF_CARD);	// Number from 1
+					break;
+			}
+			BootPrint(s);
+			sprintf(s, "CHS: %u.%u.%u", hdf[0].cylinders, hdf[0].heads, hdf[0].sectors);
+			BootPrint(s);
+			sprintf(s, "Size: %lu MB", ((((unsigned long) hdf[0].cylinders) * hdf[0].heads * hdf[0].sectors) >> 11));
+			BootPrint(s);
+			sprintf(s, "Offset: %ld", hdf[0].offset);
+			BootPrint(s);
+		//		printf("c3: %x\n",CheckSum());
 		}
-        BootPrint(s);
-        sprintf(s, "CHS: %u.%u.%u", hdf[0].cylinders, hdf[0].heads, hdf[0].sectors);
-        BootPrint(s);
-        sprintf(s, "Size: %lu MB", ((((unsigned long) hdf[0].cylinders) * hdf[0].heads * hdf[0].sectors) >> 11));
-        BootPrint(s);
-        sprintf(s, "Offset: %ld", hdf[0].offset);
-		BootPrint(s);
-	}
-   	if(OpenHardfile(1))
-	{
-		switch(hdf[1].type)
+		if(OpenHardfile(1))
 		{
-			case (HDF_FILE | HDF_SYNTHRDB):
-		        sprintf(s, "\nHardfile 1 (with fake RDB): %.8s.%.3s", hdf[1].file.name, &hdf[1].file.name[8]);
-				break;
-			case HDF_FILE:
-		        sprintf(s, "\nHardfile 1: %.8s.%.3s", hdf[1].file.name, &hdf[1].file.name[8]);
-				break;
-			case HDF_CARD:
-		        sprintf(s, "\nHardfile 1: using entire SD card");
-				break;
-			default:
-		        sprintf(s, "\nHardfile 1: using SD card partition %d",hdf[1].type-HDF_CARD);	// Number from 1
-				break;
+			switch(hdf[1].type)
+			{
+				case (HDF_FILE | HDF_SYNTHRDB):
+					sprintf(s, "\nHardfile 1 (with fake RDB): %.8s.%.3s", hdf[1].file.name, &hdf[1].file.name[8]);
+					break;
+				case HDF_FILE:
+					sprintf(s, "\nHardfile 1: %.8s.%.3s", hdf[1].file.name, &hdf[1].file.name[8]);
+					break;
+				case HDF_CARD:
+					sprintf(s, "\nHardfile 1: using entire SD card");
+					break;
+				default:
+					sprintf(s, "\nHardfile 1: using SD card partition %d",hdf[1].type-HDF_CARD);	// Number from 1
+					break;
+			}
+			BootPrint(s);
+			sprintf(s, "CHS: %u.%u.%u", hdf[1].cylinders, hdf[1].heads, hdf[1].sectors);
+			BootPrint(s);
+			sprintf(s, "Size: %lu MB", ((((unsigned long) hdf[1].cylinders) * hdf[1].heads * hdf[1].sectors) >> 11));
+			BootPrint(s);
+			sprintf(s, "Offset: %ld", hdf[1].offset);
+			BootPrint(s);
 		}
-        BootPrint(s);
-        sprintf(s, "CHS: %u.%u.%u", hdf[1].cylinders, hdf[1].heads, hdf[1].sectors);
-        BootPrint(s);
-        sprintf(s, "Size: %lu MB", ((((unsigned long) hdf[1].cylinders) * hdf[1].heads * hdf[1].sectors) >> 11));
-        BootPrint(s);
-        sprintf(s, "Offset: %ld", hdf[1].offset);
-        BootPrint(s);
+		ConfigIDE(config.enable_ide, config.hardfile[0].present && config.hardfile[0].enabled,
+			config.hardfile[1].present && config.hardfile[1].enabled);
 	}
-
-    ConfigIDE(config.enable_ide, config.hardfile[0].present && config.hardfile[0].enabled,
-		config.hardfile[1].present && config.hardfile[1].enabled);
-#if 0
-    sprintf(s, "CPU clock     : %s", config.chipset & 0x01 ? "turbo" : "normal");
-    BootPrint(s);
-    sprintf(s, "Chip RAM size : %s", config_memory_chip_msg[config.memory & 0x03]);
-    BootPrint(s);
-    sprintf(s, "Slow RAM size : %s", config_memory_slow_msg[config.memory >> 2 & 0x03]);
-    BootPrint(s);
-
-    sprintf(s, "Floppy drives : %u", config.floppy.drives + 1);
-    BootPrint(s);
-    sprintf(s, "Floppy speed  : %s", config.floppy.speed ? "fast": "normal");
-    BootPrint(s);
-
-    BootPrint("");
-
-    sprintf(s, "\nA600 IDE HDC is %s.", config.enable_ide ? "enabled" : "disabled");
-    BootPrint(s);
-    sprintf(s, "Master HDD is %s.", config.hardfile[0].present ? config.hardfile[0].enabled ? "enabled" : "disabled" : "not present");
-    BootPrint(s);
-    sprintf(s, "Slave HDD is %s.", config.hardfile[1].present ? config.hardfile[1].enabled ? "enabled" : "disabled" : "not present");
-    BootPrint(s);
-#endif
-#if 0
-    if (cluster_size < 64)
-    {
-        BootPrint("\n***************************************************");
-        BootPrint(  "*  It's recommended to reformat your memory card  *");
-        BootPrint(  "*   using 32 KB clusters to improve performance   *");
-		BootPrint(  "*           when using large hardfiles.           *");	// AMR
-        BootPrint(  "***************************************************");
-    }
-    printf("Bootloading is complete.\r");
-#endif
 
     ConfigCPU(config.cpu);
     ConfigMemory(config.memory);

@@ -82,9 +82,12 @@ always @(posedge clk)
       chipset_config <= t_chipset_config;
       ide_config <= t_ide_config;
       cpu_config[1:0] <= t_cpu_config[1:0];
-      memory_config[5:0] <= t_memory_config[5:0];
+//      memory_config[5:0] <= t_memory_config[5:0];
     end
+// Temporarily update memory configuration immediately.
+	 memory_config[5:0] <= t_memory_config[5:0];
   end
+
 
 always @(posedge clk) begin
   if (clk7_en) begin
@@ -456,6 +459,15 @@ always @ (posedge clk) begin
   end
 end
 
+`ifdef MINIMIG_HOST_DIRECT  // Does the host CPU have direct access to the Minimig's memory?
+
+always @(*) begin
+	host_cs = 1'b0;
+	host_we = 1'b0;
+	host_bs = 2'b00;
+end
+
+`else
 
 // memory write
 reg mem_toggle = 1'b0, mem_toggle_d = 1'b0;
@@ -556,6 +568,7 @@ end
 assign mem_adr = {mem_page, mem_cnt};
 assign host_adr  = mem_adr[23:0];
 
+`endif // MINIMIG_HOST_DIRECT
 
 // rtl version
 `include "minimig_version.vh"

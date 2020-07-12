@@ -51,11 +51,20 @@ const char *supporters[]=
 	"Juan Jose Velez Ramirez",
 	"Dag Jacobsen",
 	"Bartol Filipovic",
-	"Espen Skog",
 	"Pasi Ylinen",
 	"Andreas Beck",
 	"Dirk Vroomen",
-	"+ all other contributors",
+	"Nils Andreas",
+	"Alvaro Fussen",
+	"Sebastian",
+	"Sebastian Bessler",
+	"Valentin Angelovski",
+	"+ all other contributors.",
+	"Thanks also to Espen Skog,",
+	"Jens Drossler and everyone",
+	"on the Turbo Chameleon 64",
+	"facebook group for their",
+	"enthusiasm and suggestions.",
 	0
 }
 
