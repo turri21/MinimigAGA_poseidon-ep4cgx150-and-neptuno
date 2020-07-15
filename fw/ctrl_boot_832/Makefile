@@ -45,7 +45,7 @@ ALL_SOURCES = $(LIB_DIR)/crt0.a $(ASM_SOURCES) $(COMMON_SOURCES) $(LIB_DIR)/lib8
 
 all: $(PROJECT).bin $(PROJECT)_ROM.vhd
 
-$(PROJECT).bin: Makefile $(ALL_SOURCES)
+$(PROJECT).bin: bootdiag.h $(ALL_SOURCES)
 	$(LD) $(LDFLAGS) -M $(PROJECT).map -o $@ $(ALL_SOURCES)
 
 # clean
@@ -61,6 +61,10 @@ $(ROMGEN): ../romgen/romgen.c
 	sed 's/soc_firmware/$*_ROM/' >$*_ROM.vhd <$(RTL_DIR)/rom_prologue.vhd
 	$(ROMGEN) $*.bin >>$*_ROM.vhd
 	cat >>$*_ROM.vhd $(RTL_DIR)/rom_epilogue.vhd
+
+bootdiag.h: bootdiag.s
+	vasmm68k_mot -Fbin bootdiag.s -o bootdiag.bin
+	xxd -i bootdiag.bin > bootdiag.h
 
 %.asm: %.c
 	$(CC) $(CFLAGS) -o=$@ $<

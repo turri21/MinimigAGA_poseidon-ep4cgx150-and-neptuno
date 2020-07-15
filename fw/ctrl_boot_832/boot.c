@@ -1,18 +1,6 @@
 /*	Firmware for loading files from SD card.
-	Part of the ZPUTest project by Alastair M. Robinson.
+	Part of the MinimigAGA core TC64 port by Alastair M. Robinson.
 	SPI and FAT code borrowed from the Minimig project.
-
-	This boot ROM ends up stored in the ZPU stack RAM
-	which in the current incarnation of the project is
-	memory-mapped to 0x04000000
-	Halfword and byte writes to the stack RAM aren't
-	currently supported in hardware, so if you use
-    hardware storeh/storeb, and initialised global
-    variables in the boot ROM should be declared as
-    int, not short or char.
-	Uninitialised globals will automatically end up
-	in SDRAM thanks to the linker script, which in most
-	cases solves the problem.
 */
 
 #include "spi.h"
@@ -20,6 +8,34 @@
 #include "checksum.h"
 #include "small_printf.h"
 #include "uart.h"
+
+
+#include "bootdiag.h"
+
+void BootDiag()
+{
+	unsigned char *upload=(unsigned char *)(0x780000^0xd80000);
+	unsigned char *src=bootdiag_bin;
+	int i=bootdiag_bin_len;
+	while(--i)
+		*upload++=*src++;
+}
+
+void ErrorCode(int code)
+{
+	unsigned char *upload=(unsigned char *)(0x780000^0xd80000);
+	EnableOsd();
+	HW_SPI(HW_SPI_DATA)=OSD_CMD_RST;
+	HW_SPI(HW_SPI_DATA)=SPI_RST_CPU|SPI_CPU_HLT; // Reset the chipset to allow the NTSC flag to take effect.
+	DisableOsd();
+	upload[10]=code>>8;
+	upload[11]=code&255;
+	EnableOsd();
+	HW_SPI(HW_SPI_DATA)=OSD_CMD_RST;
+	HW_SPI(HW_SPI_DATA)=0; // Reset the chipset to allow the NTSC flag to take effect.
+	DisableOsd();
+}
+
 
 void _boot()
 {
@@ -50,49 +66,43 @@ void cvx(int val,char *buf)
 }
 
 
-void ErrorCode(int error)
-{
-	int count;
-    unsigned long i;
-
-	EnableOsd();
-	HW_SPI(OSD_CMD_RST);
-	HW_SPI(SPI_RST_CPU|SPI_CPU_HLT);
-	DisableOsd();
-
-	EnableOsd();
-	HW_SPI(OSD_CMD_WR);
-	HW_SPI(0x80);	// $DFF180
-	HW_SPI(0xF1);
-	HW_SPI(0xDF);
-	HW_SPI(0x00);
-	HW_SPI((error>>8)&255);
-	HW_SPI(error&255);
-	DisableOsd();
-}
-
-
 int main(int argc,char **argv)
 {
 	int i;
 	int err=0;
+	SPI_slow();
 
 	EnableOsd();
-	HW_SPI(OSD_CMD_RST);
-	HW_SPI(SPI_RST_CPU|SPI_CPU_HLT);
+	HW_SPI(HW_SPI_DATA)=OSD_CMD_RST;
+	HW_SPI(HW_SPI_DATA)=SPI_RST_CPU|SPI_CPU_HLT; // Allow the Chipset to start up
 	DisableOsd();
+
+	PLATFORM=(1<<PLATFORM_SCANDOUBLER);
+
+	EnableOsd();
+	HW_SPI(HW_SPI_DATA)=OSD_CMD_CHIP;
+	HW_SPI(HW_SPI_DATA)=CONFIG_NTSC;
+	DisableOsd();
+
+	EnableOsd();
+	HW_SPI(HW_SPI_DATA)=OSD_CMD_RST;
+	HW_SPI(HW_SPI_DATA)=SPI_RST_USR|SPI_RST_CPU|SPI_CPU_HLT; // Reset the chipset to allow the NTSC flag to take effect.
+	DisableOsd();
+
+	BootDiag();
+	ErrorCode(0xfff);
 
 	while(1)
 	{
-		puts("Initializing SD card\n");
 		err=0xf00;
+		puts("Initializing SD card\n");
 		if(spi_init())
 		{
 			err=0xff0;
 			puts("Hunting for partition\n");
 			if(FindDrive())
 			{
-				err=0xf0;
+				err=0x0f0;
 				int romsize;
 				int *checksums;
 				if(romsize=LoadFile(OSDNAME,prg_start))
@@ -100,6 +110,7 @@ int main(int argc,char **argv)
 					int error=0;
 					char *sector=(char *)prg_start;
 					int offset=0;
+					err=0x0ff;
 					_boot();
 				}
 				else

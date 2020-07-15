@@ -19,11 +19,25 @@
 #define SPI_fast()  HW_SPI(HW_SPI_SPEED)=0x07
 
 #define OSD_CMD_WR        0x1c
+
 #define OSD_CMD_RST       0x08
 
 #define SPI_RST_USR         0x1
 #define SPI_RST_CPU         0x2
 #define SPI_CPU_HLT         0x4
+
+
+#define OSD_CMD_CHIP      0x04
+
+#define CONFIG_TURBO     1
+#define CONFIG_NTSC      2
+#define CONFIG_A1000     4
+#define CONFIG_ECS       8
+#define CONFIG_AGA      16
+
+#define PLATFORM (*(volatile unsigned short *)0xffffffc2)
+#define PLATFORM_SCANDOUBLER 0
+
 
 
 int spi_init();
