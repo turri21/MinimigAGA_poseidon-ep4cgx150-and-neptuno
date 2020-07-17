@@ -14,5 +14,7 @@ void ClearMemory(unsigned long base, unsigned long size);
 unsigned char GetFPGAStatus(void);
 void fpga_init();
 
+extern int checksum_pre;
+
 #endif
 

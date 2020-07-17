@@ -2167,10 +2167,11 @@ void ShowError(char *message, unsigned char code)
 	errorpage=0;
 	while(t)
 	{
+		t>>=1;
 		++errorpage;
 	}
     menustate = MENU_ERROR;
-	OsdShow(DISABLE_KEYBOARD); // do not disable KEYBOARD
+	OsdShow(DISABLE_KEYBOARD);
     OsdColor(OSDCOLOR_WARNING);
 }
 
@@ -2225,6 +2226,8 @@ void SanityCheck()
 	snprintf(s,32,"%x",addcheck(0xabcdef01));
 	DebugMessage(s);
 	snprintf(s,32,"%x",addcheck(0x23456789));
+	DebugMessage(s);
+	snprintf(s,32,"%x",checksum_pre);
 	DebugMessage(s);
 }
 

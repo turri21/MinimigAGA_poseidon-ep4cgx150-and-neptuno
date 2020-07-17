@@ -42,121 +42,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 extern fileTYPE file;
 extern char s[40];
 
-int CheckSum();
+int checksum_pre;
+
+
+int CheckSum(char *adr,int size);
 
 char BootPrint(const char *text);
 
-#if 0
-void SendFile(RAFile *file)
-{
-    unsigned char  c1, c2;
-    unsigned long  j;
-    unsigned long  n;
-    unsigned char *p;
-
-    printf("[");
-    n = (file->file.size + 511) >> 9; // sector count (rounded up)
-    while (n--)
-    {
-        // read data sector from memory card
-		RARead(file,sector_buffer,512);
-
-        do
-        {
-            // read FPGA status
-            EnableFpga();
-            c1 = SPI(0);
-            c2 = SPI(0);
-            SPI(0);
-            SPI(0);
-            SPI(0);
-            SPI(0);
-            DisableFpga();
-        }
-        while (!(c1 & CMD_RDTRK));
-
-        if ((n & 15) == 0)
-            printf("*");
-
-        // send data sector to FPGA
-        EnableFpga();
-        c1 = SPI(0);
-        c2 = SPI(0);
-        SPI(0);
-        SPI(0);
-        SPI(0);
-        SPI(0);
-        p = sector_buffer;
-
-        for (j = 0; j < 512; j++)
-            SPI(*p++);
-
-        DisableFpga();
-    }
-    printf("]\r");
-}
-
-
-void SendFileEncrypted(RAFile *file,unsigned char *key,int keysize)
-{
-    unsigned char  c1, c2;
-	unsigned char headersize;
-	unsigned int keyidx=0;
-    unsigned long  j;
-    unsigned long  n;
-    unsigned char *p;
-	int badbyte=0;
-
-    printf("[");
-	headersize=file->size&255;	// ROM should be a round number of kilobytes; overspill will likely be the Amiga Forever header.
-
-	RARead(file,sector_buffer,headersize);	// Read extra bytes
-
-    n = (file->size + (511-headersize)) >> 9; // sector count (rounded up)
-    while (n--)
-    {
-		RARead(file,sector_buffer,512);
-        for (j = 0; j < 512; j++)
-		{
-			sector_buffer[j]^=key[keyidx++];
-			if(keyidx>=keysize)
-				keyidx-=keysize;
-		}
-
-        do
-        {
-            // read FPGA status
-            EnableFpga();
-            c1 = SPI(0);
-            c2 = SPI(0);
-            SPI(0);
-            SPI(0);
-            SPI(0);
-            SPI(0);
-            DisableFpga();
-        }
-        while (!(c1 & CMD_RDTRK));
-
-        if ((n & 15) == 0)
-            printf("*");
-
-        // send data sector to FPGA
-        EnableFpga();
-        c1 = SPI(0);
-        c2 = SPI(0);
-        SPI(0);
-        SPI(0);
-        SPI(0);
-        SPI(0);
-        p = sector_buffer;
-
-        for (j = 0; j < 512; j++)
-            SPI(*p++);
-        DisableFpga();
-    }
-    printf("]\r");
-}
-#endif
 
 char kick1xfoundstr[] = "Kickstart v1.x found\n";
 const char applymemdetectionpatchstr[] = "Applying Kickstart 1.x memory detection patch\n";
@@ -193,44 +85,48 @@ out:
 // SendFileV2 (for minimig_v2)
 void SendFileV2(RAFile* file, unsigned char* key, int keysize, int address, int size)
 {
-  int i,j;
-  unsigned int keyidx=0;
-//  printf("Pre-send: %x\n",CheckSum());
-  printf("File size: %dkB\r", size>>1);
-  printf("[");
-  if (keysize) {
-    // read header
-    RARead(file, sector_buffer, 0xb);
-  }
-  for (i=0; i<size; i++) {
-    unsigned char *adr = (unsigned char *)(((address + i*512) & 0x7fffff) ^ 0xd80000);
-    if (!(i&31)) printf("*");
-    RARead(file, adr, 512);
-    if (keysize) {
-      // decrypt ROM
-      for (j=0; j<512; j++) {
-        adr[j] ^= key[keyidx++];
-        if(keyidx >= keysize) keyidx -= keysize;
-      }
-    }
+	int i,j;
+	unsigned int keyidx=0;
 
-    // patch kickstart 1.x to force memory detection every time the AMIGA is reset
-    if (config.kick13patch && (i == 0 || i == 512)) {
-      kickfoundstr = NULL;
-      applypatchstr = NULL;
-      PatchKick1xMemoryDetection(adr);
-    }
+	checksum_pre=0;
 
-  }
-  printf("]\r");
 
-  if (kickfoundstr) {
-    printf(kickfoundstr);
-  }
-  if (applypatchstr) {
-    printf(applypatchstr);
-  }
-//  printf("Post-send: %x\n",CheckSum());
+	printf("File size: %dkB\r", size>>1);
+	printf("[");
+	if (keysize) {
+		// read header
+		RARead(file, sector_buffer, 0xb);
+	}
+
+	for (i=0; i<size; i++) {
+		unsigned char *adr = (unsigned char *)(((address + i*512) & 0x7fffff) ^ 0xd80000);
+		if (!(i&31)) printf("*");
+		RARead(file, adr, 512);
+		if (keysize) {
+			// decrypt ROM
+			for (j=0; j<512; j++) {
+				adr[j] ^= key[keyidx++];
+				if(keyidx >= keysize) keyidx -= keysize;
+			}
+		}
+		checksum_pre+=CheckSum(adr,512);
+
+		// patch kickstart 1.x to force memory detection every time the AMIGA is reset
+		if (config.kick13patch && (i == 0 || i == 512)) {
+			kickfoundstr = NULL;
+			applypatchstr = NULL;
+			PatchKick1xMemoryDetection(adr);
+		}
+
+	}
+	printf("]\r");
+
+	if (kickfoundstr) {
+		printf(kickfoundstr);
+	}
+	if (applypatchstr) {
+		printf(applypatchstr);
+	}
 }
 
 
