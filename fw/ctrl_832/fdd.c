@@ -34,7 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 
-unsigned char DEBUG=1;
+unsigned char DEBUG=0;
 
 unsigned char drives; // number of active drives reported by FPGA (may change only during reset)
 adfTYPE *pdfx;            // drive select pointer

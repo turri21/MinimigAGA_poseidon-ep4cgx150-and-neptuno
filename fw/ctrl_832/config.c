@@ -39,7 +39,7 @@ static char filename[12];
 void ClearKickstartMirrorE0(void)
 {
 	int i;
-	int *p=(0xe00000 & 0x7fffff) ^ 0xd80000;
+	int *p=(0xe00000 & 0x7fffff) ^ 0x580000;
 	for (i = 0; i < (0x80000 / 4); i++) {
 		*p++=0;
 	}
@@ -48,7 +48,7 @@ void ClearKickstartMirrorE0(void)
 void ClearVectorTable(void)
 {
 	int i;
-	int *p=0 ^ 0xd80000;
+	int *p=0 ^ 0x580000;
 	for (i = 0; i < 256; i++) {
 		*p++=0;
 	}
@@ -141,7 +141,7 @@ char UploadActionReplay()
 		SendFileV2(&romfile, NULL, 0, 0xa10000, (romfile.file.size+511)>>9);
 
 		// HRTmon config
-		adr = (unsigned char *)(((0xa10000 + 20)&0x7fffff)^0xd80000);
+		adr = (unsigned char *)(((0xa10000 + 20)&0x7fffff)^0x580000);
 
 		*adr++=0x00; *adr++=0x80; *adr++=0x00; *adr++=0x00;
 		//      data = 0x00800000; // mon_size, 4 bytes
@@ -164,7 +164,7 @@ char UploadActionReplay()
 		*adr++ =0; // entered, 1 byte
 		*adr++ =1; // hexmode, 1 byte
 
-		adr = (unsigned char *)(((0xa10000 + 68) & 0x7fffff) ^ 0xd80000);
+		adr = (unsigned char *)(((0xa10000 + 68) & 0x7fffff) ^ 0x580000);
 		data = ((config.memory&0x3) + 1) * 512 * 1024; // maxchip, 4 bytes TODO is this correct?
 		*adr++=(data>>24)&0xff;
 		*adr++=(data>>16)&0xff;

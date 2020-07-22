@@ -152,7 +152,7 @@ part_in <=  X"000"&"001"&menu_button; -- Reconfig not currently supported, 32 me
 			
 IOdata <= sd_in;
 
-memce <= cpu_req_r WHEN ROM_select='0' AND addr(31)='0' else '0';
+memce <= cpu_req_r WHEN ROM_select='0' AND addr(23)='0' else '0';
 
 process(sysclk)
 begin
@@ -175,12 +175,12 @@ sd_in(15 downto 8) <= (others=>'0');
 sd_in(7 downto 0) <= sd_in_shift(7 downto 0);
 
 RAM_write <= '1' when ROM_select='1' AND cpu_wr='1' and cpu_req='1' ELSE '0';
-ROM_select <= '1' when addr(31)='0' and addr(23 downto 13)=X"00"&"000" ELSE '0';
+ROM_select <= '1' when addr(23)='0' and addr(23 downto 13)=X"00"&"000" ELSE '0';
 
-SPI_select <= '1' when addr(31)='1' and addr(7 downto 4)=X"E" ELSE '0';
-rs232_select <= '1' when addr(31)='1' and addr(7 downto 4)=X"F" ELSE '0';
-timer_select <= '1' when addr(31)='1' and addr(7 downto 4)=X"D" ELSE '0';
-platform_select <= '1' when addr(31)='1' and addr(7 downto 4)=X"C" ELSE '0';
+SPI_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"E" ELSE '0';
+rs232_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"F" ELSE '0';
+timer_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"D" ELSE '0';
+platform_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"C" ELSE '0';
 
 ---------------------------------
 -- Platform specific registers --

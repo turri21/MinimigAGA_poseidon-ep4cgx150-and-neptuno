@@ -17,14 +17,14 @@
 #define DISKLED_ON // *AT91C_PIOA_SODR = DISKLED;
 #define DISKLED_OFF // *AT91C_PIOA_CODR = DISKLED;
 
-#define HW_SPI(x) (*(volatile unsigned char *)(0xffffffe0+x))
+#define HW_SPI(x) (*(volatile unsigned char *)(0x0fffffe0+x))
 #define HW_SPI_CS 7
 #define HW_SPI_DATA 3
 #define HW_SPI_SPEED 11
 
-#define RS232(x) (*(volatile unsigned char *)0xfffffff3)=x
+#define RS232(x) (*(volatile unsigned char *)0x0ffffff3)=x
 
-#define TIMER (*(volatile unsigned short *)0xffffffd2)
+#define TIMER (*(volatile unsigned short *)0x0fffffd2)
 #define SPIN {int v=TIMER;}	// Waste a few cycles to let the FPGA catch up
 
 #define EnableCard()  HW_SPI(HW_SPI_CS)=0x02
@@ -52,7 +52,7 @@
 //   Bit 1 -> 32meg supported
 //   Bit 8 -> Reconfig supportred 
 
-#define PLATFORM (*(volatile unsigned short *)0xffffffc2)
+#define PLATFORM (*(volatile unsigned short *)0x0fffffc2)
 #define PLATFORM_MENUBUTTON 0
 #define PLATFORM_32MEG 1
 #define PLATFORM_RECONFIG 8

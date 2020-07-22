@@ -99,7 +99,7 @@ void SendFileV2(RAFile* file, unsigned char* key, int keysize, int address, int 
 	}
 
 	for (i=0; i<size; i++) {
-		unsigned char *adr = (unsigned char *)(((address + i*512) & 0x7fffff) ^ 0xd80000);
+		unsigned char *adr = (unsigned char *)(((address + i*512) & 0x7fffff) ^ 0x580000);
 		if (!(i&31)) printf("*");
 		RARead(file, adr, 512);
 		if (keysize) {
