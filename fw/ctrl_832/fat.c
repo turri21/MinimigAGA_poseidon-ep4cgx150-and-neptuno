@@ -41,6 +41,7 @@ JB:
 #include <string.h>
 #include "errors.h"
 //#include <ctype.h>
+#include "boot.h"
 #include "mmc.h"
 #include "fat.h"
 #include "swap.h"

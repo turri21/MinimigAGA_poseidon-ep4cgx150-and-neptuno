@@ -14,7 +14,6 @@
 //#define FPGA2 AT91C_PIO_PA15
 //#define BUTTON AT91C_PIO_PA28
 
-#include "spi.h"
 #include "uart.h"
 
 #define DISKLED_ON // *AT91C_PIOA_SODR = DISKLED;

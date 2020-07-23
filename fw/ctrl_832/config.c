@@ -9,7 +9,6 @@
 #include "firmware.h"
 #include "menu.h"
 #include "config.h"
-#include "spi.h"
 
 #include "hexdump.h"
 

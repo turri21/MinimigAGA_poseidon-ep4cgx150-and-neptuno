@@ -225,26 +225,28 @@ void BootCustomInit()
 void BootInit()
 {
 //  BootEnableMem();
-  // TEMP enable 1MB memory
-  spi_osd_cmd8(OSD_CMD_MEM, 0x5);
-  SPIN; SPIN; SPIN; SPIN;
+	// TEMP enable 1MB memory
+	EnableOsd();
+	SPI(OSD_CMD_MEM);
+	SPI(0x5);
+	DisableOsd();
 
-  // Put the CPU in reset while we upload init data.
-  EnableOsd();
-  SPI(OSD_CMD_RST);
-  SPI(SPI_CPU_HLT | SPI_RST_CPU);
-  DisableOsd();
+	// Put the CPU in reset while we upload init data.
+	EnableOsd();
+	SPI(OSD_CMD_RST);
+	SPI(SPI_CPU_HLT | SPI_RST_CPU);
+	DisableOsd();
 
-  BootClearScreen(SCREEN_ADDRESS, SCREEN_MEM_SIZE);
-  BootUploadLogo();
-  BootUploadBall();
-  BootUploadCopper();
-  BootCustomInit();
+	BootClearScreen(SCREEN_ADDRESS, SCREEN_MEM_SIZE);
+	BootUploadLogo();
+	BootUploadBall();
+	BootUploadCopper();
+	BootCustomInit();
 
-  EnableOsd();
-  SPI(OSD_CMD_RST);
-  SPI(0); // Allow the CPU to run 
-  DisableOsd();
+	EnableOsd();
+	SPI(OSD_CMD_RST);
+	SPI(0); // Allow the CPU to run 
+	DisableOsd();
 }
 
 
