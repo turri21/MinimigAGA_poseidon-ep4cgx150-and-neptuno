@@ -9,41 +9,47 @@ entity EightThirtyTwo_Bridge is
 	generic (
 		debug : boolean := false
 	);
-   port(
+	port(
 		clk             : in std_logic;
 		nReset            : in std_logic;			--low active
-		data_in          	: in std_logic_vector(31 downto 0);
-		addr          		: out std_logic_vector(31 downto 2);
-		data_write      	: out std_logic_vector(31 downto 0);
-		bytesel				: out std_logic_vector(3 downto 0);
-		req					: out std_logic;
+		addr					: out std_logic_vector(31 downto 2);
+		q			      	: out std_logic_vector(31 downto 0);
+		sel					: out std_logic_vector(3 downto 0);
 		wr						: out std_logic;
-		ack					: in std_logic
-     );
+
+		ram_req				: out std_logic;
+		ram_ack				: in std_logic;
+		ram_d					: in std_logic_vector(31 downto 0);
+
+		hw_req            : out std_logic;
+		hw_ack            : in std_logic;
+		hw_d					: in std_logic_vector(15 downto 0)		
+	);
 end EightThirtyTwo_Bridge;
 
 architecture rtl of EightThirtyTwo_Bridge is
 
-type bridgestates is (waiting,waitread,delay);
+type bridgestates is (waiting,ram,hw,rom);
 signal state : bridgestates;
 
-signal mem_req : std_logic;
-signal mem_ack : std_logic;
-signal mem_read             : std_logic_vector(31 downto 0);
-signal mem_write            : std_logic_vector(31 downto 0);
-signal mem_addr             : std_logic_vector(31 downto 2);
-signal mem_wr      : std_logic; 
-signal mem_sel : std_logic_vector(3 downto 0);
-
-signal read_pending : std_logic;
-signal write_pending : std_logic;
+signal cpu_req : std_logic;
+signal cpu_ack : std_logic;
+signal cpu_d 	: std_logic_vector(31 downto 0);
+signal cpu_q	: std_logic_vector(31 downto 0);
+signal cpu_addr	: std_logic_vector(31 downto 2);
+signal cpu_wr	: std_logic; 
+signal cpu_sel : std_logic_vector(3 downto 0);
 
 signal debug_d : std_logic_vector(31 downto 0);
 signal debug_q : std_logic_vector(31 downto 0);
 signal debug_req : std_logic;
 signal debug_ack : std_logic;
 signal debug_wr : std_logic;
-signal delayctr : unsigned(5 downto 0);
+
+signal rom_d : std_logic_vector(31 downto 0);
+signal rom_wr : std_logic;
+signal rom_select : std_logic;
+signal hw_select : std_logic;
 
 begin
 
@@ -59,13 +65,13 @@ generic map (
 port map(
 	clk => clk, 
 	reset_n => nReset,
-	addr => mem_addr,
-	d => mem_read,
-	q => mem_write,
-	wr => mem_wr,
-	req => mem_req,
-	ack => mem_ack,
-	bytesel => mem_sel,
+	addr => cpu_addr,
+	d => cpu_d,
+	q => cpu_q,
+	wr => cpu_wr,
+	req => cpu_req,
+	ack => cpu_ack,
+	bytesel => cpu_sel,
 	debug_d => debug_d,
 	debug_q => debug_q,
 	debug_req => debug_req,
@@ -89,46 +95,84 @@ port map(
 end generate;
 
 
+bootrom: entity work.OSDBoot_832_ROM
+	generic map
+	(
+		maxAddrBitBRAM => 14
+	)
+	PORT MAP 
+	(
+		addr => cpu_addr(14 downto 2),
+		clk   => clk,
+		d	=> cpu_q,
+		we	=> rom_wr,
+		bytesel => cpu_sel,
+		q		=> rom_d
+	);
+
+rom_select <= '1' when cpu_addr(23 downto 13)=X"00"&"000" ELSE '0';
+
+hw_select <= cpu_addr(23);
+
 process(clk)
 begin
 
 	if nReset='0' then
 		state<=waiting;
-		req<='0';
+		hw_req<='0';
+		ram_req<='0';
 		wr<='0';
 	elsif rising_edge(clk) then
 
-		mem_ack<='0';
-	
+		cpu_ack<='0';
+		rom_wr<='0';
+
 		case state is
 			when waiting =>
-				if mem_ack='0' then
-					
-					if mem_req='1' then
+				if cpu_ack='0' and cpu_req='1' then
 
-						req<='1';
-						addr<=mem_addr;
-						data_write<=mem_write;
-						bytesel<=mem_sel;
-						wr<=mem_wr;
-						state<=waitread;
+					addr<=cpu_addr;
+					q<=cpu_q;
+					sel<=cpu_sel;
+					wr<=cpu_wr;
+					
+					if rom_select='1' then
+						rom_wr<=cpu_wr;
+						state<=rom;
+					elsif hw_select='1' then
+						hw_req<='1';
+						state<=hw;
+					else
+						ram_req<='1';
+						state<=ram;
 					end if;
 				end if;
 
-			when waitread =>
-				if ack='1' then
-					mem_read<=data_in;
+			when rom =>
+				cpu_d<=rom_d;
+				wr<='0';
+				rom_wr<='0';
+				cpu_ack<='1';
+				state<=waiting;
+				
+			when ram =>
+				if ram_ack='1' then
+					cpu_d<=ram_d;
 					wr<='0';
-					req<='0';
-					mem_ack<='1';
+					ram_req<='0';
+					cpu_ack<='1';
 					state<=waiting;
 				end if;
 
-			when delay =>
-				if delayctr=X"0"&"00" then
+			when hw =>
+				if hw_ack='1' then
+					cpu_d(31 downto 0)<=(others=>'0');
+					cpu_d(15 downto 0)<=hw_d;
+					wr<='0';
+					hw_req<='0';
+					cpu_ack<='1';
 					state<=waiting;
 				end if;
-				delayctr<=delayctr+1;
 
 			when others =>
 				null;

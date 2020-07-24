@@ -32,31 +32,26 @@ entity cfide is
 		spimux : in boolean
 	);
    port ( 
-		sysclk: in std_logic;	
-		n_reset: in std_logic;	
-		enaWR : in std_logic;
+		sysclk	: in std_logic;	
+		n_reset	: in std_logic;	
 
-		cpuena_in: in std_logic;			
-		memdata_in: in std_logic_vector(31 downto 0);		
-		addr: in std_logic_vector(31 downto 0);
-		cpudata_in: in std_logic_vector(31 downto 0);	
-		cpu_req : in std_logic;
-		cpu_wr : in std_logic;
-		cpu_ack : out std_logic;
-		cpu_bytesel : in std_logic_vector(3 downto 0);
-		sd_di		: in std_logic;
-			
-		memce: out std_logic;			
-		cpudata: out std_logic_vector(31 downto 0);		
-		sd_cs 		: out std_logic_vector(7 downto 0);
-		sd_clk 		: out std_logic;
+		addr	: in std_logic_vector(31 downto 0);
+		d		: in std_logic_vector(31 downto 0);	
+		q		: out std_logic_vector(15 downto 0);		
+		req 	: in std_logic;
+		wr 	: in std_logic;
+		ack 	: out std_logic;
+
+		sd_di		: in std_logic;		
+		sd_cs 	: out std_logic_vector(7 downto 0);
+		sd_clk 	: out std_logic;
 		sd_do		: out std_logic;
-		sd_dimm		: in std_logic;		--for sdcard
-		sd_ack : in std_logic; -- indicates that SPI signal has made it to the wire
+		sd_dimm	: in std_logic;		--for sdcard
+		sd_ack 	: in std_logic; -- indicates that SPI signal has made it to the wire
 		debugTxD : out std_logic;
 		debugRxD : in std_logic;
-		menu_button : in std_logic:='1';
-		scandoubler : out std_logic
+		menu_button	: in std_logic:='1';
+		scandoubler	: out std_logic
    );
 
 end cfide;
@@ -73,14 +68,9 @@ signal uart_ld: std_logic;
 signal platform_select: std_logic;
 signal timer_select: std_logic;
 signal SPI_select: std_logic;
-signal ROM_select: std_logic;
-signal RAM_write: std_logic;
 signal part_in: std_logic_vector(15 downto 0);
 signal IOdata: std_logic_vector(15 downto 0);
 signal IOcpuena: std_logic;
-
-signal mem_ack_d : std_logic;
-
 
 type support_states is (idle, io_aktion);
 signal support_state		: support_states;
@@ -100,71 +90,43 @@ signal spi_speed: std_logic_vector(7 downto 0);
 signal spi_wait : std_logic;
 signal spi_wait_d : std_logic;
 
-signal rom_data: std_logic_vector(31 downto 0);
-
 signal timecnt: std_logic_vector(15 downto 0);
 signal timeprecnt: std_logic_vector(19 downto 0);
-
-signal enacnt: std_logic_vector(6 downto 0);
 
 signal rs232_select : std_logic;
 signal rs232data : std_logic_vector(15 downto 0);
 
-signal cpu_req_d : std_logic;
-signal cpu_req_r : std_logic;
-signal cpu_ack_r : std_logic;
-
 begin
 
-cpu_ack<=cpu_ack_r;
+--process(sysclk)
+--begin
+--	if rising_edge(sysclk) then
+--		if rs232_select='1' or SPI_select='1' then
+--			cpudata <= X"0000" & IOdata;
+--		elsif timer_select='1' then
+--			cpudata <= X"0000" & timecnt;
+--		else	platform_select='1' then
+--			cpudata <= X"0000" & part_in;
+--		end if;
+--	end if;
+--end process;
 
-srom: entity work.OSDBoot_832_ROM
-	generic map
-	(
-		maxAddrBitBRAM => 14
-	)
-	PORT MAP 
-	(
-		addr => addr(14 downto 2),	--: IN STD_LOGIC_VECTOR (11 DOWNTO 0);
-		clk   => sysclk,								--: IN STD_LOGIC ;
-		d	=> cpudata_in,		--	: IN STD_LOGIC_VECTOR (15 DOWNTO 0),
-		we	=> RAM_write,		-- 	: IN STD_LOGIC ,
-		bytesel => cpu_bytesel,
-		q		=> rom_data									--: OUT STD_LOGIC_VECTOR (15 DOWNTO 0)
-	);
+q <=	IOdata WHEN rs232_select='1' or SPI_select='1' ELSE
+		timecnt when timer_select='1' ELSE 
+		part_in when platform_select='1';
 
--- Slow down accesses
-process(sysclk)
-begin
-	if rising_edge(sysclk) then
-		cpu_req_d<=cpu_req;		
-	end if;
-end process;
-
-cpu_req_r<=cpu_req and cpu_req_d and not cpu_ack_r;
-
-cpudata <=  rom_data WHEN ROM_select='1' ELSE 
-			X"0000" & IOdata WHEN rs232_select='1' or SPI_select='1' ELSE
-			X"0000" & timecnt when timer_select='1' ELSE 
-			X"0000" & part_in when platform_select='1' else
-			memdata_in;
 part_in <=  X"000"&"001"&menu_button; -- Reconfig not currently supported, 32 meg of RAM, menu button.
-			
 IOdata <= sd_in;
 
-memce <= cpu_req_r WHEN ROM_select='0' AND addr(23)='0' else '0';
-
 process(sysclk)
 begin
 	if rising_edge(sysclk) then
-		cpu_ack_r<='0';
-		if cpu_req_r='1' then
-			if ROM_select='1' or timer_select='1' or platform_select='1' then
-				cpu_ack_r<='1';
+		ack<='0';
+		if req='1' then
+			if timer_select='1' or platform_select='1' then
+				ack<='1';
 			elsif rs232_select='1' or SPI_select='1' then
-				cpu_ack_r<=IOcpuena;
-			else
-				cpu_ack_r<=cpuena_in and not mem_ack_d; -- Rising edge of ack from SDRAM.
+				ack<=IOcpuena;
 			end if;
 		end if;
 	end if;
@@ -173,9 +135,6 @@ end process;
 
 sd_in(15 downto 8) <= (others=>'0');
 sd_in(7 downto 0) <= sd_in_shift(7 downto 0);
-
-RAM_write <= '1' when ROM_select='1' AND cpu_wr='1' and cpu_req='1' ELSE '0';
-ROM_select <= '1' when addr(23)='0' and addr(23 downto 13)=X"00"&"000" ELSE '0';
 
 SPI_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"E" ELSE '0';
 rs232_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"F" ELSE '0';
@@ -189,11 +148,8 @@ platform_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"C" ELSE '0';
 process(sysclk,n_reset)
 begin
 	if rising_edge(sysclk) then
-		
-		mem_ack_d <= cpuena_in;
-		
-		if platform_select='1' and cpu_req_r='1' and cpu_wr='1' then	-- Write to platform registers
-			scandoubler<=cpudata_in(0);
+		if platform_select='1' and req='1' and wr='1' then	-- Write to platform registers
+			scandoubler<=d(0);
 		end if;
 	end if;
 end process;
@@ -210,21 +166,23 @@ begin
 		IOcpuena <= '0';
 		CASE support_state IS
 			WHEN idle => 
-				IF rs232_select='1' AND cpu_req_r='1' and cpu_wr='1' THEN
+				IF rs232_select='1' AND req='1' and wr='1' THEN
 					IF txbusy='0' THEN
 						uart_ld <= '1';
 						support_state <= io_aktion;
 						IOcpuena <= '1';
 					END IF;	
-				ELSIF SPI_select='1' and cpu_req_r='1' THEN		
+				ELSIF SPI_select='1' and req='1' THEN
 					IF SD_busy='0' THEN
 						support_state <= io_aktion;
 						IOcpuena <= '1';
 					END IF;
 				END IF;
 					
-			WHEN io_aktion => 
-				support_state <= idle;
+			WHEN io_aktion =>
+				if req='0' then
+					support_state <= idle;
+				end if;
 				
 			WHEN OTHERS => 
 				support_state <= idle;
@@ -262,32 +220,32 @@ end process;
 			spi_wait<='0';
 		end if;
 
-		IF SPI_select='1' AND cpu_req_r='1' and cpu_wr='1' AND SD_busy='0' THEN	 --SD write
+		IF SPI_select='1' AND req='1' and wr='1' AND SD_busy='0' THEN	 --SD write
 			case addr(3 downto 0) is				
 				when X"8" =>
-					spi_speed <= cpudata_in(7 downto 0);
+					spi_speed <= d(7 downto 0);
 				when X"4" =>
-					scs(0) <= not cpudata_in(0);
-					IF cpudata_in(7)='1' THEN
-						scs(7) <= not cpudata_in(0);
+					scs(0) <= not d(0);
+					IF d(7)='1' THEN
+						scs(7) <= not d(0);
 					END IF;
-					IF cpudata_in(6)='1' THEN
-						scs(6) <= not cpudata_in(0);
+					IF d(6)='1' THEN
+						scs(6) <= not d(0);
 					END IF;
-					IF cpudata_in(5)='1' THEN
-						scs(5) <= not cpudata_in(0);
+					IF d(5)='1' THEN
+						scs(5) <= not d(0);
 					END IF;
-					IF cpudata_in(4)='1' THEN
-						scs(4) <= not cpudata_in(0);
+					IF d(4)='1' THEN
+						scs(4) <= not d(0);
 					END IF;
-					IF cpudata_in(3)='1' THEN
-						scs(3) <= not cpudata_in(0);
+					IF d(3)='1' THEN
+						scs(3) <= not d(0);
 					END IF;
-					IF cpudata_in(2)='1' THEN
-						scs(2) <= not cpudata_in(0);
+					IF d(2)='1' THEN
+						scs(2) <= not d(0);
 					END IF;
-					IF cpudata_in(1)='1' THEN
-						scs(1) <= not cpudata_in(0);
+					IF d(1)='1' THEN
+						scs(1) <= not d(0);
 					END IF;
 				when X"0" =>
 --						ELSE							--DA4000
@@ -306,7 +264,7 @@ end process;
 						sd_out <= X"FFFF";
 					ELSE
 						shiftcnt <= "10000000000111";
-						sd_out(15 downto 8) <= cpudata_in(7 downto 0);
+						sd_out(15 downto 8) <= d(7 downto 0);
 					END IF;
 					sck <= '1';
 				when others =>
@@ -361,7 +319,7 @@ begin
 		shift <= "0000000000"; 
 	elsif rising_edge(sysclk) then
 		if uart_ld = '1' then
-			shift <=  '1' & cpudata_in(7 downto 0) & '0';			--STOP,MSB...LSB, START
+			shift <=  '1' & d(7 downto 0) & '0';			--STOP,MSB...LSB, START
 		end if;
 		if clkgen/=0 then
 			clkgen <= clkgen-1;

@@ -417,22 +417,20 @@ TG68K tg68k (
 wire [ 32-1:0] hostRD;
 wire [ 32-1:0] hostWR;
 wire [ 32-1:0] hostaddr;
-reg  [ 32-1:0] hostaddr_d;
 wire [  3-1:0] hostState;
 wire [3:0]     hostbytesel;
-reg  [ 32-1:0] hostdata;
-wire           hostramena;
-wire           hostena;
-wire           hostwe;
+wire  [ 32-1:0] host_ramdata;
+wire           host_ramack;
+wire           host_ramreq;
+wire  [ 16-1:0] host_hwdata;
+wire           host_hwack;
+wire           host_hwreq;
+wire           host_we;
 wire           hostreq;
 wire           hostack;
 wire           hostce;
 wire [3:0]     debug_sdr;
 
-
-always @(posedge CLK_114) begin
-	hostaddr_d<=hostaddr;
-end
 
 //sdram sdram (
 sdram_ctrl sdram (
@@ -451,12 +449,12 @@ sdram_ctrl sdram (
   .reset_in     (sdctl_rst        ),
   
   .hostWR       (hostWR           ),
-  .hostAddr     (hostaddr_d[23:0] ),
-  .hostwe       (hostwe           ),
-  .hostce       (hostce           ),
+  .hostAddr     (hostaddr[23:0]   ),
+  .hostwe       (host_we           ),
+  .hostce       (host_ramreq      ),
   .hostbytesel  (hostbytesel      ),
-  .hostRD       (hostRD           ),
-  .hostena      (hostramena       ),
+  .hostRD       (host_ramdata     ),
+  .hostena      (host_ramack      ),
 
   .cpuWR        (tg68_dat_out     ),
   .cpuAddr      (tg68_cad[24:1]   ),
@@ -623,13 +621,16 @@ EightThirtyTwo_Bridge #( debug ? "true" : "false") hostcpu
 (
 	.clk(CLK_114),
 	.nReset(reset_out),
-	.data_in(hostdata),
 	.addr(hostaddr[31:2]),
-	.data_write(hostWR),
-	.req(hostreq),
-	.bytesel(hostbytesel),
-	.ack(hostack),
-	.wr(hostwe)
+	.q(hostWR),
+	.sel(hostbytesel),
+	.wr(host_we),
+	.hw_d(host_hwdata),
+	.hw_ack(host_hwack),
+	.hw_req(host_hwreq),
+	.ram_d(host_ramdata),
+	.ram_req(host_ramreq),
+	.ram_ack(host_ramack)
 );
 
 
@@ -637,18 +638,13 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 ( 
 		.sysclk(CLK_114),
 		.n_reset(reset_out),
-		.enaWR(tg68_enaWR),
 
-		.memce(hostce),
-		.cpuena_in(hostramena),
-		.memdata_in(hostRD),
 		.addr(hostaddr),
-		.cpudata_in(hostWR),
-		.cpu_bytesel(hostbytesel),
-		.cpu_req(hostreq),
-		.cpu_wr(hostwe),
-		.cpu_ack(hostack),
-		.cpudata(hostdata),
+		.d(hostWR),
+		.req(host_hwreq),
+		.wr(host_we),
+		.ack(host_hwack),
+		.q(host_hwdata),
 
 		.sd_di(SPI_DO),
 		.sd_cs(SPI_CS),
