@@ -195,8 +195,7 @@ wire [  2-1:0] kbd_mouse_type;
 wire [  3-1:0] mouse0_buttons;
 wire [  3-1:0] mouse1_buttons;
 wire [  4-1:0] core_config;
-
-
+wire [ 64-1:0] rtc;
 
 ////////////////////////////////////////
 // toplevel assignments               //
@@ -518,6 +517,7 @@ user_io user_io(
      .JOY1(joyb),
      .JOY2(joyc),
      .JOY3(joyd),
+     .RTC(rtc),
      .MOUSE0_BUTTONS(mouse0_buttons),
      .MOUSE1_BUTTONS(mouse1_buttons),
      .MOUSE_IDX(mouse_idx),
@@ -594,6 +594,7 @@ minimig minimig (
   .kms_level    (kms_level        ),
   ._15khz       (_15khz           ),  // scandoubler disable
   .pwr_led      (led              ),  // power led
+  .rtc          (rtc              ),
   .msdat        (                 ),  // PS2 mouse data
   .msclk        (                 ),  // PS2 mouse clk
   .kbddat       (                 ),  // PS2 keyboard data
