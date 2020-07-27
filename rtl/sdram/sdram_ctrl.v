@@ -267,7 +267,9 @@ end
 
 // host Cache signals
 
-parameter zcachebits=8;
+// 8 bits should result in using just 1 M9K - but doesn't,
+// so we might as well make full use of 2 M9Ks with 9 bits.
+parameter zcachebits=9;
 
 reg zreq;
 reg zbusy;
@@ -298,7 +300,7 @@ reg [17:0] zstate;
 reg zinitcache;
 
 // Dual port RAM.
-dpram_256x32 hostcache(
+dpram_inf_generic #(.depth(zcachebits),.width(32)) hostcache(
 	.clock(sysclk),
 	.address_a(zdata_a),
 	.address_b(ztag_a),
