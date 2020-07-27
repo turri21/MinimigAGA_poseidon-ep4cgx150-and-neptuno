@@ -43,7 +43,7 @@
 #endif
 
 #define SPI_slow()  HW_SPI(HW_SPI_SPEED)=0xef
-#define SPI_fast()  HW_SPI(HW_SPI_SPEED)=0x3
+#define SPI_fast()  HW_SPI(HW_SPI_SPEED)=0x1
 
 // Yuk.  The following monstrosity does a dummy read from the timer register, writes, then reads from
 // the SPI register.  Doing it this way works around a timing issue with ADF writing when GCC optimisation is turned on.

@@ -146,6 +146,7 @@ SIGNAL sel_cart         : std_logic;
 SIGNAL sel_32           : std_logic;
 signal sel_undecoded    : std_logic;
 signal sel_akiko        : std_logic;
+signal sel_ram_d			: std_logic;
 
 -- Akiko registers
 signal akiko_d : std_logic_vector(15 downto 0);
@@ -171,7 +172,13 @@ BEGIN
 	  sel_nmi_vector <= '0';
       IF (cpuaddr(31 downto 2) = NMI_addr(31 downto 2)) AND state="10" THEN
         sel_nmi_vector <= '1';
-      END IF;
+	  END IF;
+
+		sel_z3ram<='0';
+		if cpuaddr(31 downto 24)=z3ram_base AND z3ram_ena='1' then
+			sel_z3ram <= '1';
+		end if;
+		
     END IF;
   END PROCESS;
 
@@ -179,7 +186,7 @@ BEGIN
   addr <= cpuaddr;
   datatg68 <=
          X"ffff"                              when sel_undecoded='1'
-	 else fromram                              WHEN sel_ram='1' AND sel_nmi_vector='0'
+	 else fromram                              WHEN sel_ram_d='1' AND sel_nmi_vector='0'
     --ELSE frometh                              WHEN sel_eth='1'
 	 else akiko_q when sel_akiko='1'
     ELSE autoconfig_data&r_data(11 downto 0)  WHEN sel_autoconfig='1' AND autoconfig_out="01" -- Zorro II RAM autoconfig
@@ -190,7 +197,7 @@ BEGIN
 	sel_akiko <= '1' when cpuaddr(31 downto 16)=X"00B8" else '0';
   sel_32 <= '1' when cpu(1)='1' and cpuaddr(31 downto 24)/=X"00" and cpuaddr(31 downto 24)/=X"ff" else '0'; -- Decode 32-bit space, but exclude interrupt vectors
   sel_autoconfig  <= '1' WHEN fastramcfg(2 downto 0)/="000" AND cpuaddr(23 downto 19)="11101" AND autoconfig_out/="00" ELSE '0'; --$E80000 - $EFFFFF
-  sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 24)=z3ram_base) AND z3ram_ena='1' ELSE '0';
+--  sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 24)=z3ram_base) AND z3ram_ena='1' ELSE '0';
   sel_z2ram       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 21) = "001") OR (cpuaddr(23 downto 21) = "010") OR (cpuaddr(23 downto 21) = "011") OR (cpuaddr(23 downto 21) = "100")) AND z2ram_ena='1' ELSE '0';
   --sel_eth         <= '1' WHEN (cpuaddr(31 downto 24) = eth_base) AND eth_cfgd='1' ELSE '0';
   sel_chipram     <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 21)="000") AND turbochip_ena='1' AND turbochip_d='1' ELSE '0'; --$000000 - $1FFFFF
@@ -309,6 +316,7 @@ PROCESS (clk, turbochipram, turbokick) BEGIN
       turbochip_d <= turbochipram;
       turbokick_d <= turbokick;
     END IF;
+	 sel_ram_d<=sel_ram;
   END IF;
 END PROCESS;
 

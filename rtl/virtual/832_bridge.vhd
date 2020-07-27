@@ -60,6 +60,7 @@ generic map (
 	interrupts => false,
 	dualthread => false,
 	forwarding => false,
+	prefetch => false,
 	debug => debug
 )
 port map(

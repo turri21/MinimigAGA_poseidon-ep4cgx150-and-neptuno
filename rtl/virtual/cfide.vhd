@@ -98,22 +98,9 @@ signal rs232data : std_logic_vector(15 downto 0);
 
 begin
 
---process(sysclk)
---begin
---	if rising_edge(sysclk) then
---		if rs232_select='1' or SPI_select='1' then
---			cpudata <= X"0000" & IOdata;
---		elsif timer_select='1' then
---			cpudata <= X"0000" & timecnt;
---		else	platform_select='1' then
---			cpudata <= X"0000" & part_in;
---		end if;
---	end if;
---end process;
-
 q <=	IOdata WHEN rs232_select='1' or SPI_select='1' ELSE
 		timecnt when timer_select='1' ELSE 
-		part_in when platform_select='1';
+		part_in;
 
 part_in <=  X"000"&"001"&menu_button; -- Reconfig not currently supported, 32 meg of RAM, menu button.
 IOdata <= sd_in;
@@ -254,10 +241,10 @@ end process;
 						if spimux = true then
 							spi_div(8 downto 1) <= spi_speed+4;
 						else
-							spi_div(8 downto 1) <= spi_speed+2;
+							spi_div(8 downto 1) <= spi_speed;
 						end if;
 					else
-						spi_div(8 downto 1) <= spi_speed+2;
+						spi_div(8 downto 1) <= spi_speed;
 					end if;
 					IF scs(6)='1' THEN		-- SPI direkt Mode
 						shiftcnt <= "10111111111111";
@@ -277,7 +264,7 @@ end process;
 					if spimux=true then
 						spi_div(8 downto 1) <= spi_speed+4;
 					else
-						spi_div(8 downto 1) <= spi_speed+2;
+						spi_div(8 downto 1) <= spi_speed;
 					end if;
 				else
 					spi_div(8 downto 1) <= spi_speed;

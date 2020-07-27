@@ -47,9 +47,6 @@ begin
 -- req<=reset_n and enable and (first_fill or (inptr(8) xor outptr(8) xor full));
 req<=reset_n and enable and (first_fill or not full);
 
--- Need to drop the req signal a few cycles early when the buffer fills up.
-full<='1' when inptr(8 downto 4) = outptr(8 downto 4) else '0';
-
 -- Fill from RAM
 a<=std_logic_vector(address);
 inptr<=address(9 downto 1);
@@ -57,6 +54,12 @@ inptr<=address(9 downto 1);
 process(clk)
 begin
 	if rising_edge(clk) then
+		-- Need to drop the req signal a few cycles early when the buffer fills up.
+		full<='0';
+		if inptr(8 downto 4) = outptr(8 downto 4) then
+			full<='1';
+		end if;
+		
 		fill_d<=fill;
 
 		if reset_n='0' then

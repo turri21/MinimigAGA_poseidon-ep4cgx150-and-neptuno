@@ -45,8 +45,8 @@ module sdram_ctrl(
   input  wire           hostce,
   input  wire           hostwe,
   input  wire [ 4-1:0 ] hostbytesel,
-  output reg  [ 32-1:0] hostRD,
-  output wire           hostena,
+  output wire [ 32-1:0] hostRD,
+  output reg            hostena,
   // chip
   input  wire    [23:1] chipAddr,
   input  wire           chipL,
@@ -252,38 +252,270 @@ assign rtgfill=slot2_type==RTG ? cache_fill_2 : 1'b0;
 // host access
 ////////////////////////////////////////
 
-assign hostena = zce & zena;
-
 // map host processor's address space to 0x580000
 always @ (*) begin
 	zmAddr = {2'b00, ~hostAddr[22], hostAddr[21], ~hostAddr[20], ~hostAddr[19], hostAddr[18:0]};
 end
 
 
-//// host data read ////
-always @ (posedge sysclk) begin
-  if(!reset) begin
-    zena              <= #1 1'b0;
+// Host cache
+// Simplistic direct mapped Cache - 256 x 32bit words, so small enough to fit a single M9K
+// - though Quartus chooses to use 2 - not sure why yet.
+// 8 word bursts, 16-bit SDRAM interface, so cachelines of 4 32-bit words
+// We use a dual-port RAM split between data and tag. 
+// (Wasteful, but only requires one memory block.  Since Quartus uses 2 anyway, could use a second?)
+
+// host Cache signals
+
+parameter zcachebits=8;
+
+reg zreq;
+reg zbusy;
+wire zcachevalid;
+
+// data_a <= {1'b0,cpu_addr[8:2]}; // 7 bits for data address
+
+wire [zcachebits-1:0] zdata_a;
+wire [31:0] zdata_q;
+reg[31:0] zdata_w;
+reg zdata_wren;
+
+// tag_a <= {3'b100,cpu_addr[8:4]}; // 5 bits for tag address, since the tag is constant for a cacheline
+
+wire [zcachebits-1:0] ztag_a;
+wire [31:0] ztag_q;
+reg [31:0] ztag_w;
+reg ztag_wren;
+
+// Host data always comes from the cache - we don't attempt to bypass during cache filling.
+assign hostRD = zdata_q;
+
+// States for state machine
+localparam	zINIT=0, zWAIT=1, zREAD=2, zPAUSE=3;
+localparam	zWRITE1=4, zWRITE2=5, zWAITFILL=6;
+localparam  zFLUSH1=7,zFLUSH2=8;
+reg [17:0] zstate;
+reg zinitcache;
+
+// Dual port RAM.
+dpram_256x32 hostcache(
+	.clock(sysclk),
+	.address_a(zdata_a),
+	.address_b(ztag_a),
+	.data_a(zdata_w),
+	.data_b(ztag_w),
+	.q_a(zdata_q),
+	.q_b(ztag_q),
+	.wren_a(zdata_wren),
+	.wren_b(ztag_wren)
+);
+
+wire zdata_valid;
+
+assign zdata_valid = ztag_q[31];
+
+//   bits 3:2 specify which words of a burst we're interested in.
+//   Bits 10:4 specify the seven bit address of the cachelines;
+//   Since we're building a 2-way cache, we'll map this to 
+//   {1'b0,addr[10:4]} and {1;b1,addr[10:4]} respectively.
+
+wire [zcachebits-1:0] zcacheline;
+
+//FIXME assign data_to_cpu = zdata_q;
+
+reg zreadword_burst; // Set to 1 when the lsb of the cache address should
+							// track the SDRAM controller.
+reg [1:0] zreadword;
+
+assign zcacheline = {1'b0,zmAddr[zcachebits:4],(zreadword_burst ? zreadword : zmAddr[3:2])};
+
+reg [zcachebits-2:0] zinitctr;
+
+assign ztag_a = zinitcache ? {1'b1,zinitctr} :
+			{3'b100,zmAddr[zcachebits:4]};
+
+wire ztag_hit;
+assign ztag_hit = ztag_q[20:0]==zmAddr[24:4];
+
+
+// In the data blockram the lower two bits of the address determine
+// which word of the burst we're reading.  When reading from the cache, this comes
+// from the CPU address; when writing to the cache it's determined by the state
+// machine.
+
+assign zdata_a = zcacheline;
+assign zcachevalid = (ztag_hit && zdata_valid) && !hostwe && !zbusy;
+
+always @(posedge sysclk)
+begin
+	hostena <= hostce & zce & (zena | zcachevalid);
+
+	// Defaults
+	zinitcache<=1'b0;
+	
+	zbusy <=1'b1;
+	
+	case(zstate)
+
+		// We use an init state here to loop through the data, clearing
+		// the valid flag - for which we'll use bit 17 of the data entry.
+	
+		zINIT:
+		begin
+			zinitcache<=1'b1;	// need to mark the entire cache as invalid before starting.
+			zinitctr<=32'h00000001;
+			ztag_w = 32'h00000000;
+			ztag_wren<=1'b1;
+			zstate<=zFLUSH2;
+		end
+		
+		zFLUSH2:
+		begin
+			zinitcache<=1'b1;
+			zinitctr<=zinitctr+1;
+			ztag_wren<=1'b1;
+			if(zinitctr==0)
+			begin
+				zstate<=zWAIT;
+			end
+		end
+
+		zWAIT:
+		begin
+			zbusy <= 1'b0;
+			ztag_w = {4'b1111,7'b0000000,zmAddr[24:4]};
+			if(zce)
+			begin
+				if(hostwe)	// Write cycle - invalidate cacheline (FIXME - only when hit)
+				begin
+					ztag_w = {4'b0000,7'b0000000,zmAddr[24:4]};
+					zreq<=1'b1;
+					if(sdram_state==ph0)
+						zstate<=zPAUSE;
+				end
+				else
+				begin	// Read cycle
+					zstate<=zREAD;
+				end
+			end
+		end
+
+		zREAD:
+			begin
+				// Check tags for a match...
+				if(ztag_hit && zdata_valid)
+				begin
+					zbusy <= 1'b0;
+					zstate<=zPAUSE;
+				end
+				else if (sdram_state==ph0)	// No matches?  Sync with SDRAM state machine.
+				begin
+					zreq<=1'b1;
+					zstate<=zPAUSE;
+				end
+			end
+
+		zPAUSE:
+		begin
+			zbusy <= 1'b0;
+			if(slot1_type==HOST && sdram_state==ph2)
+			begin
+				zreq<=1'b0;
+			end
+
+			if(hostce==1'b0) begin
+				zstate<=zWAIT;
+			end
+		end
+		
+		default:
+			zstate<=zWAIT;
+	endcase
+
+	if(!reset) begin
+		zstate<=zINIT;
+    zena <= #1 1'b0;
+	 zreadword_burst<=1'b0;
   end else begin
-    zce <= #1 hostce;
+
+	zce <= #1 hostce;
  
  	 if(hostce==1'b0) begin
 		zena<=#1 1'b0;
 	 end
+	 
+	zdata_wren<=1'b0;
+	ztag_wren<=1'b0;
 
-    case(sdram_state)
+	case(sdram_state)
 		 ph9 : begin
 			if(slot1_type==HOST) begin
-				hostRD[31:16] <= #1 sdata_reg;
+				zreadword_burst<=!slot1_write;
+				zreadword<=zmAddr[3:2];
+				zdata_w[31:16]<=sdata_reg;
 			end
 		 end
 
 		 ph10 : begin
 			if(slot1_type==HOST) begin
-				hostRD[15:0] <= #1 sdata_reg;
-				zena <= #1 1'b1;
+				zdata_w[15:0]<=sdata_reg;
+				zdata_wren<=!slot1_write;
+				if(slot1_write) begin
+					zena <= 1'b1; // Allow write cycles to complete.
+					ztag_wren<=1'b1;
+				end
 			end
 		 end
+		 ph11 : begin
+			if(slot1_type==HOST) begin
+				zreadword<=zreadword+1;
+				zdata_w[31:16]<=sdata_reg;
+			end
+		 end
+
+		 ph12 : begin
+			if(slot1_type==HOST) begin
+				zdata_w[15:0]<=sdata_reg;
+				zdata_wren<=!slot1_write;
+			end
+		 end
+		 
+		 ph13 : begin
+			if(slot1_type==HOST) begin
+				zreadword<=zreadword+1;
+				zdata_w[31:16]<=sdata_reg;
+			end
+		 end
+
+		 ph14 : begin
+			if(slot1_type==HOST) begin
+				zdata_w[15:0]<=sdata_reg;
+				zdata_wren<=!slot1_write;
+			end
+		 end
+		 
+		 ph15 : begin
+			if(slot1_type==HOST) begin
+				zreadword<=zreadword+1;
+				zdata_w[31:16]<=sdata_reg;
+			end
+		 end
+
+		 ph0 : begin
+			if(slot1_type==HOST) begin
+				zdata_w[15:0]<=sdata_reg;
+				zdata_wren<=!slot1_write;
+			end
+		 end
+
+		 ph1 : begin
+			zreadword_burst<=1'b0;
+			if(slot1_type==HOST) begin
+				ztag_wren<=!slot1_write;	// Only for reads
+				zreadword<=zmAddr[3:2];
+			end
+		 end
+
 		 default : begin
 		 end
     endcase
@@ -586,12 +818,11 @@ end
 
 
 reg zatn;
-reg zreq;
 reg cpureq1;
 
 always @(posedge sysclk) begin
-	zatn <= !(|hostslot_cnt) && zce && !hostena;
-	zreq <= zce && !hostena;
+	zatn <= !(|hostslot_cnt) && zreq && !hostena;
+//	zreq <= zce && !hostena;
 	cpureq1 <= (slot2_type == IDLE || slot2_bank != cpuAddr_mangled[24:23]) ? 1'b1 : 1'b0;
 end
 
