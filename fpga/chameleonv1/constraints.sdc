@@ -74,3 +74,6 @@ set_multicycle_path -from {virtual_top|tg68k|pf68K_Kernel_inst|*} -hold 3
 set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -setup 4
 set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -hold 3
 
+set_multicycle_path -from {minimig_virtual_top:virtual_top|TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|rdptr[*]} -to {minimig_virtual_top:virtual_top|TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -setup -end 2
+set_multicycle_path -from {minimig_virtual_top:virtual_top|TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|rdptr[*]} -to {minimig_virtual_top:virtual_top|TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold -end 2
+

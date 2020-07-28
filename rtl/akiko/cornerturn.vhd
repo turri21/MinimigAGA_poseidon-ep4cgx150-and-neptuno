@@ -46,8 +46,6 @@ begin
 -- 2, 7:0 -> 4(14),4(6), 5(14),5(6), 6(14),6(6) ...
 
 	turn: for i in 0 to 15 generate    
---	   q(i) <= buf(15 - 8*(to_integer(rdptr) mod 2) - (i/2))
---		            ((8*(i mod 2))+(to_integer(rdptr)/2));
 	   q(i) <= buf(8-8*(to_integer(rdptr) mod 2) + 7 - (i/2))
 		            ((7+8*(i mod 2))-(to_integer(rdptr)/2));
 	end generate;
