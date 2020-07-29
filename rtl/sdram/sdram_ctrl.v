@@ -61,6 +61,11 @@ module sdram_ctrl(
   input wire            rtgce,
   output wire           rtgfill,
   output wire    [15:0] rtgRd,
+  // Audio
+  input wire     [22:0] audAddr,
+  input wire            audce,
+  output wire           audfill,
+  output wire    [15:0] audRd,
   // cpu
   input  wire    [24:1] cpuAddr,
   input  wire [  7-1:0] cpustate,
@@ -111,7 +116,8 @@ localparam [2:0]
   CPU_WRITECACHE = 3,
   HOST = 4,
   RTG = 5,
-  IDLE = 6;
+  AUDIO = 6,
+  IDLE = 7;
 
 localparam [3:0]
   ph0 = 0,
@@ -247,6 +253,8 @@ assign reset_out = init_done;
 
 assign rtgRd=sdata_reg;
 assign rtgfill=slot2_type==RTG ? cache_fill_2 : 1'b0;
+assign audRd=sdata_reg;
+assign audfill=slot1_type==AUDIO ? cache_fill_1 : 1'b0;
 
 ////////////////////////////////////////
 // host access
@@ -954,7 +962,7 @@ always @ (posedge sysclk) begin
         end
         // the Amiga CPU gets next bite of the cherry, unless the OSD CPU has been cycle-starved
         // request from write buffer
-        else if(writebuffer_req && (|hostslot_cnt || (!zce || hostena))
+        else if(writebuffer_req && !zatn
 				&& (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23])
 					&& (!rtgce || writebufferAddr[24:23]!=rtgAddr[24:23])) begin
           // We only yield to the OSD CPU if it's both cycle-starved and ready to go.
@@ -989,6 +997,21 @@ always @ (posedge sysclk) begin
           cas_sd_cas          <= #1 1'b0;
           cas_sd_cs           <= #1 4'b1110;
         end
+		  else if(audce && !zatn) begin
+				slot1_type          <= #1 AUDIO;
+				sdaddr              <= #1 audAddr[22:10];
+				ba                  <= #1 2'b00;	// Always bank zero for audio
+				slot1_bank          <= #1 2'b00;
+				slot1_dqm           <= #1 2'b00;
+            slot1_dqm2			  <= #1 2'b00;
+				sd_cs               <= #1 4'b1110;
+				// ACTIVE
+				sd_ras              <= #1 1'b0;
+				casaddr             <= #1 audAddr;
+				cas_sd_cas          <= #1 1'b0;
+				cas_sd_we           <= #1 1'b1;
+				cas_sd_cs           <= #1 4'b1110;
+			end
         else if(zreq) begin
 				hostslot_cnt        <= #1 8'b00001111;
 				slot1_type          <= #1 HOST;

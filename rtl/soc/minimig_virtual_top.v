@@ -8,11 +8,12 @@
 
 // board type define
 `define MINIMIG_VIRTUAL
+`define HOSTONLY
 
 `include "minimig_defines.vh"
 
 module minimig_virtual_top
-	#(parameter debug = 0, parameter spimux = 0 )
+	#(parameter hostonly=0, parameter debug = 0, parameter spimux = 0 )
 (
   // clock inputs
   input wire            CLK_IN,
@@ -343,6 +344,77 @@ assign VGA_B[7:0]       = osd_window ? {osd_b,blue_reg[7:2]} : blue_reg[7:0];
 assign VGA_R[7:0]       = osd_window ? {osd_r,red_reg[7:6],debug_sdr} : red_reg[7:0];
 
 
+
+// Audio for CD images
+reg [15:0] aud_left;
+reg [15:0] aud_right;    // sigma-delta DAC output right
+
+reg aud_tick;
+reg aud_tick_d;
+reg aud_next;
+
+wire [24:0] aud_addr;
+wire [15:0] aud_sample;
+
+wire aud_ramreq;
+wire [15:0] aud_fromram;
+wire aud_fill;
+wire aud_ena;
+wire aud_clear;
+
+wire [22:0] aud_ramaddr;
+assign aud_ramaddr[15:0]=aud_addr;
+assign aud_ramaddr[22:16]=7'b0110000;  // 0x300000 in SDRAM, 0x680000 to host, 0xb00000 to Amiga
+
+assign aud_ena=1'b1;
+assign aud_clear=1'b1;
+
+reg [10:0] aud_ctr;
+always @(posedge CLK_28) begin
+	aud_ctr<=aud_ctr+1;
+	if (aud_ctr==11'd1285) begin
+		aud_tick<=1'b1;
+		aud_ctr<=11'b0;
+	end
+	else
+		aud_tick<=1'b0;
+end
+
+//  tick:   0 0 1 1 1 1 0 0
+//  tick_d: 0 0 0 1 1 1 1 0
+// tick^tick_d  1 0 0 0 1 0 
+always @(posedge CLK_114) begin
+	aud_tick_d<=aud_tick;
+	aud_next<=aud_tick ^ aud_tick_d;
+	if (aud_tick_d<=1)
+		aud_left<=aud_sample;
+	else
+		aud_right<=aud_sample;
+end	
+
+assign AUDIO_L=aud_left[15:1];
+assign AUDIO_R=aud_right[15:1];
+
+// We can use the same FIFO as we use for video.
+VideoStream myaudiostream
+(
+	.clk(CLK_114),
+	.reset_n(aud_clear),
+	.enable(aud_ena),
+	.baseaddr(25'b0),
+	// SDRAM interface
+	.a(aud_addr),
+	.req(aud_ramreq),
+	.d(aud_fromram),
+	.fill(aud_fill),
+	// Display interface
+	.rdreq(aud_next),
+	.q(aud_sample)
+);
+
+
+
+
 //// amiga clocks ////
 amiga_clk amiga_clk (
   .rst          (1'b0             ), // async reset input
@@ -361,7 +433,10 @@ amiga_clk amiga_clk (
 
 
 //// TG68K main CPU ////
-
+`ifdef HOSTONLY
+assign tg68_cpustate=2'b01;
+assign tg68_nrst_out=1'b1;
+`else
 TG68K tg68k (
   .clk          (CLK_114          ),
   .reset        (tg68_rst         ),
@@ -412,7 +487,7 @@ TG68K tg68k (
 	.rtg_clut_g(rtg_clut_g),
 	.rtg_clut_b(rtg_clut_b)
 );
-
+`endif
 
 wire [ 32-1:0] hostRD;
 wire [ 32-1:0] hostWR;
@@ -480,6 +555,11 @@ sdram_ctrl sdram (
   .rtgfill      (rtg_fill         ),
   .rtgRd        (rtg_fromram      ),
 
+  .audAddr      (aud_ramaddr      ),
+  .audce        (aud_ramreq       ),
+  .audfill      (aud_fill         ),
+  .audRd        (aud_fromram      ),
+
   .reset_out    (reset_out        ),
   .enaRDreg     (                 ),
   .enaWRreg     (tg68_enaWR       ),
@@ -514,6 +594,11 @@ assign SPI_SS3 = SPI_CS[5];
 assign SPI_SS2 = SPI_CS[4];
 
 //// minimig top ////
+`ifdef HOSTONLY
+assign SPI_DO=1'b1;
+assign _ram_oe=1'b1;
+assign _ram_we=1'b1;
+`else
 minimig minimig (
 	//m68k pins
 	.cpu_address  (tg68_adr[23:1]   ), // M68K address bus
@@ -615,7 +700,7 @@ minimig minimig (
 	.osd_pixel_out(osd_pixel        ),
 	.rtg_ena      (rtg_ena          )
 );
-
+`endif
 
 EightThirtyTwo_Bridge #( debug ? "true" : "false") hostcpu
 (

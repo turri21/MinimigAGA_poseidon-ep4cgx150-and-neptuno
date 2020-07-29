@@ -9,9 +9,13 @@
 #include "small_printf.h"
 #include "uart.h"
 
+/* #define STANDALONE to disable anything that requires the Minimig core to be functional,
+   to reduce build times when debugging host facilities. */
+#define STANDALONE
 
 #include "bootdiag.h"
 
+#ifndef STANDALONE
 void BootDiag()
 {
 	unsigned char *upload=(unsigned char *)(0x780000^0x580000);
@@ -20,9 +24,11 @@ void BootDiag()
 	while(--i)
 		*upload++=*src++;
 }
+#endif
 
 void ErrorCode(int code)
 {
+#ifndef STANDALONE
 	unsigned char *upload=(unsigned char *)(0x780000^0x580000);
 	EnableOsd();
 	HW_SPI(HW_SPI_DATA)=OSD_CMD_RST;
@@ -34,8 +40,8 @@ void ErrorCode(int code)
 	HW_SPI(HW_SPI_DATA)=OSD_CMD_RST;
 	HW_SPI(HW_SPI_DATA)=0; // Reset the chipset to allow the NTSC flag to take effect.
 	DisableOsd();
+#endif
 }
-
 
 void _boot()
 {
@@ -72,6 +78,7 @@ int main(int argc,char **argv)
 	int err=0;
 	SPI_slow();
 
+#ifndef STANDALONE
 	EnableOsd();
 	HW_SPI(HW_SPI_DATA)=OSD_CMD_RST;
 	HW_SPI(HW_SPI_DATA)=SPI_RST_CPU|SPI_CPU_HLT; // Allow the Chipset to start up
@@ -91,6 +98,7 @@ int main(int argc,char **argv)
 
 	BootDiag();
 	ErrorCode(0xfff);
+#endif
 
 	while(1)
 	{
