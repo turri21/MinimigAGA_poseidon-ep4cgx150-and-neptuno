@@ -366,9 +366,6 @@ wire [22:0] aud_ramaddr;
 assign aud_ramaddr[15:0]=aud_addr;
 assign aud_ramaddr[22:16]=7'b0110000;  // 0x300000 in SDRAM, 0x680000 to host, 0xb00000 to Amiga
 
-assign aud_ena=1'b1;
-assign aud_clear=1'b1;
-
 reg [10:0] aud_ctr;
 always @(posedge CLK_28) begin
 	aud_ctr<=aud_ctr+1;
@@ -392,14 +389,14 @@ always @(posedge CLK_114) begin
 		aud_right<=aud_sample;
 end	
 
-assign AUDIO_L=aud_left[15:1];
-assign AUDIO_R=aud_right[15:1];
+assign AUDIO_L={aud_left[7:0],aud_left[15:9]};
+assign AUDIO_R={aud_right[7:0],aud_right[15:9]};
 
 // We can use the same FIFO as we use for video.
 VideoStream myaudiostream
 (
 	.clk(CLK_114),
-	.reset_n(aud_clear),
+	.reset_n(!aud_clear),
 	.enable(aud_ena),
 	.baseaddr(25'b0),
 	// SDRAM interface
@@ -741,7 +738,11 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.debugTxD(CTRL_TX),
 		.debugRxD(CTRL_RX),
 		.menu_button(MENU_BUTTON),
-		.scandoubler(_15khz)
+		.scandoubler(_15khz),
+		
+		.audio_ena(aud_ena),
+		.audio_clear(aud_clear),
+		.audio_buf(aud_addr[15])
    );
 	
 endmodule

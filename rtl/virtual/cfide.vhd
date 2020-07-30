@@ -51,7 +51,11 @@ entity cfide is
 		debugTxD : out std_logic;
 		debugRxD : in std_logic;
 		menu_button	: in std_logic:='1';
-		scandoubler	: out std_logic
+		scandoubler	: out std_logic;
+		
+		audio_ena : out std_logic;
+		audio_clear : out std_logic;
+		audio_buf : in std_logic
    );
 
 end cfide;
@@ -96,10 +100,14 @@ signal timeprecnt: std_logic_vector(19 downto 0);
 signal rs232_select : std_logic;
 signal rs232data : std_logic_vector(15 downto 0);
 
+signal audio_q : std_logic_vector(15 downto 0);
+signal audio_select : std_logic;
+
 begin
 
 q <=	IOdata WHEN rs232_select='1' or SPI_select='1' ELSE
 		timecnt when timer_select='1' ELSE 
+		audio_q when audio_select='1' else
 		part_in;
 
 part_in <=  X"000"&"001"&menu_button; -- Reconfig not currently supported, 32 meg of RAM, menu button.
@@ -110,7 +118,7 @@ begin
 	if rising_edge(sysclk) then
 		ack<='0';
 		if req='1' then
-			if timer_select='1' or platform_select='1' then
+			if timer_select='1' or platform_select='1' or audio_select='1' then
 				ack<='1';
 			elsif rs232_select='1' or SPI_select='1' then
 				ack<=IOcpuena;
@@ -123,10 +131,13 @@ end process;
 sd_in(15 downto 8) <= (others=>'0');
 sd_in(7 downto 0) <= sd_in_shift(7 downto 0);
 
+audio_q<=X"000"&"000"&audio_buf;
+
 SPI_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"E" ELSE '0';
 rs232_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"F" ELSE '0';
 timer_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"D" ELSE '0';
 platform_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"C" ELSE '0';
+audio_select <='1' when addr(23)='1' and addr(7 downto 4)=X"B" else '0';
 
 ---------------------------------
 -- Platform specific registers --
@@ -135,8 +146,17 @@ platform_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"C" ELSE '0';
 process(sysclk,n_reset)
 begin
 	if rising_edge(sysclk) then
-		if platform_select='1' and req='1' and wr='1' then	-- Write to platform registers
-			scandoubler<=d(0);
+		if req='1' and wr='1' then
+		
+			if platform_select='1' then	-- Write to platform registers
+				scandoubler<=d(0);
+			end if;
+			
+			if audio_select='1' then
+				audio_clear<=d(1);
+				audio_ena<=d(0);
+			end if;
+			
 		end if;
 	end if;
 end process;
