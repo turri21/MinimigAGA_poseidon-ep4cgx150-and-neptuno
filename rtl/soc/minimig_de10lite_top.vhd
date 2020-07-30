@@ -166,8 +166,8 @@ architecture RTL of DE10liteToplevel is
 		SDRAM_BA		:	 OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
 		SDRAM_CLK		:	 OUT STD_LOGIC;
 		SDRAM_CKE		:	 OUT STD_LOGIC;
-		AUDIO_L		:	 OUT STD_LOGIC_VECTOR(14 downto 0);
-		AUDIO_R		:	 OUT STD_LOGIC_VECTOR(14 downto 0);
+		AUDIO_L		:	 OUT STD_LOGIC_VECTOR(15 downto 0);
+		AUDIO_R		:	 OUT STD_LOGIC_VECTOR(15 downto 0);
 		PS2_DAT_I		:	 INOUT STD_LOGIC;
 		PS2_CLK_I		:	 INOUT STD_LOGIC;
 		PS2_MDAT_I	:	 INOUT STD_LOGIC;
@@ -258,8 +258,8 @@ PORT map
 		SDRAM_CLK => DRAM_CLK,
 		SDRAM_CKE => DRAM_CKE,
 
-		AUDIO_L => audio_l(15 downto 1),
-		AUDIO_R => audio_r(15 downto 1),
+		AUDIO_L => audio_l,
+		AUDIO_R => audio_r,
 		
 		PS2_DAT_I => ps2_keyboard_dat_in,
 		PS2_CLK_I => ps2_keyboard_clk_in,
@@ -282,9 +282,6 @@ PORT map
 		SD_CS => sd_cs,
 		SD_ACK => '1'
 	);
-	
-audio_l(0)<='0';
-audio_r(0)<='0';
 
 --VGA_HS<=not vga_hsync;
 --VGA_VS<=not vga_vsync;

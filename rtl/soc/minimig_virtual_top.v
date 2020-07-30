@@ -8,7 +8,7 @@
 
 // board type define
 `define MINIMIG_VIRTUAL
-`define HOSTONLY
+//`define HOSTONLY
 
 `include "minimig_defines.vh"
 
@@ -58,8 +58,8 @@ module minimig_virtual_top
   output wire           SDRAM_CKE,  // SDRAM Clock Enable
   
   // MINIMIG specific
-  output wire[14:0]     AUDIO_L,    // sigma-delta DAC output left
-  output wire[14:0]     AUDIO_R,    // sigma-delta DAC output right
+  output wire[15:0]     AUDIO_L,    // sigma-delta DAC output left
+  output wire[15:0]     AUDIO_R,    // sigma-delta DAC output right
 
   // Keyboard / Mouse
   input                 PS2_DAT_I,      // PS2 Keyboard Data
@@ -184,6 +184,10 @@ wire           kbd_mouse_strobe;
 wire           kms_level;
 wire [  2-1:0] kbd_mouse_type;
 wire [  3-1:0] mouse_buttons;
+
+// Audio
+wire [14:0] aud_amiga_left;
+wire [14:0] aud_amiga_right;    // sigma-delta DAC output right
 
 // UART
 wire minimig_rxd;
@@ -383,14 +387,14 @@ end
 always @(posedge CLK_114) begin
 	aud_tick_d<=aud_tick;
 	aud_next<=aud_tick ^ aud_tick_d;
-	if (aud_tick_d<=1)
-		aud_left<=aud_sample;
+	if (aud_tick_d==1)
+		aud_left<={aud_sample[7:0],aud_sample[15:8]};
 	else
-		aud_right<=aud_sample;
+		aud_right<={aud_sample[7:0],aud_sample[15:8]};
 end	
 
-assign AUDIO_L={aud_left[7:0],aud_left[15:9]};
-assign AUDIO_R={aud_right[7:0],aud_right[15:9]};
+//assign AUDIO_L={aud_left[7:0],aud_left[15:9]};
+//assign AUDIO_R={aud_right[7:0],aud_right[15:9]};
 
 // We can use the same FIFO as we use for video.
 VideoStream myaudiostream
@@ -675,8 +679,8 @@ minimig minimig (
 	//audio
 	.left         (                 ),  // audio bitstream left
 	.right        (                 ),  // audio bitstream right
-	.ldata        (AUDIO_L          ),  // left DAC data
-	.rdata        (AUDIO_R          ),  // right DAC data
+	.ldata        (aud_amiga_left   ),  // left DAC data
+	.rdata        (aud_amiga_right  ),  // right DAC data
 	//user i/o
 	.cpu_config   (cpu_config       ), // CPU config
 	.memcfg       (memcfg           ), // memory config
@@ -744,6 +748,20 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.audio_clear(aud_clear),
 		.audio_buf(aud_addr[15])
    );
+
+
+AudioMix myaudiomix
+(
+	.clk(CLK_28),
+	.reset_n(reset_out),
+	.audio_in_l1({aud_amiga_left,1'b0}),
+	.audio_in_l2(aud_left),
+	.audio_in_r1({aud_amiga_right,1'b0}),
+	.audio_in_r2(aud_right),
+	.audio_l(AUDIO_L),
+	.audio_r(AUDIO_R)
+);
+
 	
 endmodule
 
