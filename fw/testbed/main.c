@@ -1,46 +1,35 @@
 
 #include "hardware.h"
+#include "audiotrack.h"
 #include "mmc.h"
 #include "fat.h"
 
 #include <stdio.h>
 
-fileTYPE file;
-
-unsigned char *audiobuffer=0x680000;	/* 0xb00000 in Amiga space */
+struct audiotrack track;
 
 void setstack();
 int main(void)
 {
 	setstack();
 	int result=0;
-	AUDIO=AUDIOF_CLEAR;
 
     if (MMC_Init())
 	{
 	    if (FindDrive())
 		{
-			int key;
-			int override=0;
 		    ChangeDirectory(DIRECTORY_ROOT);
-			if(FileOpen(&file,"TEST    SND"))
+
+			if(audiotrack_init(&track,"TEST    SND",0x680000))   /* 0xb00000 in Amiga space */
 			{
-				int buffer=0;
-				int i;
+				audiotrack_fill(&track);
+				audiotrack_play(&track);
 				while(1)
 				{
-					unsigned char *p=audiobuffer+32768*buffer;
-					for(i=0;i<32768;i+=512)
-					{
-						FileRead(&file,p);
-						FileNextSector(&file);
-						p+=512;
-					}
-					AUDIO=AUDIOF_ENA;
-					while((AUDIO&1)==buffer)
+					while(audiotrack_busy(&track))
 						;
 					putchar('.');
-					buffer^=1;
+					audiotrack_fill(&track);
 				}
 			}
 			else
