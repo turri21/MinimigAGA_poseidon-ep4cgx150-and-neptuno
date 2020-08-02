@@ -2,21 +2,24 @@
 #define AUDIOTRACK_H
 
 #include "hardware.h"
-#include "fat.h"
+#include "rafile.h"
 
 #define AUDIOSEEK_STEP 2048
 
 struct audiotrack
 {
-	fileTYPE file;
+	RAFile file;
 	int currentbuffer;
 	int remain;
 	int buffersize;
+	int start;
+	int length;
 	unsigned char *buffer;
 };
 
 
 int audiotrack_busy(struct audiotrack *track);
+void audiotrack_cue(struct audiotrack *track);
 void audiotrack_play(struct audiotrack *track);
 void audiotrack_fastforward(struct audiotrack *track);
 void audiotrack_rewind(struct audiotrack *track);

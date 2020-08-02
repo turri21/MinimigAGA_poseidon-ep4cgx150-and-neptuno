@@ -370,12 +370,12 @@ wire [22:0] aud_ramaddr;
 assign aud_ramaddr[15:0]=aud_addr;
 assign aud_ramaddr[22:16]=7'b0110000;  // 0x300000 in SDRAM, 0x680000 to host, 0xb00000 to Amiga
 
-reg [10:0] aud_ctr;
+reg [9:0] aud_ctr;
 always @(posedge CLK_28) begin
 	aud_ctr<=aud_ctr+1;
-	if (aud_ctr==11'd1285) begin
+	if (aud_ctr==10'd642) begin
 		aud_tick<=1'b1;
-		aud_ctr<=11'b0;
+		aud_ctr<=10'b0;
 	end
 	else
 		aud_tick<=1'b0;

@@ -1,12 +1,18 @@
 
 #include "hardware.h"
 #include "audiotrack.h"
+#include "bincue.h"
 #include "mmc.h"
 #include "fat.h"
+#include "malloc.h"
 
 #include <stdio.h>
 
 struct audiotrack track;
+
+struct cdimage cd;
+RAFile cuefile;
+char linebuffer[512];
 
 void setstack();
 int main(void)
@@ -14,13 +20,37 @@ int main(void)
 	setstack();
 	int result=0;
 
+	char *testbuf;
+	testbuf=(char *)malloc(131072);
+	printf("Allocated memory at %xz\n",(int)testbuf);
+	free(testbuf);
+
     if (MMC_Init())
 	{
 	    if (FindDrive())
 		{
-		    ChangeDirectory(DIRECTORY_ROOT);
+			int dir=FindDirectory(DIRECTORY_ROOT,"BANDS      ");
+		    ChangeDirectory(dir);
 
-			if(audiotrack_init(&track,"TEST    SND",0x680000))   /* 0xb00000 in Amiga space */
+			if(RAOpen(&cuefile,"Bubba 'N' Stix (1994)(Core)[!].cue"))
+			{
+				while(1)
+				{
+					RAReadLine(&cuefile,linebuffer,512);
+					printf("Got line %s\n",linebuffer);
+					if(cd_gettrack(&cd,linebuffer,3))
+					{
+						printf("Track found in %s, starting at byte offset %d\n",cd.filename,cd.offset);
+
+
+					}
+				}
+			}
+			else
+				printf("Failed to open cuefile\n");
+
+//			if(audiotrack_init(&track,"TEST    SND",0x680000))   /* 0xb00000 in Amiga space */
+			if(audiotrack_init(&track,"Bubba 'N' Stix (1994)(Core)(Track 02 of 12)[!].wav",0x680000))   /* 0xb00000 in Amiga space */
 			{
 				audiotrack_fill(&track);
 				audiotrack_play(&track);
@@ -28,7 +58,6 @@ int main(void)
 				{
 					while(audiotrack_busy(&track))
 						;
-					putchar('.');
 					audiotrack_fill(&track);
 				}
 			}

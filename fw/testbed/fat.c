@@ -306,6 +306,37 @@ unsigned char FindDrive(void)
     return(1);
 }
 
+static char fileLFN[261];
+static int doLFN(DIRENTRY *pEntry,char *lfnbuf)
+{
+	/* FIXME take care of lfn checksum here */
+	if (pEntry->Attributes == ATTR_LFN)	// Do we have a long filename entry?
+	{
+		unsigned char *p=&pEntry->Name[0];
+		int seq=p[0];
+		int offset=((seq&0x1f)-1)*13;
+		char *o=lfnbuf+offset;
+		*o++=p[1];
+		*o++=p[3];
+		*o++=p[5];
+		*o++=p[7];
+		*o++=p[9];
+
+		*o++=p[0xe];
+		*o++=p[0x10];
+		*o++=p[0x12];
+		*o++=p[0x14];
+		*o++=p[0x16];
+		*o++=p[0x18];
+
+		*o++=p[0x1c];
+		*o++=p[0x1e];
+		return(1);
+	}
+	return(0);
+}
+
+
 unsigned char FileOpen(fileTYPE *file, const char *name)
 {
     unsigned long  iDirectory = 0;       // only root directory is supported
@@ -314,6 +345,8 @@ unsigned char FileOpen(fileTYPE *file, const char *name)
     unsigned long  iDirectoryCluster;    // start cluster of subdirectory or FAT32 root directory
     unsigned long  iEntry;               // entry index in directory cluster or FAT16 root directory
     unsigned long  nEntries;             // number of entries per cluster or FAT16 root directory size
+
+	iDirectory=iCurrentDirectory
 
     if (iDirectory) // subdirectory
     {
@@ -344,9 +377,13 @@ unsigned char FileOpen(fileTYPE *file, const char *name)
 
             if (pEntry->Name[0] != SLOT_EMPTY && pEntry->Name[0] != SLOT_DELETED) // valid entry??
             {
-                if (!(pEntry->Attributes & (ATTR_VOLUME | ATTR_DIRECTORY))) // not a volume nor directory
+				if(doLFN(pEntry,fileLFN))
+				{
+					printf("Have long filename entry - %s\n",fileLFN);
+				}
+                else if (!(pEntry->Attributes & (ATTR_VOLUME | ATTR_DIRECTORY))) // not a volume nor directory
                 {
-                    if (strncmp((const char*)pEntry->Name, name, sizeof(file->name)) == 0)
+                    if (strncmp(fileLFN,name,strlen(name))==0 || strncmp((const char*)pEntry->Name, name, sizeof(file->name)) == 0)
                     {
                         strncpy(file->name, (const char*)pEntry->Name, sizeof(file->name));
                         file->attributes = pEntry->Attributes;
@@ -366,6 +403,8 @@ unsigned char FileOpen(fileTYPE *file, const char *name)
                         return(1);
                     }
                 }
+				else
+					fileLFN[0]=0; /* Invalidate LFN if we encounter anything between LFN and its file */
             }
         }
 
@@ -1162,6 +1201,7 @@ void ChangeDirectory(unsigned long iStartCluster)
 {
     iPreviousDirectory = iCurrentDirectory;
     iCurrentDirectory = iStartCluster;
+	printf("Changed directory from %d to %d\n",iPreviousDirectory,iCurrentDirectory);
 }
 
 unsigned long GetFATLink(unsigned long cluster)

@@ -1,14 +1,23 @@
-
+#include "rafile.h"
 #include "hardware.h"
 #include "audiotrack.h"
+#include "string.h"
 
 #include <stdio.h>
 
+char tmp[16];
 
-/* Returns 1 if the audio hardware is currently playing the next buffer. */
+/* Returns 1 if the audio hardware is currently playing the buffer we will fill next. */
 int audiotrack_busy(struct audiotrack *track)
 {
 	return((AUDIO&1)==track->currentbuffer);
+}
+
+
+void audiotrack_cue(struct audiotrack *track)
+{
+	RASeek(&track->file,track->start,SEEK_SET);
+	track->remain=track->length;
 }
 
 
@@ -43,26 +52,21 @@ void audiotrack_fill(struct audiotrack *track)
 {
 	unsigned char *p=track->buffer+track->buffersize*track->currentbuffer;
 	int i;
-	printf("Filling audio buffer - remain %d\n",track->remain);
-	for(i=0;i<track->buffersize;i+=512)
+	if(track->remain>track->buffersize)
 	{
-		FileRead(&track->file,p);
-		if(track->remain<512)
+		RARead(&track->file,p,track->buffersize);
+		track->remain-=track->buffersize;
+	}
+	else
+	{
+		int j;
+		RARead(&track->file,p,track->remain);
+		track->remain-=track->buffersize;
+		for(j=track->remain;j<512;++j)
 		{
-			int j;
-			for(j=track->remain;j<512;++j)
-			{
-				p[j]=0;
-			}
-			FileSeek(&track->file,0,SEEK_SET);
-			track->remain=track->file.size;
+			p[j]=0;
 		}
-		else
-		{
-			FileNextSector(&track->file);
-			track->remain-=512;
-		}
-		p+=512;
+		audiotrack_cue(track);
 	}
 	track->currentbuffer^=1;
 }
@@ -72,13 +76,12 @@ void audiotrack_fastforward(struct audiotrack *track)
 {
 	if(track->remain>AUDIOSEEK_STEP)
 	{
-		FileSeek(&track->file,AUDIOSEEK_STEP,SEEK_CUR);
+		RASeek(&track->file,AUDIOSEEK_STEP,SEEK_CUR);
 		track->remain-=AUDIOSEEK_STEP;
 	}
 	else
 	{
-		FileSeek(&track->file,0,SEEK_SET);
-		track->remain=track->file.size;
+		audiotrack_cue(track);
 	}
 }
 
@@ -87,27 +90,65 @@ void audiotrack_rewind(struct audiotrack *track)
 {
 	if((track->file.size-track->remain)>AUDIOSEEK_STEP)
 	{
-		FileSeek(&track->file,-AUDIOSEEK_STEP,SEEK_CUR);
+		RASeek(&track->file,-AUDIOSEEK_STEP,SEEK_CUR);
 		track->remain+=AUDIOSEEK_STEP;
 	}
 	else
 	{
-		FileSeek(&track->file,0,SEEK_SET);
-		track->remain=track->file.size;
+		audiotrack_cue(track);
 	}
 }
 
 
 int audiotrack_init(struct audiotrack *track, const char *filename,unsigned char *buffer)
 {
-	int result=0;
+	int result=1;
 	track->buffer=buffer;
 	track->currentbuffer=0;
 	track->buffersize=32768;
 	audiotrack_stop(track);
-	if(FileOpen(&track->file,filename))
+	if(RAOpen(&track->file,filename))
 	{
-		track->remain=track->file.size;
+		result&=RARead(&track->file,tmp,12);
+		if(result)
+		{
+			if(strncmp("RIFF",tmp,4)==0 && strncmp("WAVE",&tmp[8],4)==0)
+			{
+				printf("Found WAVE header\n");
+				track->start=0;
+				while(result && !track->start)
+				{
+					int l;
+					result&=RARead(&track->file,tmp,8);
+					l=(tmp[7]<<24)|(tmp[6]<<16)|(tmp[5]<<8)|tmp[4];
+					if(strncmp("fmt ",tmp,4)==0)
+					{
+						printf("Found fmt chunk\n");
+					}
+					else if(strncmp("data ",tmp,4)==0)
+					{
+						printf("Found data chunk, data starts at %d with length %d\n",track->file.ptr,l);
+						track->start=track->file.ptr;
+						track->length=l;
+						l=0;
+					}
+					else
+						printf("Skipping unknown chunk %lx with length %d\n",*(int *)tmp,l);
+					if(l)
+						RASeek(&track->file,l,SEEK_CUR);
+				}
+			}
+			else
+			{
+				printf("Treating as RAW data\n");
+				track->start=0;
+				track->length=track->file.size;
+				RASeek(&track->file,0,SEEK_SET);
+			}
+		}
+		else
+			printf("Can't read header\n");
+		audiotrack_cue(track);
 		audiotrack_fill(track);
 		result=1;
 	}

@@ -55,7 +55,8 @@ CFLAGS += -D__BUILD_USER=$(BUILD_USER) -D__BUILD_TAG=$(BUILD_TAG)
 
 # common sources
 COMMON_SOURCES=$(BUILD_DIR)/main.o $(BUILD_DIR)/fat.o $(BUILD_DIR)/hardware.o $(BUILD_DIR)/errors.o $(BUILD_DIR)/mmc.o \
-	$(BUILD_DIR)/swap.o $(BUILD_DIR)/uart.o $(BUILD_DIR)/malloc.o $(BUILD_DIR)/audiotrack.o
+	$(BUILD_DIR)/swap.o $(BUILD_DIR)/uart.o $(BUILD_DIR)/malloc.o $(BUILD_DIR)/audiotrack.o $(BUILD_DIR)/rafile.o\
+	$(BUILD_DIR)/bincue.o
 
 
 # all sources
