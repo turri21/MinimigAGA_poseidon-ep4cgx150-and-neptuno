@@ -29,20 +29,23 @@ int main(void)
 	{
 	    if (FindDrive())
 		{
-			int dir=FindDirectory(DIRECTORY_ROOT,"BANDS      ");
-		    ChangeDirectory(dir);
+//			int dir=FindDirectory(DIRECTORY_ROOT,"BANDS      ");
+			int foundtrack=0;
+//		    ChangeDirectory(dir);
 
-			if(RAOpen(&cuefile,"Bubba 'N' Stix (1994)(Core)[!].cue"))
+			if(RAOpen(&cuefile,"EXODUS_THELASTWAR.CUE"))
+//			if(RAOpen(&cuefile,"Bubba 'N' Stix (1994)(Core)[!].cue"))
 			{
 				while(1)
 				{
-					RAReadLine(&cuefile,linebuffer,512);
+					if(!RAReadLine(&cuefile,linebuffer,512))
+						break;
 					printf("Got line %s\n",linebuffer);
 					if(cd_gettrack(&cd,linebuffer,3))
 					{
-						printf("Track found in %s, starting at byte offset %d\n",cd.filename,cd.offset);
-
-
+						printf("Track found in %s, starting at byte offset %d, length %d\n",cd.filename,cd.offset,cd.length);
+						foundtrack=1;
+						break;
 					}
 				}
 			}
@@ -50,19 +53,22 @@ int main(void)
 				printf("Failed to open cuefile\n");
 
 //			if(audiotrack_init(&track,"TEST    SND",0x680000))   /* 0xb00000 in Amiga space */
-			if(audiotrack_init(&track,"Bubba 'N' Stix (1994)(Core)(Track 02 of 12)[!].wav",0x680000))   /* 0xb00000 in Amiga space */
+			if(foundtrack)
 			{
-				audiotrack_fill(&track);
-				audiotrack_play(&track);
-				while(1)
+				if(audiotrack_init(&track,cd.filename,cd.offset,cd.length,0x680000))   /* 0xb00000 in Amiga space */
 				{
-					while(audiotrack_busy(&track))
-						;
 					audiotrack_fill(&track);
+					audiotrack_play(&track);
+					while(1)
+					{
+						while(audiotrack_busy(&track))
+							;
+						audiotrack_fill(&track);
+					}
 				}
+				else
+					printf("Unable to open sound file\n");
 			}
-			else
-				printf("Unable to open test sound file\n");
 		}
 		else
 			printf("Can't open filesystem.\n");

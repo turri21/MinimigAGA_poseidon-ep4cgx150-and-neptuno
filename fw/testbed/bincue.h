@@ -9,6 +9,7 @@ struct cdimage
 	int audiotracks;
 	int currenttrack;
 	int offset;
+	int length;	/* 0 for standalone WAV files. */
 	enum cdimagetype type;
 	char filename[261];
 };

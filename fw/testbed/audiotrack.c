@@ -100,7 +100,7 @@ void audiotrack_rewind(struct audiotrack *track)
 }
 
 
-int audiotrack_init(struct audiotrack *track, const char *filename,unsigned char *buffer)
+int audiotrack_init(struct audiotrack *track, const char *filename,int offset,int length,unsigned char *buffer)
 {
 	int result=1;
 	track->buffer=buffer;
@@ -109,45 +109,52 @@ int audiotrack_init(struct audiotrack *track, const char *filename,unsigned char
 	audiotrack_stop(track);
 	if(RAOpen(&track->file,filename))
 	{
-		result&=RARead(&track->file,tmp,12);
-		if(result)
-		{
-			if(strncmp("RIFF",tmp,4)==0 && strncmp("WAVE",&tmp[8],4)==0)
+		track->start=offset;
+		if(length)
+			track->length=length;
+		else
+			track->length=track->file.size;
+
+		if(!offset)	/* If we have an offset we're dealing with an audio track within a BIN file */
+		{			/* Otherwise we probably have a WAV file */
+			result&=RARead(&track->file,tmp,12);
+			if(result)
 			{
-				printf("Found WAVE header\n");
-				track->start=0;
-				while(result && !track->start)
+				if(strncmp("RIFF",tmp,4)==0 && strncmp("WAVE",&tmp[8],4)==0)
 				{
-					int l;
-					result&=RARead(&track->file,tmp,8);
-					l=(tmp[7]<<24)|(tmp[6]<<16)|(tmp[5]<<8)|tmp[4];
-					if(strncmp("fmt ",tmp,4)==0)
+					printf("Found WAVE header\n");
+					track->start=0;
+					while(result && !track->start)
 					{
-						printf("Found fmt chunk\n");
+						int l;
+						result&=RARead(&track->file,tmp,8);
+						l=(tmp[7]<<24)|(tmp[6]<<16)|(tmp[5]<<8)|tmp[4];
+						if(strncmp("fmt ",tmp,4)==0)
+						{
+							printf("Found fmt chunk\n");
+						}
+						else if(strncmp("data ",tmp,4)==0)
+						{
+							printf("Found data chunk, data starts at %d with length %d\n",track->file.ptr,l);
+							track->start=track->file.ptr;
+							track->length=l;
+							l=0;
+						}
+						else
+							printf("Skipping unknown chunk %lx with length %d\n",*(int *)tmp,l);
+						if(l)
+							RASeek(&track->file,l,SEEK_CUR);
 					}
-					else if(strncmp("data ",tmp,4)==0)
-					{
-						printf("Found data chunk, data starts at %d with length %d\n",track->file.ptr,l);
-						track->start=track->file.ptr;
-						track->length=l;
-						l=0;
-					}
-					else
-						printf("Skipping unknown chunk %lx with length %d\n",*(int *)tmp,l);
-					if(l)
-						RASeek(&track->file,l,SEEK_CUR);
+				}
+				else /* No WAV header?  Treat as raw.  FIXME - might be better to refuse to play? */
+				{
+					printf("Treating as RAW data\n");
+					RASeek(&track->file,offset,SEEK_SET);
 				}
 			}
 			else
-			{
-				printf("Treating as RAW data\n");
-				track->start=0;
-				track->length=track->file.size;
-				RASeek(&track->file,0,SEEK_SET);
-			}
+				printf("Can't read header\n");
 		}
-		else
-			printf("Can't read header\n");
 		audiotrack_cue(track);
 		audiotrack_fill(track);
 		result=1;

@@ -73,9 +73,8 @@ int cd_gettrack(struct cdimage *cd, char *in,int track)
 				if(strcmp(tok,"AUDIO")==0 && cd->currenttrack>-1)
 					cd->audiotracks|=(1<<cd->currenttrack);
 			}
-			cd->offset=-1;
 		}		
-		if(cd->currenttrack==track && strcmp(tok,"INDEX")==0)
+		if(cd->currenttrack>=track && strcmp(tok,"INDEX")==0)
 		{
 			if(tok=strtok(0,delims))
 			{
@@ -91,8 +90,18 @@ int cd_gettrack(struct cdimage *cd, char *in,int track)
 					tok=endptr+1;
 					frames=strtoul(tok,&endptr,10);
 					frames+=75*seconds+(75*60)*mins;
-					cd->offset=frames*2352;
-					return(1);
+					if(cd->currenttrack==track)
+					{
+						cd->offset=frames*2352;
+						cd->length=0;
+						if(!cd->offset)	/* If we have a standalone file we don't need to worry about the track's length */
+							return(1);
+					}
+					if(cd->currenttrack==track+1)
+					{
+						cd->length=frames*2352-cd->offset;
+						return(1);
+					}
 				}
 			}
 		}		
