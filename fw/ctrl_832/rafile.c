@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "rafile.h"
 
 int RARead(RAFile *file,unsigned char *pBuffer, unsigned long bytes)
@@ -11,7 +12,7 @@ int RARead(RAFile *file,unsigned char *pBuffer, unsigned long bytes)
 	if(blockoffset)	// If blockoffset is zero we'll just use aligned reads and don't need to drain the buffer.
 	{
 		int i;
-		int l=bytes;
+		int l=blockoffset+bytes;
 		if(l>512)
 			l=512;
 		for(i=blockoffset;i<l;++i)
@@ -48,6 +49,40 @@ int RARead(RAFile *file,unsigned char *pBuffer, unsigned long bytes)
 }
 
 
+int RAReadLine(RAFile *file,unsigned char *pBuffer, unsigned long bytes)
+{
+	int result=1;
+	// Since we can only read from the SD card on 512-byte aligned boundaries,
+	// we need to copy in multiple pieces.
+	while(bytes)
+	{
+		unsigned long blockoffset=file->ptr&511;	// Offset within the current 512 block at which the previous read finished
+													// Bytes blockoffset to 512 will be drained first, before reading new data.
+		int i;
+		int l=blockoffset+bytes;
+		if(!blockoffset)
+		{
+			result&=FileRead(&file->file,file->buffer);	// Read to temporary buffer, allowing us to preserve any leftover for the next read.
+			FileNextSector(&file->file);
+		}
+		if(l>512)
+			l=512;
+		for(i=blockoffset;i<l;++i)
+		{
+			*pBuffer++=file->buffer[i];
+			++file->ptr;
+			--bytes;
+			if(file->buffer[i]=='\n')
+			{
+				*pBuffer++=0;
+				return(1);
+			}
+		}
+	}
+	return(0);
+}
+
+
 int RASeek(RAFile *file,unsigned long offset,unsigned long origin)
 {
 	int result=1;
@@ -56,7 +91,7 @@ int RASeek(RAFile *file,unsigned long offset,unsigned long origin)
 	if(origin==SEEK_CUR)
 		offset+=file->ptr;
 	blockoffset=offset&511;
-	blockaddress=offset-blockoffset;	// 512-byte-aligned...
+	blockaddress=(offset-blockoffset)>>9;	// address in 512-byte sectors...
 	result&=FileSeek(&file->file,blockaddress,SEEK_SET);
 	if(result && blockoffset)	// If we're seeking into the middle of a block, we need to buffer it...
 	{

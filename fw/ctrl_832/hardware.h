@@ -20,6 +20,10 @@
 #define DISKLED_ON // *AT91C_PIOA_SODR = DISKLED;
 #define DISKLED_OFF // *AT91C_PIOA_CODR = DISKLED;
 
+#define AUDIO (*(volatile unsigned char *)0x0fffffb3)
+#define AUDIOF_CLEAR 2
+#define AUDIOF_ENA 1
+
 #define HW_SPI(x) (*(volatile unsigned char *)(0x0fffffe0+x))
 #define HW_SPI_CS 7
 #define HW_SPI_DATA 3

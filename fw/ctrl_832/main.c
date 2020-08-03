@@ -53,6 +53,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "firmware.h"
 #include "menu.h"
 #include "config.h"
+#include "bincue.h"
 
 #include <stdio.h>
 
@@ -184,6 +185,7 @@ int ColdBoot()
 	return(result);
 }
 
+struct cdimage cd;
 
 void setstack();
 #ifdef __GNUC__
@@ -201,8 +203,12 @@ __geta4 int main(void)
 	if(!ColdBoot())
 		BootPrintEx("ROM loading failed");
 
+	cd_setcuefile(&cd,"EXODUS_THELASTWAR.CUE");
+	cd_playaudio(&cd,4);
+
     while(1)
     {
+		cd_continueaudio(&cd);
         HandleFpga();
         HandleUI();
 		if(ErrorMask)
