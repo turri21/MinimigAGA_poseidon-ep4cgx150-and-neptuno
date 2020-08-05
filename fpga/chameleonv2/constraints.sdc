@@ -32,8 +32,8 @@ derive_clock_uncertainty
 
 
 # input delay
-set_input_delay -clock clk_sdram -max 6.4 $sdram_inputs
-set_input_delay -clock clk_sdram -min 3.2 $sdram_inputs
+set_input_delay -clock clk_sdram -max 3.0 $sdram_inputs
+set_input_delay -clock clk_sdram -min 2.0 $sdram_inputs
 
 #output delay
 #set_output_delay -clock $clk_sdram -max  1.5 [get_ports sm_clk]
@@ -59,3 +59,5 @@ set_multicycle_path -from {virtual_top|tg68k|pf68K_Kernel_inst|*} -hold 3
 set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -setup 4
 set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -hold 3
 
+set_multicycle_path -from {minimig_virtual_top:virtual_top|TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|rdptr[*]} -to {minimig_virtual_top:virtual_top|TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -setup -end 2
+set_multicycle_path -from {minimig_virtual_top:virtual_top|TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|rdptr[*]} -to {minimig_virtual_top:virtual_top|TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold -end 2

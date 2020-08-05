@@ -50,10 +50,10 @@ set_input_delay -clock clk_sdram -min 2.0 $sdram_inputs
 #set_output_delay -clock clk_sdram -min  0.5 [get_ports {sd_clk}]
 
 set_output_delay -clock clk_sdram -max  1.5 $sdram_outputs
-set_output_delay -clock clk_sdram -max  1.8 $sdram_dqoutputs
+set_output_delay -clock clk_sdram -max  1.5 $sdram_dqoutputs
 #set_output_delay -clock clk_sdram -min -0.8 $sdram_outputs
 set_output_delay -clock clk_sdram -min -0.8 $sdram_outputs
-set_output_delay -clock clk_sdram -min -0.7 $sdram_dqoutputs
+set_output_delay -clock clk_sdram -min -0.8 $sdram_dqoutputs
 
 
 # false paths

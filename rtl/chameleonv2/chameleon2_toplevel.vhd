@@ -241,8 +241,8 @@ architecture rtl of chameleon2_toplevel is
 		SDRAM_BA		:	 OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
 		SDRAM_CLK		:	 OUT STD_LOGIC;
 		SDRAM_CKE		:	 OUT STD_LOGIC;
-		AUDIO_L		:	 OUT STD_LOGIC_VECTOR(14 downto 0);
-		AUDIO_R		:	 OUT STD_LOGIC_VECTOR(14 downto 0);
+		AUDIO_L		:	 OUT STD_LOGIC_VECTOR(15 downto 0);
+		AUDIO_R		:	 OUT STD_LOGIC_VECTOR(15 downto 0);
 		PS2_DAT_I		:	 IN STD_LOGIC;
 		PS2_CLK_I		:	 IN STD_LOGIC;
 		PS2_MDAT_I		:	 IN STD_LOGIC;
@@ -490,8 +490,8 @@ PORT map
 		SDRAM_CLK => ram_clk,
 --		SDRAM_CKE => sd_CKE,
 
-		AUDIO_L => audio_l(15 downto 1),
-		AUDIO_R => audio_r(15 downto 1),
+		AUDIO_L => audio_l(15 downto 0),
+		AUDIO_R => audio_r(15 downto 0),
 		
 		PS2_DAT_I => ps2_keyboard_dat_in,
 		PS2_CLK_I => ps2_keyboard_clk_in,
@@ -513,8 +513,6 @@ PORT map
 		SD_CS => mmc_cs,
 		SD_ACK => '1'
 	);
-audio_l(0)<='0';
-audio_r(0)<='0';
 	
 -- Dither the video down to 5 bits per gun.
 	vga_window<='1';

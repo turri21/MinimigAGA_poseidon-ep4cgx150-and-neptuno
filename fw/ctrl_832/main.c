@@ -203,8 +203,8 @@ __geta4 int main(void)
 	if(!ColdBoot())
 		BootPrintEx("ROM loading failed");
 
-	cd_setcuefile(&cd,"EXODUS_THELASTWAR.CUE");
-	cd_playaudio(&cd,4);
+//	cd_setcuefile(&cd,"EXODUS_THELASTWAR.CUE");
+//	cd_playaudio(&cd,4);
 
     while(1)
     {
@@ -215,7 +215,11 @@ __geta4 int main(void)
 		{
 			ShowError();
 			while(ErrorMask)
+			{
+				if(!ErrorFatal)
+					HandleFpga();
 		        HandleUI();
+            }
 		}
     }
 }
