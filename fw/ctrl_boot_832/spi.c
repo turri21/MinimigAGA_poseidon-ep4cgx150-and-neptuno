@@ -1,7 +1,7 @@
 #include "spi.h"
 #include "uart.h"
-#include "small_printf.h"
-
+//#include "small_printf.h"
+#include <stdio.h>
 int SDHCtype;
 
 // #define SPI_WAIT(x) while(HW_PER(PER_SPI_CS)&(1<<PER_SPI_BUSY));
