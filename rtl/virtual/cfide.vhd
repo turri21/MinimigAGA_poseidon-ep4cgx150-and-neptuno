@@ -35,7 +35,7 @@ entity cfide is
 		sysclk	: in std_logic;	
 		n_reset	: in std_logic;	
 
-		addr	: in std_logic_vector(31 downto 0);
+		addr	: in std_logic_vector(31 downto 2);
 		d		: in std_logic_vector(31 downto 0);	
 		q		: out std_logic_vector(15 downto 0);		
 		req 	: in std_logic;
@@ -228,10 +228,10 @@ end process;
 		end if;
 
 		IF SPI_select='1' AND req='1' and wr='1' AND SD_busy='0' THEN	 --SD write
-			case addr(3 downto 0) is				
-				when X"8" =>
+			case addr(3 downto 2) is				
+				when "10" => -- 8
 					spi_speed <= d(7 downto 0);
-				when X"4" =>
+				when "01" => -- 4
 					scs(0) <= not d(0);
 					IF d(7)='1' THEN
 						scs(7) <= not d(0);
@@ -254,7 +254,7 @@ end process;
 					IF d(1)='1' THEN
 						scs(1) <= not d(0);
 					END IF;
-				when X"0" =>
+				when "00" => -- 0
 --						ELSE							--DA4000
 					if scs(1)='1' THEN -- Wait for io component to propagate signals.
 						spi_wait<='1'; -- Only wait if SPI needs to go through the MUX

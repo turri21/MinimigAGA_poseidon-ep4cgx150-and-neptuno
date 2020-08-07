@@ -113,8 +113,10 @@ SIGNAL vmaena           : std_logic;
 SIGNAL eind             : std_logic;
 SIGNAL eindd            : std_logic;
 SIGNAL sel_autoconfig   : std_logic;
+SIGNAL sel_autoconfig_d : std_logic;
 SIGNAL autoconfig_out   : std_logic_vector(1 downto 0); -- We use this as a counter since we have two cards to configure
-SIGNAL autoconfig_data  : std_logic_vector(3 downto 0); -- Zorro II RAM
+SIGNAL autoconfig_data  : std_logic_vector(3 downto 0); -- registered autoconf data
+SIGNAL autoconfig_data1 : std_logic_vector(3 downto 0); -- Zorro II RAM
 SIGNAL autoconfig_data2 : std_logic_vector(3 downto 0); -- Zorro III RAM
 SIGNAL autoconfig_data3 : std_logic_vector(3 downto 0); -- Zorro III ethernet
 SIGNAL sel_ram          : std_logic;
@@ -127,6 +129,7 @@ SIGNAL slower           : std_logic_vector(3 downto 0);
 
 TYPE   sync_states      IS (sync0, sync1, sync2, sync3, sync4, sync5, sync6, sync7, sync8, sync9);
 SIGNAL sync_state       : sync_states;
+SIGNAL datatg68_c       : std_logic_vector(15 downto 0);
 SIGNAL datatg68         : std_logic_vector(15 downto 0);
 SIGNAL ramcs            : std_logic;
 
@@ -144,8 +147,10 @@ SIGNAL sel_slow         : std_logic;
 SIGNAL sel_slowram      : std_logic;
 SIGNAL sel_cart         : std_logic;
 SIGNAL sel_32           : std_logic;
+signal sel_32_d         : std_logic;
 signal sel_undecoded    : std_logic;
 signal sel_akiko        : std_logic;
+signal sel_akiko_d      : std_logic;
 signal sel_ram_d			: std_logic;
 
 -- Akiko registers
@@ -160,6 +165,8 @@ SIGNAL sel_nmi_vector   : std_logic;
 
 
 BEGIN
+
+sel_eth<='0';
 
   -- NMI
   PROCESS(reset, clk) BEGIN
@@ -178,36 +185,45 @@ BEGIN
 		if cpuaddr(31 downto 24)=z3ram_base AND z3ram_ena='1' then
 			sel_z3ram <= '1';
 		end if;
-		
+
+		sel_autoconfig_d<=sel_autoconfig;
+		sel_akiko_d<=sel_akiko;
+		sel_32_d<=sel_32;
     END IF;
   END PROCESS;
 
   wrd <= wr;
   addr <= cpuaddr;
-  datatg68 <=
-         X"ffff"                              when sel_undecoded='1'
+
+  datatg68_c <=
+       X"ffff"                              when sel_undecoded='1'
 	 else fromram                              WHEN sel_ram_d='1' AND sel_nmi_vector='0'
-    --ELSE frometh                              WHEN sel_eth='1'
-	 else akiko_q when sel_akiko='1'
-    ELSE autoconfig_data&r_data(11 downto 0)  WHEN sel_autoconfig='1' AND autoconfig_out="01" -- Zorro II RAM autoconfig
-    ELSE autoconfig_data2&r_data(11 downto 0) WHEN sel_autoconfig='1' AND autoconfig_out="10" -- Zorro III RAM autoconfig
-    --ELSE autoconfig_data3&r_data(11 downto 0) WHEN sel_autoconfig='1' AND autoconfig_out="11" -- Zorro III ethernet autoconfig
+  --ELSE frometh                              WHEN sel_eth='1'
+	 else akiko_q when sel_akiko_d='1'
+    ELSE autoconfig_data&r_data(11 downto 0)  WHEN sel_autoconfig_d='1'
     else r_data;
 
+	-- Register incoming data
+	process(clk) begin
+		if rising_edge(clk) then
+			datatg68<=datatg68_c;
+		end if;
+	end process;
+	
 	sel_akiko <= '1' when cpuaddr(31 downto 16)=X"00B8" else '0';
-  sel_32 <= '1' when cpu(1)='1' and cpuaddr(31 downto 24)/=X"00" and cpuaddr(31 downto 24)/=X"ff" else '0'; -- Decode 32-bit space, but exclude interrupt vectors
-  sel_autoconfig  <= '1' WHEN fastramcfg(2 downto 0)/="000" AND cpuaddr(23 downto 19)="11101" AND autoconfig_out/="00" ELSE '0'; --$E80000 - $EFFFFF
---  sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 24)=z3ram_base) AND z3ram_ena='1' ELSE '0';
-  sel_z2ram       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 21) = "001") OR (cpuaddr(23 downto 21) = "010") OR (cpuaddr(23 downto 21) = "011") OR (cpuaddr(23 downto 21) = "100")) AND z2ram_ena='1' ELSE '0';
-  --sel_eth         <= '1' WHEN (cpuaddr(31 downto 24) = eth_base) AND eth_cfgd='1' ELSE '0';
-  sel_chipram     <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 21)="000") AND turbochip_ena='1' AND turbochip_d='1' ELSE '0'; --$000000 - $1FFFFF
-  sel_kick        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 19)="11111") OR (cpuaddr(23 downto 19)="11100")) AND state/="11" ELSE '0'; -- $F8xxxx, $E0xxxx
-  sel_kickram     <= '1' WHEN sel_kick='1' AND turbochip_ena='1' AND turbokick_d='1' ELSE '0';
-  sel_slow        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 20)=X"C") OR (cpuaddr(23 downto 19)=X"D"&'0')) ELSE '0'; -- $C00000 - $D7FFFF
-  sel_slowram     <= '1' WHEN sel_slow='1' AND turbochip_ena='1' AND turbokick_d='1' ELSE '0';
-  sel_cart        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 20)="1010") ELSE '0'; -- $A00000 - $A7FFFF
-  sel_undecoded   <= '1' when sel_32='1' and sel_z3ram='0' else '0';
-  sel_ram         <= '1' WHEN state/="01" AND sel_nmi_vector='0' AND (
+	sel_32 <= '1' when cpu(1)='1' and cpuaddr(31 downto 24)/=X"00" and cpuaddr(31 downto 24)/=X"ff" else '0'; -- Decode 32-bit space, but exclude interrupt vectors
+	sel_autoconfig  <= '1' WHEN fastramcfg(2 downto 0)/="000" AND cpuaddr(23 downto 19)="11101" AND autoconfig_out/="00" ELSE '0'; --$E80000 - $EFFFFF
+	--  sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 24)=z3ram_base) AND z3ram_ena='1' ELSE '0';
+	sel_z2ram       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 21) = "001") OR (cpuaddr(23 downto 21) = "010") OR (cpuaddr(23 downto 21) = "011") OR (cpuaddr(23 downto 21) = "100")) AND z2ram_ena='1' ELSE '0';
+	--sel_eth         <= '1' WHEN (cpuaddr(31 downto 24) = eth_base) AND eth_cfgd='1' ELSE '0';
+	sel_chipram     <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 21)="000") AND turbochip_ena='1' AND turbochip_d='1' ELSE '0'; --$000000 - $1FFFFF
+	sel_kick        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 19)="11111") OR (cpuaddr(23 downto 19)="11100")) AND state/="11" ELSE '0'; -- $F8xxxx, $E0xxxx
+	sel_kickram     <= '1' WHEN sel_kick='1' AND turbochip_ena='1' AND turbokick_d='1' ELSE '0';
+	sel_slow        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 20)=X"C") OR (cpuaddr(23 downto 19)=X"D"&'0')) ELSE '0'; -- $C00000 - $D7FFFF
+	sel_slowram     <= '1' WHEN sel_slow='1' AND turbochip_ena='1' AND turbokick_d='1' ELSE '0';
+	sel_cart        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 20)="1010") ELSE '0'; -- $A00000 - $A7FFFF
+	sel_undecoded   <= '1' when sel_32_d='1' and sel_z3ram='0' else '0';
+	sel_ram         <= '1' WHEN state/="01" AND sel_nmi_vector='0' AND (
          sel_z2ram='1'
       OR sel_z3ram='1'
       OR sel_chipram='1'
@@ -362,62 +378,75 @@ end process;
 			
 
 PROCESS (clk, fastramcfg, cpuaddr, cpu) BEGIN
+
   -- Zorro II RAM (Up to 8 meg at 0x200000)
-  autoconfig_data <= "1111";
+	autoconfig_data1<="1111";
   IF fastramcfg/="000" THEN
-    CASE cpuaddr(6 downto 1) IS
-      WHEN "000000" => autoconfig_data <= "1110";    -- Zorro-II card, add mem, no ROM
-      WHEN "000001" => --autoconfig_data <= "0111";   -- 4MB
-        CASE fastramcfg(1 downto 0) IS
-          WHEN "01" => autoconfig_data <= "0110";    -- 2MB
-          WHEN "10" => autoconfig_data <= "0111";    -- 4MB
-          WHEN OTHERS => autoconfig_data <= "0000";  -- 8MB
-        END CASE;
-      WHEN "001000" => autoconfig_data <= "1110";    -- Manufacturer ID: 0x139c
-      WHEN "001001" => autoconfig_data <= "1100";
-      WHEN "001010" => autoconfig_data <= "0110";
-      WHEN "001011" => autoconfig_data <= "0011";
-      WHEN "010011" => autoconfig_data <= "1110";    --serial=1
-      WHEN OTHERS => null;
-    END CASE;
+	 CASE cpuaddr(6 downto 1) IS
+		WHEN "000000" => autoconfig_data1 <= "1110";    -- Zorro-II card, add mem, no ROM
+		WHEN "000001" => --autoconfig_data <= "0111";   -- 4MB
+		  CASE fastramcfg(1 downto 0) IS
+			 WHEN "01" => autoconfig_data1 <= "0110";    -- 2MB
+			 WHEN "10" => autoconfig_data1 <= "0111";    -- 4MB
+			 WHEN OTHERS => autoconfig_data1 <= "0000";  -- 8MB
+		  END CASE;
+		WHEN "001000" => autoconfig_data1 <= "1110";    -- Manufacturer ID: 0x139c
+		WHEN "001001" => autoconfig_data1 <= "1100";
+		WHEN "001010" => autoconfig_data1 <= "0110";
+		WHEN "001011" => autoconfig_data1 <= "0011";
+		WHEN "010011" => autoconfig_data1 <= "1110";    --serial=1
+		WHEN OTHERS => null;
+	 END CASE;
   END IF;
 
   -- Zorro III RAM (Up to 16 meg, address assigned by ROM)
-  autoconfig_data2 <= "1111";
+	autoconfig_data2<="1111";
   IF fastramcfg(2)='1' AND cpu(1)='1' THEN -- Zorro III 32bit RAM, 68020
-    CASE cpuaddr(6 downto 1) IS
-      WHEN "000000" => autoconfig_data2 <= "1010";    -- Zorro-III card, add mem, no ROM
-      WHEN "000001" => autoconfig_data2 <= "0000";    -- 8MB (extended to 16 in reg 08)
-      WHEN "000010" => autoconfig_data2 <= "1110";    -- ProductID=0x10 (only setting upper nibble)
-      WHEN "000100" => autoconfig_data2 <= "0000";    -- Memory card, not silenceable, Extended size (16 meg), reserved.
-      WHEN "000101" => autoconfig_data2 <= "1111";    -- 0000 - logical size matches physical size TODO change this to 0001, so it is autosized by the OS, WHEN it will be 24MB.
-      WHEN "001000" => autoconfig_data2 <= "1110";    -- Manufacturer ID: 0x139c
-      WHEN "001001" => autoconfig_data2 <= "1100";
-      WHEN "001010" => autoconfig_data2 <= "0110";
-      WHEN "001011" => autoconfig_data2 <= "0011";
-      WHEN "010011" => autoconfig_data2 <= "1101";    -- serial=2
-      WHEN OTHERS => null;
-    END CASE;
+	 CASE cpuaddr(6 downto 1) IS
+		WHEN "000000" => autoconfig_data2 <= "1010";    -- Zorro-III card, add mem, no ROM
+		WHEN "000001" => autoconfig_data2 <= "0000";    -- 8MB (extended to 16 in reg 08)
+		WHEN "000010" => autoconfig_data2 <= "1110";    -- ProductID=0x10 (only setting upper nibble)
+		WHEN "000100" => autoconfig_data2 <= "0000";    -- Memory card, not silenceable, Extended size (16 meg), reserved.
+		WHEN "000101" => autoconfig_data2 <= "1111";    -- 0000 - logical size matches physical size TODO change this to 0001, so it is autosized by the OS, WHEN it will be 24MB.
+		WHEN "001000" => autoconfig_data2 <= "1110";    -- Manufacturer ID: 0x139c
+		WHEN "001001" => autoconfig_data2 <= "1100";
+		WHEN "001010" => autoconfig_data2 <= "0110";
+		WHEN "001011" => autoconfig_data2 <= "0011";
+		WHEN "010011" => autoconfig_data2 <= "1101";    -- serial=2
+		WHEN OTHERS => null;
+	 END CASE;
   END IF;
 
   -- Zorro III ethernet
-  autoconfig_data3 <= "1111";
+	autoconfig_data3<="1111";
   IF eth_en='1' THEN
-    CASE cpuaddr(6 downto 1) IS
-      WHEN "000000" => autoconfig_data3 <= "1000";    -- 00H: Zorro-III card, no link, no ROM
-      WHEN "000001" => autoconfig_data3 <= "0001";    -- 00L: next board not related, size 64K
-      WHEN "000010" => autoconfig_data3 <= "1101";    -- 04H: ProductID=0x20 (only setting upper nibble)
-      WHEN "000100" => autoconfig_data3 <= "1110";    -- 08H: Not memory, silenceable, normal size, Zorro III
-      WHEN "000101" => autoconfig_data3 <= "1101";    -- 08L: Logical size 64K
-      WHEN "001000" => autoconfig_data3 <= "1110";    -- Manufacturer ID: 0x139c
-      WHEN "001001" => autoconfig_data3 <= "1100";
-      WHEN "001010" => autoconfig_data3 <= "0110";
-      WHEN "001011" => autoconfig_data3 <= "0011";
-      WHEN "010011" => autoconfig_data3 <= "1100";    -- serial=2
-      WHEN OTHERS => null;
-    END CASE;
+	 CASE cpuaddr(6 downto 1) IS
+		WHEN "000000" => autoconfig_data3 <= "1000";    -- 00H: Zorro-III card, no link, no ROM
+		WHEN "000001" => autoconfig_data3 <= "0001";    -- 00L: next board not related, size 64K
+		WHEN "000010" => autoconfig_data3 <= "1101";    -- 04H: ProductID=0x20 (only setting upper nibble)
+		WHEN "000100" => autoconfig_data3 <= "1110";    -- 08H: Not memory, silenceable, normal size, Zorro III
+		WHEN "000101" => autoconfig_data3 <= "1101";    -- 08L: Logical size 64K
+		WHEN "001000" => autoconfig_data3 <= "1110";    -- Manufacturer ID: 0x139c
+		WHEN "001001" => autoconfig_data3 <= "1100";
+		WHEN "001010" => autoconfig_data3 <= "0110";
+		WHEN "001011" => autoconfig_data3 <= "0011";
+		WHEN "010011" => autoconfig_data3 <= "1100";    -- serial=2
+		WHEN OTHERS => null;
+	 END CASE;
   END IF;
 
+	if rising_edge(clk) then
+		if autoconfig_out="01" then
+			autoconfig_data<=autoconfig_data1;
+		elsif autoconfig_out="10" then
+			autoconfig_data<=autoconfig_data2;
+--		elsif autoconfig_out="11" then
+--			autoconfig_data<=autoconfig_data3;
+		end if;
+	end if;
+end process;
+
+process(clk,reset,nResetOut) begin
   IF rising_edge(clk) THEN
     IF (reset='0' OR nResetOut='0') THEN
       autoconfig_out <= "01";    --autoconfig on

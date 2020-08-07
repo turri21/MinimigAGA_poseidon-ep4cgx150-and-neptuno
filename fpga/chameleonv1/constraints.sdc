@@ -16,7 +16,9 @@ set clk_28    "virtual_top|amiga_clk|amiga_clk_i|altpll_component|auto_generated
 
 # generated clocks
 create_generated_clock -name clk_sdram -source [get_pins {virtual_top|amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[0]}] [get_ports {sd_clk}]
-create_generated_clock -name muxclk -source [get_pins $clk_114] -divide_by 2 [get_ports {mux_clk}]
+#create_generated_clock -name muxclk -source [get_pins $clk_114] -divide_by 2 [get_ports {mux_clk}]
+create_generated_clock -name muxclk -source [get_pins {virtual_top|amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[1]}] -divide_by 2 [get_ports {mux_clk}]
+
 
 # name SDRAM ports
 set sdram_outputs [get_ports {sd_addr[*] sd_ldqm sd_udqm sd_we_n sd_cas_n sd_ras_n sd_ba_* }]
@@ -59,6 +61,7 @@ set_output_delay -clock clk_sdram -min -0.8 $sdram_dqoutputs
 # false paths
 
 set_false_path -from [get_clocks {virtual_top|amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[1]}] -to [get_clocks {pll_in_clk}]
+set_false_path -from {gen_reset:myReset|nreset*} -to {reset_28}
 
 # multicycle paths
 
@@ -74,6 +77,16 @@ set_multicycle_path -from {virtual_top|tg68k|pf68K_Kernel_inst|*} -hold 3
 set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -setup 4
 set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -hold 3
 
+# Neither in nor out of the C2P requires single-cycle speed
 set_multicycle_path -from {minimig_virtual_top:virtual_top|TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|rdptr[*]} -to {minimig_virtual_top:virtual_top|TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -setup -end 2
 set_multicycle_path -from {minimig_virtual_top:virtual_top|TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|rdptr[*]} -to {minimig_virtual_top:virtual_top|TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold -end 2
+set_multicycle_path -from {minimig_virtual_top:virtual_top|TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|buf[*][*]} -to {minimig_virtual_top:virtual_top|TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -setup -end 2
+set_multicycle_path -from {minimig_virtual_top:virtual_top|TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|buf[*][*]} -to {minimig_virtual_top:virtual_top|TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold -end 2
 
+# Likewise RTG and audio address have 8 cycles of downtime between bursts
+set_multicycle_path -from {minimig_virtual_top:virtual_top|VideoStream:myvs|address_high[*]} -to {minimig_virtual_top:virtual_top|sdram_ctrl:sdram|*} -setup -end 2
+set_multicycle_path -from {minimig_virtual_top:virtual_top|VideoStream:myvs|address_high[*]} -to {minimig_virtual_top:virtual_top|sdram_ctrl:sdram|*} -hold -end 2
+set_multicycle_path -from {minimig_virtual_top:virtual_top|VideoStream:myvs|outptr[*]} -to {minimig_virtual_top:virtual_top|sdram_ctrl:sdram|*} -setup -end 2
+set_multicycle_path -from {minimig_virtual_top:virtual_top|VideoStream:myvs|outptr[*]} -to {minimig_virtual_top:virtual_top|sdram_ctrl:sdram|*} -hold -end 2
+set_multicycle_path -from {minimig_virtual_top:virtual_top|VideoStream:myaudiostream|*} -to {minimig_virtual_top:virtual_top|sdram_ctrl:sdram|*} -setup -end 2
+set_multicycle_path -from {minimig_virtual_top:virtual_top|VideoStream:myaudiostream|*} -to {minimig_virtual_top:virtual_top|sdram_ctrl:sdram|*} -hold -end 2

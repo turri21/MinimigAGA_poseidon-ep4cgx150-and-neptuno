@@ -164,7 +164,7 @@ architecture rtl of chameleon2_toplevel is
 	
 	
 -- RS232 serial
-	signal rs232_rxd : std_logic;
+	signal rs232_rxd : std_logic:='1';
 	signal rs232_txd : std_logic;
 	signal amiser_rxd : std_logic;
 	signal amiser_txd : std_logic;
@@ -279,6 +279,8 @@ begin
 	flash_cs <= '1';
 	rtc_cs <= '0';
 	
+	clock_ior <='1';
+	clock_iow <='1';
 
 -- -----------------------------------------------------------------------
 -- Reset

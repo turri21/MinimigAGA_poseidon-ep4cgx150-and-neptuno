@@ -11,7 +11,7 @@
 
 /* #define STANDALONE to disable anything that requires the Minimig core to be functional,
    to reduce build times when debugging host facilities. */
-#define STANDALONE
+/*#define STANDALONE*/
 
 #include "bootdiag.h"
 

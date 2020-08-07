@@ -492,7 +492,7 @@ TG68K tg68k (
 
 wire [ 32-1:0] hostRD;
 wire [ 32-1:0] hostWR;
-wire [ 32-1:0] hostaddr;
+wire [ 32-1:2] hostaddr;
 wire [  3-1:0] hostState;
 wire [3:0]     hostbytesel;
 wire  [ 32-1:0] host_ramdata;
@@ -506,7 +506,6 @@ wire           hostreq;
 wire           hostack;
 wire           hostce;
 wire [3:0]     debug_sdr;
-
 
 //sdram sdram (
 sdram_ctrl sdram (
@@ -525,7 +524,7 @@ sdram_ctrl sdram (
   .reset_in     (sdctl_rst        ),
   
   .hostWR       (hostWR           ),
-  .hostAddr     (hostaddr[23:0]   ),
+  .hostAddr     (hostaddr         ),
   .hostwe       (host_we           ),
   .hostce       (host_ramreq      ),
   .hostbytesel  (hostbytesel      ),
@@ -707,7 +706,7 @@ EightThirtyTwo_Bridge #( debug ? "true" : "false") hostcpu
 (
 	.clk(CLK_114),
 	.nReset(reset_out),
-	.addr(hostaddr[31:2]),
+	.addr(hostaddr),
 	.q(hostWR),
 	.sel(hostbytesel),
 	.wr(host_we),

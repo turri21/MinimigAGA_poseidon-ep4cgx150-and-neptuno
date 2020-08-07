@@ -372,6 +372,7 @@ assign spidat = cmd_fdd && rx_flag && rx_cnt==3 ? 1'b1 : 1'b0;
 //------------------------------------
 
 //SDO output shift register
+// FIXME - crossing clock domains here with no protection
 always @(negedge sck)
 	if (spi_bit_cnt==4'd0)
 		spi_sdo_reg <= spi_tx_data;
