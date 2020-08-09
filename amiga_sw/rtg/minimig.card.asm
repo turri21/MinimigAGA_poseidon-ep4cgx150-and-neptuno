@@ -317,6 +317,7 @@ FindCard:
         movem.l a2/a3/a6,-(sp)
         movea.l a0,a2
 
+        move.l  #MEMORY_SIZE,PSSO_BoardInfo_MemorySize(a2)
         move.l  #$b80100,(PSSO_BoardInfo_RegisterBase,a2)
 
         move.l  $4.w,a6
@@ -333,13 +334,22 @@ FindCard:
         move.l  #MEMF_FAST|MEMF_REVERSE,d1
         jsr     _LVOAllocMem(a6)
         tst.l   d0
-        beq     .exit
+        bne.b   .ok
+
+        ; If allocation failed, try a smaller chunk.
+        move.l  #MEMORY_SIZE/2,PSSO_BoardInfo_MemorySize(a2)
+        move.l  #MEMORY_SIZE/2,d0
+        addi.l  #$1ff,d0
+        move.l  #MEMF_FAST|MEMF_REVERSE,d1
+        jsr     _LVOAllocMem(a6)
+        tst.l   d0
+        beq.b   .exit
+
 
 .ok
         addi.l  #$000001FF,d0           ; add 512-1
         andi.l  #$FFFFFE00,d0           ; and with ~(512-1) to align memory
         move.l  d0,PSSO_BoardInfo_MemoryBase(a2)
-        move.l  #MEMORY_SIZE,PSSO_BoardInfo_MemorySize(a2)
 
         moveq   #-1,d0
 .exit:
@@ -677,6 +687,10 @@ SetGC:
         BUG     "HSStop: %ld",d3
 
         move.w  PSSO_ModeInfo_HorTotal(a1),d4
+        move.w  PSSO_ModeInfo_Width(a1),d1
+;        add.w   #31,d1      ; Round up to multiple of 32
+;        and.w   #$ffe0,d1
+;        sub.w   d1,d4
         sub.w   PSSO_ModeInfo_Width(a1),d4
         mulu    d0,d4
         divu    d7,d4
@@ -702,7 +716,7 @@ SetGC:
 
         move.w  PSSO_ModeInfo_VerTotal(a1),d3
         sub.w   PSSO_ModeInfo_Height(a1),d3
-        subq.w  #1,d3
+;        addq.w  #1,d3
         move.w  d3,CardData_VBStop(a0)
         BUG     "VBStop: %ld",d3
 
@@ -815,6 +829,8 @@ CalculateBytesPerRow:
 .pp_1Byte:
 
 .exit:
+;        add.w   #31,d0      ; Round up to multiple of 32 pixels
+;        and.w   #$ffe0,d0
         rts
 
 ;------------------------------------------------------------------------------

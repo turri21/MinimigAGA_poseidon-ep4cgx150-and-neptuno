@@ -60,7 +60,8 @@ reg		ersy;
 reg		lace;
 
 //local signals for beam counters and sync generator
-reg		long_frame;		// 1 : long frame (313 lines); 0 : normal frame (312 lines)
+reg		long_frame_r;		// 1 : long frame (313 lines); 0 : normal frame (312 lines)
+wire		long_frame;
 reg		pal;			// pal mode switch
 reg		long_line;		// long line signal for NTSC compatibility (actually long lines are not supported yet)
 reg		vser;			// vertical sync serration pulses for composite sync
@@ -335,13 +336,15 @@ always @(posedge clk)
 always @(posedge clk)
   if (clk7_en) begin
   	if (reset)
-  		long_frame <= 1'b1;
+  		long_frame_r <= 1'b1;
   	else if (reg_address_in[8:1]==VPOSW[8:1])
-  		long_frame <= data_in[15];
+  		long_frame_r <= data_in[15];
   	else if (end_of_frame && lace) // interlace
-  		long_frame <= ~long_frame;
+  		long_frame_r <= ~long_frame;
   end
 
+ assign long_frame = displaydual ? 1'b0 : long_frame_r;  // Don't want long frames in RTG mode
+  
 //maximum position of vertical beam position
 assign vpos_equ_vtotal = vpos==vtotal ? 1'b1 : 1'b0;
 

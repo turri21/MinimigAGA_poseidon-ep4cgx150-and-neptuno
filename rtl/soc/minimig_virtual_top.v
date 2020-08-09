@@ -266,9 +266,12 @@ always @(posedge CLK_114) begin
 	end
 end
 
-always @(posedge CLK_114)
+always @(posedge CLK_28)
 begin
 	// Handle vblank manually, since the OS makes it awkward to use the chipset for this.
+  cs_reg    <= #1 cs;
+  vs_reg    <= #1 vs;
+  hs_reg    <= #1 hs;
 	if(vblank_out) begin
 		rtg_vblank<=1'b1;
 		rtg_vbcounter<=5'b0;
@@ -318,9 +321,6 @@ VideoStream myvs
 
 
 always @ (posedge CLK_114) begin
-  cs_reg    <= #1 cs;
-  vs_reg    <= #1 vs;
-  hs_reg    <= #1 hs;
   red_reg   <= #1 rtg_ena && !rtg_blank ? rtg_clut ? rtg_clut_r : rtg_r : red;
   green_reg <= #1 rtg_ena && !rtg_blank ? rtg_clut ? rtg_clut_g : rtg_g : green;
   blue_reg  <= #1 rtg_ena && !rtg_blank ? rtg_clut ? rtg_clut_b : rtg_b : blue;

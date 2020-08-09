@@ -16,8 +16,6 @@ set clk_28    "virtual_top|amiga_clk|amiga_clk_i|altpll_component|auto_generated
 
 # generated clocks
 create_generated_clock -name clk_sdram -source [get_pins {virtual_top|amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[0]}] [get_ports {sd_clk}]
-#create_generated_clock -name muxclk -source [get_pins $clk_114] -divide_by 2 [get_ports {mux_clk}]
-create_generated_clock -name muxclk -source [get_pins {virtual_top|amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[1]}] -divide_by 2 [get_ports {mux_clk}]
 
 
 # name SDRAM ports
@@ -35,13 +33,15 @@ derive_clock_uncertainty
 
 
 # MUX constraints
-# input delay is XC9572XL-7's TCO (4.5ns) plus a little for signal delays in both directions
-set_input_delay -clock muxclk -clock_fall 5 [get_ports {mux_q[*]}]
-# Output delay is XC9572XL-7's TSU (4.8ns).  No hold timing required.
-set_output_delay -clock muxclk -clock_fall -min 0 [get_ports {mux_d[*]}]
-set_output_delay -clock muxclk -clock_fall -max 4.8 [get_ports {mux_d[*]}]
-set_output_delay -clock muxclk -clock_fall -min 0 [get_ports {mux[*]}]
-set_output_delay -clock muxclk -clock_fall -max 4.8 [get_ports {mux[*]}]
+# Really shouldn't need to worry about these since the clock edge will
+# be 8.8ns away from the data.  Provided the signals all stay reasonably
+# together there shouldn't be a problem.
+set_input_delay -clock [get_clocks $clk_114] -min 0.5 [get_ports {mux_q[*]}]
+set_input_delay -clock [get_clocks $clk_114] -max 1.0 [get_ports {mux_q[*]}]
+set_output_delay -clock [get_clocks $clk_114] -min 0.0 [get_ports {mux[*]}]
+set_output_delay -clock [get_clocks $clk_114] -max 0.5 [get_ports {mux[*]}]
+set_output_delay -clock [get_clocks $clk_114] -min 0.0 [get_ports {mux_clk}]
+set_output_delay -clock [get_clocks $clk_114] -max 0.5 [get_ports {mux_clk}]
 
 # SDRAM constraints
 # input delay

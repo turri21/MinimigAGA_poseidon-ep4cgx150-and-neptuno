@@ -767,9 +767,12 @@ void HandleUI(void)
         {
 			if(menusub<5)
 			{
-				OsdHide();
+		        OsdWrite(7, "      Loading config...", menusub == 5,0);
 				SetConfigurationFilename(menusub);
 				LoadConfiguration(NULL);
+				ApplyConfiguration(1,1);
+				OsdHide();
+				OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
 //				OsdReset(RESET_NORMAL);
 	   	        menustate = MENU_NONE1;
 			}
