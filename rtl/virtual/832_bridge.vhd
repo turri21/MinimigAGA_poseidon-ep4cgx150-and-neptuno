@@ -23,7 +23,8 @@ entity EightThirtyTwo_Bridge is
 
 		hw_req            : out std_logic;
 		hw_ack            : in std_logic;
-		hw_d					: in std_logic_vector(15 downto 0)		
+		hw_d					: in std_logic_vector(15 downto 0);
+		interrupt			: in std_logic
 	);
 end EightThirtyTwo_Bridge;
 
@@ -57,7 +58,7 @@ begin
 my832 : entity work.eightthirtytwo_cpu
 generic map (
 	littleendian => false,
-	interrupts => false,
+	interrupts => true,
 	dualthread => false,
 	forwarding => false,
 	prefetch => false,
@@ -73,6 +74,7 @@ port map(
 	req => cpu_req,
 	ack => cpu_ack,
 	bytesel => cpu_sel,
+	interrupt => interrupt,
 	debug_d => debug_d,
 	debug_q => debug_q,
 	debug_req => debug_req,

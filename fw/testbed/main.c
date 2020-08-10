@@ -14,6 +14,15 @@ struct cdimage cd;
 RAFile cuefile;
 char linebuffer[512];
 
+int counter;
+
+void myinthandler()
+{
+	GetInterrupts();
+	++counter;
+}
+
+
 void setstack();
 int main(void)
 {
@@ -24,6 +33,9 @@ int main(void)
 	testbuf=(char *)malloc(131072);
 	printf("Allocated memory at %xz\n",(int)testbuf);
 	free(testbuf);
+
+	SetIntHandler(myinthandler);
+	EnableInterrupts();
 
     if (MMC_Init())
 	{
@@ -64,6 +76,7 @@ int main(void)
 						while(audiotrack_busy(&track))
 							;
 						audiotrack_fill(&track);
+						printf("Vblank counter: %d\n",counter);
 					}
 				}
 				else

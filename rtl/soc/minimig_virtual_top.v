@@ -702,6 +702,8 @@ minimig minimig (
 );
 `endif
 
+wire host_interrupt;
+
 EightThirtyTwo_Bridge #( debug ? "true" : "false") hostcpu
 (
 	.clk(CLK_114),
@@ -715,7 +717,8 @@ EightThirtyTwo_Bridge #( debug ? "true" : "false") hostcpu
 	.hw_req(host_hwreq),
 	.ram_d(host_ramdata),
 	.ram_req(host_ramreq),
-	.ram_ack(host_ramack)
+	.ram_ack(host_ramack),
+	.interrupt(host_interrupt)
 );
 
 
@@ -745,7 +748,9 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		
 		.audio_ena(aud_ena),
 		.audio_clear(aud_clear),
-		.audio_buf(aud_addr[15])
+		.audio_buf(aud_addr[15]),
+		.vbl_int(vblank_out),
+		.interrupt(host_interrupt)
    );
 
 

@@ -55,7 +55,13 @@ entity cfide is
 		
 		audio_ena : out std_logic;
 		audio_clear : out std_logic;
-		audio_buf : in std_logic
+		audio_buf : in std_logic;
+		
+		vbl_int	: in std_logic;
+		interrupt	: out std_logic;
+		c64_keys	: in std_logic_vector(63 downto 0) :=X"FFFFFFFFFFFFFFFF";
+		amiga_key	: out std_logic_vector(7 downto 0);
+		amiga_key_str	: out std_logic
    );
 
 end cfide;
@@ -103,6 +109,11 @@ signal rs232data : std_logic_vector(15 downto 0);
 signal audio_q : std_logic_vector(15 downto 0);
 signal audio_select : std_logic;
 
+signal interrupt_select : std_logic;
+signal interrupt_ena : std_logic;
+signal key_select : std_logic;
+signal key_q : std_logic_vector(15 downto 0);
+
 begin
 
 q <=	IOdata WHEN rs232_select='1' or SPI_select='1' ELSE
@@ -118,10 +129,11 @@ begin
 	if rising_edge(sysclk) then
 		ack<='0';
 		if req='1' then
-			if timer_select='1' or platform_select='1' or audio_select='1' then
-				ack<='1';
-			elsif rs232_select='1' or SPI_select='1' then
+			if rs232_select='1' or SPI_select='1' then
 				ack<=IOcpuena;
+			else
+--			if timer_select='1' or platform_select='1' or audio_select='1' then
+				ack<='1';
 			end if;
 		end if;
 	end if;
@@ -138,6 +150,29 @@ rs232_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"F" ELSE '0';
 timer_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"D" ELSE '0';
 platform_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"C" ELSE '0';
 audio_select <='1' when addr(23)='1' and addr(7 downto 4)=X"B" else '0';
+interrupt_select <='1' when addr(23)='1' and addr(7 downto 4)=X"A" else '0';
+
+-- Interrupt handling at ffffffa0
+-- Any access to this range will clear the interrupt flag;
+
+process (sysclk,n_reset)
+begin
+	if n_reset='0' then
+		interrupt<='0';
+		interrupt_ena<='0';
+	elsif rising_edge(sysclk) then
+		if vbl_int='1' then
+			interrupt<=interrupt_ena;
+		end if;
+		if interrupt_select='1' and req='1' then
+			interrupt<='0';
+			if  wr='1' then
+				interrupt_ena<=d(0);
+			end if;
+		end if;
+	end if;
+end process;
+
 
 ---------------------------------
 -- Platform specific registers --
