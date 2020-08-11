@@ -180,6 +180,7 @@ reg    [7:0] sdr_latch;
 `ifdef MINIMIG_PS2_KEYBOARD
 
 wire freeze_out;
+wire keystrobe_ps2;
 
 ciaa_ps2keyboard  kbd1
 (
@@ -195,7 +196,7 @@ ciaa_ps2keyboard  kbd1
   .aflock(aflock),
   .kbdrst(kbdrst),
   .keydat(keydat[7:0]),
-  .keystrobe(keystrobe),
+  .keystrobe(keystrobe_ps2),
   .keyack(keyack),
   .osd_ctrl(osd_ctrl),
   ._lmb(_lmb),
@@ -210,29 +211,37 @@ assign freeze = hrtmon_en && freeze_out;
 
 `ifdef MINIMIG_EXTRA_KEYBOARD
 
+reg keystrobe_reg;
+assign keystrobe = keystrobe_reg | keystrobe_ps2;
+
 // sdr register
 // !!! Amiga receives keycode ONE STEP ROTATED TO THE RIGHT AND INVERTED !!!
 always @(posedge clk)
   if (clk7_en) begin
+		keystrobe_reg<=1'b0;
     if (reset)
       sdr_latch[7:0] <= 8'h00;
-    else if (keystrobe & ~keyboard_disabled)
+    else if (keystrobe_ps2 & ~keyboard_disabled)
       sdr_latch[7:0] <= ~{keydat[6:0],keydat[7]};
-    else if (kbd_mouse_strobe & ~keyboard_disabled)
+    else if (kbd_mouse_strobe & ~keyboard_disabled) begin
+		keystrobe_reg<=1'b1;
       sdr_latch[7:0] <= ~{kbd_mouse_data[6:0],kbd_mouse_data[7]};
-    else if (wr & sdr)
+	end
+	else if (wr & sdr)
       sdr_latch[7:0] <= data_in[7:0];
   end
 
 `else
 
+assign keystrobe=keystrobe_ps2;
+
 // sdr register
 // !!! Amiga receives keycode ONE STEP ROTATED TO THE RIGHT AND INVERTED !!!
 always @(posedge clk)
   if (clk7_en) begin
     if (reset)
       sdr_latch[7:0] <= 8'h00;
-    else if (keystrobe & ~keyboard_disabled)
+    else if (keystrobe_ps2 & ~keyboard_disabled)
       sdr_latch[7:0] <= ~{keydat[6:0],keydat[7]};
     else if (wr & sdr)
       sdr_latch[7:0] <= data_in[7:0];
