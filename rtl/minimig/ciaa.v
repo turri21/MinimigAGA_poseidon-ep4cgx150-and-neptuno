@@ -208,6 +208,24 @@ ciaa_ps2keyboard  kbd1
 
 assign freeze = hrtmon_en && freeze_out;
 
+`ifdef MINIMIG_EXTRA_KEYBOARD
+
+// sdr register
+// !!! Amiga receives keycode ONE STEP ROTATED TO THE RIGHT AND INVERTED !!!
+always @(posedge clk)
+  if (clk7_en) begin
+    if (reset)
+      sdr_latch[7:0] <= 8'h00;
+    else if (keystrobe & ~keyboard_disabled)
+      sdr_latch[7:0] <= ~{keydat[6:0],keydat[7]};
+    else if (kbd_mouse_strobe & ~keyboard_disabled)
+      sdr_latch[7:0] <= ~{kbd_mouse_data[6:0],kbd_mouse_data[7]};
+    else if (wr & sdr)
+      sdr_latch[7:0] <= data_in[7:0];
+  end
+
+`else
+
 // sdr register
 // !!! Amiga receives keycode ONE STEP ROTATED TO THE RIGHT AND INVERTED !!!
 always @(posedge clk)
@@ -220,6 +238,9 @@ always @(posedge clk)
       sdr_latch[7:0] <= data_in[7:0];
   end
 
+`endif
+  
+  
 `else
 //MiST kbd
 

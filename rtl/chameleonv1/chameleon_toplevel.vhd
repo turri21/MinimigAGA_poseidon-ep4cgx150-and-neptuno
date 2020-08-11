@@ -154,6 +154,9 @@ architecture rtl of chameleon_toplevel is
 	signal joy4 : unsigned(7 downto 0);
 	signal usart_rx : std_logic:='1'; -- Safe default
 	signal ir : std_logic;
+	
+	signal amiga_key : unsigned(7 downto 0);
+	signal amiga_key_stb : std_logic;
 
 	signal vga_window : std_logic;
 	signal vga_selcsync : std_logic;
@@ -236,6 +239,9 @@ architecture rtl of chameleon_toplevel is
 		PS2_CLK_O	:	 OUT STD_LOGIC;
 		PS2_MDAT_O	:	 OUT STD_LOGIC;
 		PS2_MCLK_O	:	 OUT STD_LOGIC;
+		AMIGA_KEY	: IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+		AMIGA_KEY_STB : IN STD_LOGIC;
+		C64_KEYS	:	IN STD_LOGIC_VECTOR(63 DOWNTO 0);
 		JOYA		:	 IN STD_LOGIC_VECTOR(6 DOWNTO 0);
 		JOYB		:	 IN STD_LOGIC_VECTOR(6 DOWNTO 0);
 		JOYC		:	 IN STD_LOGIC_VECTOR(6 DOWNTO 0);
@@ -361,6 +367,9 @@ reset_n<= not reset;
 			restore_key_n => c64_restore_key_n,
 			c64_nmi_n => c64_nmi_n,
 
+			amiga_trigger => amiga_key_stb,
+			amiga_scancode => amiga_key,
+
 			midi_txd => midi_txd,
 			midi_rxd => midi_rxd
 --
@@ -447,6 +456,10 @@ PORT map
 		PS2_CLK_O => ps2_keyboard_clk_out,
 		PS2_MDAT_O => ps2_mouse_dat_out,
 		PS2_MCLK_O => ps2_mouse_clk_out,
+
+		AMIGA_KEY => std_logic_vector(amiga_key),
+		AMIGA_KEY_STB => amiga_key_stb,
+		C64_KEYS => std_logic_vector(c64_keys),
 
 		JOYA => std_logic_vector(joy1(6 downto 4))&joy1(0)&joy1(1)&joy1(2)&joy1(3),
 		JOYB => std_logic_vector(joy2(6 downto 4))&joy2(0)&joy2(1)&joy2(2)&joy2(3),

@@ -37,7 +37,7 @@ entity cfide is
 
 		addr	: in std_logic_vector(31 downto 2);
 		d		: in std_logic_vector(31 downto 0);	
-		q		: out std_logic_vector(15 downto 0);		
+		q		: out std_logic_vector(31 downto 0);		
 		req 	: in std_logic;
 		wr 	: in std_logic;
 		ack 	: out std_logic;
@@ -61,7 +61,7 @@ entity cfide is
 		interrupt	: out std_logic;
 		c64_keys	: in std_logic_vector(63 downto 0) :=X"FFFFFFFFFFFFFFFF";
 		amiga_key	: out std_logic_vector(7 downto 0);
-		amiga_key_str	: out std_logic
+		amiga_key_stb	: out std_logic
    );
 
 end cfide;
@@ -111,16 +111,22 @@ signal audio_select : std_logic;
 
 signal interrupt_select : std_logic;
 signal interrupt_ena : std_logic;
-signal key_select : std_logic;
-signal key_q : std_logic_vector(15 downto 0);
+signal keyboard_select : std_logic;
+signal keyboard_q : std_logic_vector(31 downto 0);
 
 begin
 
-q <=	IOdata WHEN rs232_select='1' or SPI_select='1' ELSE
+-- Most of the peripheral registers are only 16-bits wide.
+
+q(31 downto 16) <= keyboard_q(31 downto 16) when keyboard_select='1'
+		else	X"0000";
+
+q(15 downto 0) <=	IOdata WHEN rs232_select='1' or SPI_select='1' ELSE
 		timecnt when timer_select='1' ELSE 
 		audio_q when audio_select='1' else
+		keyboard_q(15 downto 0) when keyboard_select='1' else
 		part_in;
-
+		
 part_in <=  X"000"&"001"&menu_button; -- Reconfig not currently supported, 32 meg of RAM, menu button.
 IOdata <= sd_in;
 
@@ -151,8 +157,30 @@ timer_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"D" ELSE '0';
 platform_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"C" ELSE '0';
 audio_select <='1' when addr(23)='1' and addr(7 downto 4)=X"B" else '0';
 interrupt_select <='1' when addr(23)='1' and addr(7 downto 4)=X"A" else '0';
+keyboard_select <='1' when addr(23)='1' and addr(7 downto 4)=X"9" else '0';
 
--- Interrupt handling at ffffffa0
+-- C64 Keyboard handling at 0fffff90
+
+process (sysclk,n_reset)
+begin
+	if rising_edge(sysclk) then
+		amiga_key_stb<='0';
+		if keyboard_select='1' and req='1' then
+			if  wr='1' then
+				amiga_key<=d(7 downto 0);
+				amiga_key_stb<='1';
+			end if;
+			if addr(3 downto 2) = "01" then
+				keyboard_q<=c64_keys(63 downto 32);
+			else
+				keyboard_q<=c64_keys(31 downto 0);
+			end if;
+		end if;
+	end if;
+end process;
+
+
+-- Interrupt handling at 0fffffa0
 -- Any access to this range will clear the interrupt flag;
 
 process (sysclk,n_reset)

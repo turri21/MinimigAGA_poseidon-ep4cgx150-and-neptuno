@@ -71,6 +71,10 @@ module minimig_virtual_top
   output                PS2_MDAT_O,     // PS2 Mouse Data
   output                PS2_MCLK_O,     // PS2 Mouse Clock
 
+  // Potential Amiga keyboard from docking station
+  input						[7:0] AMIGA_KEY,
+  input						AMIGA_KEY_STB,
+  input			[63:0]	C64_KEYS,
   // Joystick
   input       [  7-1:0] JOYA,         // joystick port A
   input       [  7-1:0] JOYB,         // joystick port B
@@ -179,11 +183,11 @@ wire [  16-1:0] joya;
 wire [  16-1:0] joyb;
 wire [  16-1:0] joyc;
 wire [  16-1:0] joyd;
-wire [  8-1:0] kbd_mouse_data;
-wire           kbd_mouse_strobe;
-wire           kms_level;
-wire [  2-1:0] kbd_mouse_type;
-wire [  3-1:0] mouse_buttons;
+//wire [  8-1:0] kbd_mouse_data;
+//wire           kbd_mouse_strobe;
+//wire           kms_level;
+//wire [  2-1:0] kbd_mouse_type;
+//wire [  3-1:0] mouse_buttons;
 
 // Audio
 wire [14:0] aud_amiga_left;
@@ -396,7 +400,7 @@ end
 //assign AUDIO_L={aud_left[7:0],aud_left[15:9]};
 //assign AUDIO_R={aud_right[7:0],aud_right[15:9]};
 
-// We can use the same FIFO as we use for video.
+// We can use the same type of FIFO as we use for video.
 VideoStream myaudiostream
 (
 	.clk(CLK_114),
@@ -498,7 +502,7 @@ wire [3:0]     hostbytesel;
 wire  [ 32-1:0] host_ramdata;
 wire           host_ramack;
 wire           host_ramreq;
-wire  [ 16-1:0] host_hwdata;
+wire  [ 32-1:0] host_hwdata;
 wire           host_hwack;
 wire           host_hwreq;
 wire           host_we;
@@ -593,12 +597,36 @@ assign SPI_SS4 = SPI_CS[6];
 assign SPI_SS3 = SPI_CS[5];
 assign SPI_SS2 = SPI_CS[4];
 
+
+// Keyboard-related signals
+
+wire	[7:0] c64_translated_key;
+wire	c64_translated_key_stb;
+reg	[7:0] kbd_mouse_data;
+reg	kbd_mouse_stb;
+reg	kbd_mouse_stb_r;
+reg	clk7_en_d;
+
+always @(posedge CLK_114) begin
+	clk7_en_d<=clk7_en;
+	if(clk7_en && !clk7_en_d) begin	// Detect rising edge of clk7_en which is on clk28
+		kbd_mouse_stb<=kbd_mouse_stb_r;
+		kbd_mouse_stb_r<=1'b0;
+	end
+	if(c64_translated_key_stb || AMIGA_KEY_STB) begin
+		kbd_mouse_data <= c64_translated_key_stb ? c64_translated_key : AMIGA_KEY;
+		kbd_mouse_stb_r<=1'b1;
+	end
+end
+
+
 //// minimig top ////
 `ifdef HOSTONLY
 assign SPI_DO=1'b1;
 assign _ram_oe=1'b1;
 assign _ram_we=1'b1;
 `else
+
 minimig minimig (
 	//m68k pins
 	.cpu_address  (tg68_adr[23:1]   ), // M68K address bus
@@ -646,9 +674,9 @@ minimig minimig (
 	.mouse_btn1   (1'b1             ), // mouse button 1
 	.mouse_btn2   (1'b1             ), // mouse button 2
 	//  .mouse_btn    (mouse_buttons    ),  // mouse buttons
-	//  .kbd_mouse_data (kbd_mouse_data ),  // mouse direction data, keycodes
+	.kbd_mouse_data (kbd_mouse_data ),  // mouse direction data, keycodes
 	//  .kbd_mouse_type (kbd_mouse_type ),  // type of data
-	.kbd_mouse_strobe (1'b0         ), // kbd_mouse_strobe), // kbd/mouse data strobe
+	.kbd_mouse_strobe (kbd_mouse_stb), // kbd/mouse data strobe
 	.kms_level    (1'b0             ), // kms_level        ),
 	._15khz       (_15khz           ), // scandoubler disable
 	.pwr_led      (LED_POWER        ), // power led
@@ -750,7 +778,10 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.audio_clear(aud_clear),
 		.audio_buf(aud_addr[15]),
 		.vbl_int(vblank_out),
-		.interrupt(host_interrupt)
+		.interrupt(host_interrupt),
+		.amiga_key(c64_translated_key),
+		.amiga_key_stb(c64_translated_key_stb),
+		.c64_keys(C64_KEYS)
    );
 
 

@@ -757,8 +757,8 @@ amber AMBER1
 ciaa CIAA1
 (
 	.clk(clk),
-  .clk7_en(clk7_en),
-  .clk7n_en(clk7n_en),
+	.clk7_en(clk7_en),
+	.clk7n_en(clk7n_en),
 	.aen(sel_cia_a),
 	.rd(cpu_rd),
 	.wr(cpu_lwr|cpu_hwr),
@@ -777,20 +777,20 @@ ciaa CIAA1
 	.kbdclk_i(kbdclk_i),
 	.kbddat_o(kbddat_o),
 	.kbdclk_o(kbdclk_o),
-  .kbd_mouse_type(kbd_mouse_type),
-  .kbd_mouse_strobe(kbd_mouse_strobe),
-  .kms_level(kms_level),
-  .kbd_mouse_data(kbd_mouse_data), 
-  .keyboard_disabled(keyboard_disabled),
+	.kbd_mouse_type(kbd_mouse_type),
+	.kbd_mouse_strobe(kbd_mouse_strobe),
+	.kms_level(kms_level),
+	.kbd_mouse_data(kbd_mouse_data), 
+	.keyboard_disabled(keyboard_disabled),
 	.osd_ctrl(osd_ctrl),
-  ._lmb(kb_lmb),
-  ._rmb(kb_rmb),
-  ._joy2(kb_joy2),
-  .aflock(aflock),
+	._lmb(kb_lmb),
+	._rmb(kb_rmb),
+	._joy2(kb_joy2),
+	.aflock(aflock),
 	.freeze(freeze),
 	.disk_led(disk_led),
-  .mou_emu (mou_emu),
-  .hrtmon_en (memory_config[6])
+	.mou_emu (mou_emu),
+	.hrtmon_en (memory_config[6])
 );
 
 //instantiate cia B
