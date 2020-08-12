@@ -143,8 +143,8 @@ always @(posedge clk)
   		turbo <= cpu_speed;
   end
 
-wire  turbo_cpu;
-assign turbo_cpu = 1'b0;
+//wire  turbo_cpu;
+//assign turbo_cpu = 1'b0;
 	
 //latched valid peripheral address
 always @(posedge clk)

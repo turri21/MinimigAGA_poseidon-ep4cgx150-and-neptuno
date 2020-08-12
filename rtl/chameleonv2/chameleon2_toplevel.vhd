@@ -130,6 +130,7 @@ architecture rtl of chameleon2_toplevel is
 -- Docking station
 	signal no_clock : std_logic;
 	signal docking_station : std_logic;
+	signal docking_irq : std_logic;
 	signal phi_cnt : unsigned(7 downto 0);
 	signal phi_end_1 : std_logic;
 	
@@ -195,6 +196,11 @@ architecture rtl of chameleon2_toplevel is
 	signal ir : std_logic;
 	signal ir_d : std_logic;
 
+	signal amiga_reset_n : std_logic;
+	signal amiga_key : unsigned(7 downto 0);
+	signal amiga_key_stb : std_logic;
+
+	
 	-- Sigma Delta audio
 	COMPONENT hybrid_pwm_sd
 	PORT
@@ -251,6 +257,10 @@ architecture rtl of chameleon2_toplevel is
 		PS2_CLK_O	:	 OUT STD_LOGIC;
 		PS2_MDAT_O	:	 OUT STD_LOGIC;
 		PS2_MCLK_O	:	 OUT STD_LOGIC;
+		AMIGA_RESET_N : IN STD_LOGIC;
+		AMIGA_KEY	: IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+		AMIGA_KEY_STB : IN STD_LOGIC;
+		C64_KEYS	:	IN STD_LOGIC_VECTOR(63 DOWNTO 0);		
 		JOYA		:	 IN STD_LOGIC_VECTOR(6 DOWNTO 0);
 		JOYB		:	 IN STD_LOGIC_VECTOR(6 DOWNTO 0);
 		JOYC		:	 IN STD_LOGIC_VECTOR(6 DOWNTO 0);
@@ -271,7 +281,6 @@ begin
 	iec_atn_out <= '0';
 	iec_dat_out <= '0';
 	iec_srq_out <= '0';
-	irq_out <= '0';
 	nmi_out <= '0';
 	usart_rx<='1';
 
@@ -281,7 +290,8 @@ begin
 	
 	clock_ior <='1';
 	clock_iow <='1';
-
+	irq_out <= not docking_irq;
+	
 -- -----------------------------------------------------------------------
 -- Reset
 -- -----------------------------------------------------------------------
@@ -415,6 +425,7 @@ begin
 
 				no_clock => no_clock,
 				docking_station => docking_station,
+				docking_irq => docking_irq,
 
 				phi_cnt => phi_cnt,
 				phi_end_1 => phi_end_1,
@@ -426,6 +437,11 @@ begin
 				keys => c64_keys,
 --				restore_key_n => restore_n
 				restore_key_n => open,
+				amiga_power_led => led_green,
+				amiga_drive_led => led_red,
+				amiga_reset_n => amiga_reset_n,
+				amiga_trigger => amiga_key_stb,
+				amiga_scancode => amiga_key,
 				midi_rxd => amiser_rxd,
 				midi_txd => amiser_txd
 			);
@@ -456,7 +472,7 @@ vga_window<='1';
 virtual_top : COMPONENT minimig_virtual_top
 generic map
 	(
-		debug => 0
+		debug => 1
 	)
 PORT map
 	(
@@ -503,6 +519,11 @@ PORT map
 		PS2_CLK_O => ps2_keyboard_clk_out,
 		PS2_MDAT_O => ps2_mouse_dat_out,
 		PS2_MCLK_O => ps2_mouse_clk_out,
+
+		AMIGA_RESET_N => amiga_reset_n,
+		AMIGA_KEY => std_logic_vector(amiga_key),
+		AMIGA_KEY_STB => amiga_key_stb,
+		C64_KEYS => std_logic_vector(c64_keys),
 
 		JOYA => std_logic_vector(joy1(6 downto 4))&joy1(0)&joy1(1)&joy1(2)&joy1(3),
 		JOYB => std_logic_vector(joy2(6 downto 4))&joy2(0)&joy2(1)&joy2(2)&joy2(3),

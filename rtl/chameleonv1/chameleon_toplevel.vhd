@@ -155,6 +155,7 @@ architecture rtl of chameleon_toplevel is
 	signal usart_rx : std_logic:='1'; -- Safe default
 	signal ir : std_logic;
 	
+	signal amiga_reset_n : std_logic;
 	signal amiga_key : unsigned(7 downto 0);
 	signal amiga_key_stb : std_logic;
 
@@ -239,6 +240,7 @@ architecture rtl of chameleon_toplevel is
 		PS2_CLK_O	:	 OUT STD_LOGIC;
 		PS2_MDAT_O	:	 OUT STD_LOGIC;
 		PS2_MCLK_O	:	 OUT STD_LOGIC;
+		AMIGA_RESET_N : IN STD_LOGIC;
 		AMIGA_KEY	: IN STD_LOGIC_VECTOR(7 DOWNTO 0);
 		AMIGA_KEY_STB : IN STD_LOGIC;
 		C64_KEYS	:	IN STD_LOGIC_VECTOR(63 DOWNTO 0);
@@ -298,6 +300,7 @@ reset_n<= not reset;
 	myIO : entity work.chameleon_io
 		generic map (
 			enable_docking_station => true,
+			enable_docking_irq => true,
 			enable_c64_joykeyb => true,
 			enable_c64_4player => true,
 			enable_raw_spi => true,
@@ -367,6 +370,7 @@ reset_n<= not reset;
 			restore_key_n => c64_restore_key_n,
 			c64_nmi_n => c64_nmi_n,
 
+			amiga_reset_n => amiga_reset_n,
 			amiga_trigger => amiga_key_stb,
 			amiga_scancode => amiga_key,
 
@@ -457,6 +461,7 @@ PORT map
 		PS2_MDAT_O => ps2_mouse_dat_out,
 		PS2_MCLK_O => ps2_mouse_clk_out,
 
+		AMIGA_RESET_N => amiga_reset_n,
 		AMIGA_KEY => std_logic_vector(amiga_key),
 		AMIGA_KEY_STB => amiga_key_stb,
 		C64_KEYS => std_logic_vector(c64_keys),

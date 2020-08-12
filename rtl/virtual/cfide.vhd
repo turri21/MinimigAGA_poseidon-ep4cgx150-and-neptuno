@@ -36,8 +36,8 @@ entity cfide is
 		n_reset	: in std_logic;	
 
 		addr	: in std_logic_vector(31 downto 2);
-		d		: in std_logic_vector(31 downto 0);	
-		q		: out std_logic_vector(31 downto 0);		
+		d		: in std_logic_vector(15 downto 0);	
+		q		: out std_logic_vector(15 downto 0);		
 		req 	: in std_logic;
 		wr 	: in std_logic;
 		ack 	: out std_logic;
@@ -93,7 +93,7 @@ signal sd_di_in	: std_logic;
 signal shiftcnt	: std_logic_vector(13 downto 0);
 signal sck		: std_logic;
 signal scs		: std_logic_vector(7 downto 0);
-signal dscs		: std_logic;
+--signal dscs		: std_logic;
 signal SD_busy		: std_logic;
 signal spi_div: std_logic_vector(8 downto 0);
 signal spi_speed: std_logic_vector(7 downto 0);
@@ -112,19 +112,16 @@ signal audio_select : std_logic;
 signal interrupt_select : std_logic;
 signal interrupt_ena : std_logic;
 signal keyboard_select : std_logic;
-signal keyboard_q : std_logic_vector(31 downto 0);
+signal keyboard_q : std_logic_vector(15 downto 0);
 
 begin
 
--- Most of the peripheral registers are only 16-bits wide.
-
-q(31 downto 16) <= keyboard_q(31 downto 16) when keyboard_select='1'
-		else	X"0000";
+-- Peripheral registers are only 16-bits wide.
 
 q(15 downto 0) <=	IOdata WHEN rs232_select='1' or SPI_select='1' ELSE
 		timecnt when timer_select='1' ELSE 
 		audio_q when audio_select='1' else
-		keyboard_q(15 downto 0) when keyboard_select='1' else
+		keyboard_q when keyboard_select='1' else
 		part_in;
 		
 part_in <=  X"000"&"001"&menu_button; -- Reconfig not currently supported, 32 meg of RAM, menu button.
@@ -170,11 +167,16 @@ begin
 				amiga_key<=d(7 downto 0);
 				amiga_key_stb<='1';
 			end if;
-			if addr(3 downto 2) = "01" then
-				keyboard_q<=c64_keys(63 downto 32);
-			else
-				keyboard_q<=c64_keys(31 downto 0);
-			end if;
+			case addr(3 downto 2) is
+				when "00" =>
+					keyboard_q<=c64_keys(63 downto 48);
+				when "01" =>
+					keyboard_q<=c64_keys(47 downto 32);
+				when "10" =>
+					keyboard_q<=c64_keys(31 downto 16);
+				when "11" =>
+					keyboard_q<=c64_keys(15 downto 0);
+			end case;
 		end if;
 	end if;
 end process;
@@ -280,7 +282,7 @@ end process;
 			scs <= (OTHERS => '0');
 			sck <= '0';
 			spi_speed <= "00000000";
-			dscs <= '0';
+--			dscs <= '0';
 			spi_wait <= '0';
 		ELSIF (sysclk'event AND sysclk='1') THEN
 

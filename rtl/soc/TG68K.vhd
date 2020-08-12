@@ -169,13 +169,11 @@ BEGIN
 sel_eth<='0';
 
   -- NMI
-  PROCESS(reset, clk) BEGIN
+  PROCESS(reset, clk,VBR_out) BEGIN
     IF reset='0' THEN
       NMI_addr <= X"0000007c";
-    ELSE
+    ELSIF rising_edge(clk) THEN
       NMI_addr <= VBR_out + X"0000007c";
-    END IF;
-    IF rising_edge(clk) THEN
 	  sel_nmi_vector <= '0';
       IF (cpuaddr(31 downto 2) = NMI_addr(31 downto 2)) AND state="10" THEN
         sel_nmi_vector <= '1';
@@ -377,7 +375,7 @@ process(clk,cpuaddr) begin
 end process;
 			
 
-PROCESS (clk, fastramcfg, cpuaddr, cpu) BEGIN
+PROCESS (clk, fastramcfg, cpuaddr, cpu,eth_en) BEGIN
 
   -- Zorro II RAM (Up to 8 meg at 0x200000)
 	autoconfig_data1<="1111";

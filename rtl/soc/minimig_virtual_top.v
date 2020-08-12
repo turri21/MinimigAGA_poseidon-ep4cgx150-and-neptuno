@@ -72,6 +72,7 @@ module minimig_virtual_top
   output                PS2_MCLK_O,     // PS2 Mouse Clock
 
   // Potential Amiga keyboard from docking station
+  input						AMIGA_RESET_N,
   input						[7:0] AMIGA_KEY,
   input						AMIGA_KEY_STB,
   input			[63:0]	C64_KEYS,
@@ -502,7 +503,7 @@ wire [3:0]     hostbytesel;
 wire  [ 32-1:0] host_ramdata;
 wire           host_ramack;
 wire           host_ramreq;
-wire  [ 32-1:0] host_hwdata;
+wire  [ 16-1:0] host_hwdata;
 wire           host_hwack;
 wire           host_hwreq;
 wire           host_we;
@@ -603,9 +604,12 @@ assign SPI_SS2 = SPI_CS[4];
 wire	[7:0] c64_translated_key;
 wire	c64_translated_key_stb;
 reg	[7:0] kbd_mouse_data;
+wire	kbd_reset_n;
 reg	kbd_mouse_stb;
 reg	kbd_mouse_stb_r;
 reg	clk7_en_d;
+
+assign kbd_reset_n = AMIGA_RESET_N;
 
 always @(posedge CLK_114) begin
 	clk7_en_d<=clk7_en;
@@ -674,6 +678,7 @@ minimig minimig (
 	.mouse_btn1   (1'b1             ), // mouse button 1
 	.mouse_btn2   (1'b1             ), // mouse button 2
 	//  .mouse_btn    (mouse_buttons    ),  // mouse buttons
+	.kbd_reset_n  (kbd_reset_n),
 	.kbd_mouse_data (kbd_mouse_data ),  // mouse direction data, keycodes
 	//  .kbd_mouse_type (kbd_mouse_type ),  // type of data
 	.kbd_mouse_strobe (kbd_mouse_stb), // kbd/mouse data strobe
@@ -756,7 +761,7 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.n_reset(reset_out),
 
 		.addr(hostaddr),
-		.d(hostWR),
+		.d(hostWR[15:0]),
 		.req(host_hwreq),
 		.wr(host_we),
 		.ack(host_hwack),

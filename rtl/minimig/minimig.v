@@ -194,6 +194,7 @@ module minimig
   input mouse_btn1, // mouse button 1
   input mouse_btn2, // mouse button 2
   input [2:0] mouse_btn, // mouse buttons
+  input kbd_reset_n,
   input kbd_mouse_strobe,
   input kms_level,
   input [1:0] kbd_mouse_type,
@@ -1007,7 +1008,7 @@ minimig_syscontrol CONTROL1
 	.clk(clk),
   .clk7_en (clk7_en),
 	.cnt(sof),
-	.mrst(kbdrst | usrrst | rst_ext),// | ~_cpu_reset_in),
+	.mrst(kbdrst | usrrst | rst_ext | !kbd_reset_n),// | ~_cpu_reset_in),
 	.reset(sys_reset)
 );
 

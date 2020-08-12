@@ -23,7 +23,7 @@ entity EightThirtyTwo_Bridge is
 
 		hw_req            : out std_logic;
 		hw_ack            : in std_logic;
-		hw_d					: in std_logic_vector(31 downto 0);
+		hw_d					: in std_logic_vector(15 downto 0);
 		interrupt			: in std_logic
 	);
 end EightThirtyTwo_Bridge;
@@ -117,7 +117,7 @@ rom_select <= '1' when cpu_addr(23 downto 13)=X"00"&"000" ELSE '0';
 
 hw_select <= cpu_addr(23);
 
-process(clk)
+process(clk,nReset)
 begin
 
 	if nReset='0' then
@@ -169,7 +169,8 @@ begin
 
 			when hw =>
 				if hw_ack='1' then
-					cpu_d<=hw_d;
+					cpu_d(31 downto 16)<=(others=>'0');
+					cpu_d(15 downto 0)<=hw_d;
 					wr<='0';
 					hw_req<='0';
 					cpu_ack<='1';

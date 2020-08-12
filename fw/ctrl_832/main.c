@@ -54,6 +54,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "menu.h"
 #include "config.h"
 #include "bincue.h"
+#include "c64keys.h"
 
 #include <stdio.h>
 
@@ -209,6 +210,10 @@ __geta4 int main(void)
     while(1)
     {
 		cd_continueaudio(&cd);
+		if(c64qualifiers)
+		{
+			putchar('.');
+		}
         HandleFpga();
         HandleUI();
 		if(ErrorMask)
