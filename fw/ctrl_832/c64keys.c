@@ -2,16 +2,36 @@
 
 #include "c64keys.h"
 
-char keytable[]=
+#define QUAL_SPECIAL 0x8000
+#define QUAL_LSHIFT 0x100
+#define QUAL_RSHIFT 0x200
+#define QUAL_MASK 0x7f00
+
+struct keyspecial
+{
+	unsigned char unshifted,shifted;
+};
+
+struct keyspecial specialtable[]=
+{
+	{0x4e,0x4f},	/* cursor keys */
+	{0x4d,0x4c},
+	{0x50,0x51},	/* F keys */
+	{0x52,0x53},
+	{0x54,0x55},
+	{0x56,0x57}
+};
+
+unsigned int keytable[]=
 {
 	0x41, /* $00	Inst/Del */
 	0x44, /* $01	Return */
-	0xff, /* $02	Crsr l/r	- special handling needed */
-	0x56, /* $03	F7/F8 */
-	0x50, /* $04	F1/F2 */
-	0x52, /* $05	F3/F4 */
-	0x54, /* $06	F5/F6 */
-	0xff, /* $07	Crsr u/d	- special handling needed */
+	QUAL_SPECIAL|0, /* $02	Crsr l/r	- special handling needed */
+	QUAL_SPECIAL|5, /* $03	F7/F8 */
+	QUAL_SPECIAL|2, /* $04	F1/F2 */
+	QUAL_SPECIAL|3, /* $05	F3/F4 */
+	QUAL_SPECIAL|4, /* $06	F5/F6 */
+	QUAL_SPECIAL|1, /* $07	Crsr u/d	- special handling needed */
 
 	0x3,  /* $08	3 */
 	0x11, /* $09	W */
@@ -20,7 +40,7 @@ char keytable[]=
 	0x31, /* $0C	Z */
 	0x21, /* $0D	S */
 	0x12, /* $0E	E */
-	0x60, /* $0F	Left Shift - special handling needed */
+	QUAL_LSHIFT|0x60, /* $0F	Left Shift - special handling needed */
 
 	0x05, /* $10	5 */
 	0x13, /* $11	R */
@@ -62,7 +82,7 @@ char keytable[]=
 	0x1b, /* $31	* */
 	0x2a, /* $32	] */
 	0x46, /* $33	Clr/ Home */
-	0x61, /* $34	Right shift - special handling needed */
+	QUAL_RSHIFT|0x61, /* $34	Right shift - special handling needed */
 	0x2b, /* $35	= */
 	0x00, /* $36	↑ */
 	0x3a, /* $37	? */
@@ -102,7 +122,6 @@ void ringbuffer_write(struct ringbuffer *r,int in)
 }
 
 struct ringbuffer kbbuffer;
-
 void keyinthandler()
 {
 	int i;
@@ -137,12 +156,52 @@ void keyinthandler()
 				if(changed&0x8000)
 				{
 					int code=63-(i*16+j);	/* Fetch Amiga scancode for this key */
+					int amicode;
+					int amiqualup=0;
+					int amiqualdown=0;
 					code=((code<<3)|(code>>3))&63;	/* bit numbers are transposed compared with c64 scancodes */
-					code=keytable[code];
-					/* FIXME - check here for special cases like the cursor keys */
+					amicode=keytable[code];
+
+					if(amicode&QUAL_SPECIAL)
+					{
+						/* If the key requires special handling, cancel any shifting before sending the key code
+							unless both shift keys are down */
+						switch(c64qualifiers&(QUAL_LSHIFT|QUAL_RSHIFT))
+						{
+							case 0:
+								amicode=specialtable[amicode&0xff].unshifted;
+								break;
+							case QUAL_LSHIFT:
+								amicode=specialtable[amicode&0xff].shifted;
+								if(status&0x8000)
+									amiqualdown=0x60;
+								else
+									amiqualup=0x60|0x80;
+								break;
+							case QUAL_RSHIFT:
+								amicode=specialtable[amicode&0xff].shifted;
+								if(status&0x8000)
+									amiqualdown=0x61;
+								else
+								amiqualup=0x61|0x80;
+								break;
+							default:
+								amicode=specialtable[amicode&0xff].shifted;
+								break;
+						}
+					}
 					if(status&0x8000)
-						code|=0x80; /* Key up */
-					ringbuffer_write(&kbbuffer,code);
+					{
+						amicode|=0x80; /* Key up */
+						c64qualifiers&=(~amicode)&QUAL_MASK;
+					}
+					else
+						c64qualifiers|=amicode&QUAL_MASK;
+					if(amiqualup)
+						ringbuffer_write(&kbbuffer,amiqualup);
+					ringbuffer_write(&kbbuffer,amicode);
+					if(amiqualdown)
+						ringbuffer_write(&kbbuffer,amiqualdown);
 				}
 				changed<<=1;
 				status<<=1;
@@ -166,6 +225,7 @@ __constructor(101.c64keys) void c64keysconstructor()
 	for(i=0;i<8;++i)
 		c64keys[i]=0xffff;
 	c64frame=0;
+	c64qualifiers=0;
 	ringbuffer_init(&kbbuffer);
 	SetIntHandler(keyinthandler);
 	EnableInterrupts();
