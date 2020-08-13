@@ -107,31 +107,29 @@ void keyinthandler()
 {
 	int i;
 	int count=0;
-	c64keys[c64frame]=HW_KEYBOARD(REG_KEYBOARD_WORD0);
-	c64keys[c64frame+1]=HW_KEYBOARD(REG_KEYBOARD_WORD1);
-	c64keys[c64frame+2]=HW_KEYBOARD(REG_KEYBOARD_WORD2);
-	c64keys[c64frame+3]=HW_KEYBOARD(REG_KEYBOARD_WORD3);
+	int idx=63;
+	int nextframe=(c64frame+4)%12;
+	int prevframe=(c64frame+8)%12;
 
 	for(i=0;i<4;++i)
 	{
-		unsigned int t=c64keys[i]^c64keys[4+i];
-		c64keys[8+i]=t;
-		while(t)
+		unsigned int t=HW_KEYBOARD(REG_KEYBOARD_WORD0+4*i);
+		c64keys[c64frame+i]=t;
+		while(t)	/* Count the number of set bits */
 		{
 			t&=t-1;
 			++count;
 		}
 	}
 
-	/* 	Very unlikely that three or more keys changed state in a single vblank,
-		so if that happens we're probably looking at interference from the joystick port. */
-	if(count && count<3)
+	/* 	Very unlikely that more than four keys are depressed, so if that happens
+		we're probably looking at interference from the joystick port. */
+	if(count>=60)
 	{
-		int idx=63;
 		for(i=0;i<4;++i)
 		{
 			int j;
-			unsigned int changed=c64keys[8+i];
+			unsigned int changed=c64keys[nextframe+i]^(c64keys[prevframe+i]|c64keys[c64frame+i]);
 			unsigned int status=c64keys[c64frame+i];
 			for(j=0;j<16;++j)
 			{
@@ -150,6 +148,7 @@ void keyinthandler()
 				status<<=1;
 			}
 		}
+		c64frame=nextframe;
 	}
 
 	if(kbbuffer.out_hw!=kbbuffer.out_cpu)
@@ -157,7 +156,6 @@ void keyinthandler()
 		HW_KEYBOARD(REG_KEYBOARD_OUT)=kbbuffer.outbuf[kbbuffer.out_hw];
 		kbbuffer.out_hw=(kbbuffer.out_hw+1) & (RINGBUFFER_SIZE-1);
 	}
-	c64frame^=4;
 	GetInterrupts(); /* Clear interrupt flag last.  If we did this earlier
 						we would have disable interrupts first and re-enable them here. */
 }
