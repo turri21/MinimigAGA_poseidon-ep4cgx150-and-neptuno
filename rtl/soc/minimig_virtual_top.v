@@ -437,12 +437,16 @@ amiga_clk amiga_clk (
   .locked       (PLL_LOCKED       )  // pll locked output
 );
 
+wire amigahost_req;
+wire amigahost_ack;
+wire [15:0] amigahost_q;
 
 //// TG68K main CPU ////
 `ifdef HOSTONLY
 assign tg68_cpustate=2'b01;
 assign tg68_nrst_out=1'b1;
 `else
+
 TG68K tg68k (
   .clk          (CLK_114          ),
   .reset        (tg68_rst         ),
@@ -491,8 +495,13 @@ TG68K tg68k (
 	.rtg_clut_idx(rtg_clut_idx),
 	.rtg_clut_r(rtg_clut_r),
 	.rtg_clut_g(rtg_clut_g),
-	.rtg_clut_b(rtg_clut_b)
+	.rtg_clut_b(rtg_clut_b),
+	// Amiga to host signals
+	.host_req(amigahost_req),
+	.host_ack(amigahost_ack),
+	.host_q(amigahost_q)
 );
+
 `endif
 
 wire [ 32-1:0] hostRD;
@@ -786,8 +795,15 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.interrupt(host_interrupt),
 		.amiga_key(c64_translated_key),
 		.amiga_key_stb(c64_translated_key_stb),
-		.c64_keys(C64_KEYS)
-   );
+		.c64_keys(C64_KEYS),
+
+		.amiga_addr(tg68_adr[8:1]),
+		.amiga_d(tg68_dat_out),
+		.amiga_q(amigahost_q),
+		.amiga_req(amigahost_req),
+		.amiga_wr(!tg68_rw),
+		.amiga_ack(amigahost_ack)
+	);
 
 
 AudioMix myaudiomix

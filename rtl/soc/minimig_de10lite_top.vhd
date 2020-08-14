@@ -176,6 +176,7 @@ architecture RTL of DE10liteToplevel is
 		PS2_CLK_O		:	 INOUT STD_LOGIC;
 		PS2_MDAT_O		:	 INOUT STD_LOGIC;
 		PS2_MCLK_O		:	 INOUT STD_LOGIC;
+		AMIGA_RESET_N : IN STD_LOGIC;
 		AMIGA_KEY	: IN STD_LOGIC_VECTOR(7 DOWNTO 0);
 		AMIGA_KEY_STB : IN STD_LOGIC;
 		C64_KEYS	:	IN STD_LOGIC_VECTOR(63 DOWNTO 0);
@@ -274,6 +275,7 @@ PORT map
 		PS2_MDAT_O => ps2_mouse_dat_out,
 		PS2_MCLK_O => ps2_mouse_clk_out,
 		
+		AMIGA_RESET_N => '1',
 		AMIGA_KEY => (others=>'-'),
 		AMIGA_KEY_STB => '0',
 		C64_KEYS => X"FEDCBA9876543210",

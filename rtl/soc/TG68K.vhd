@@ -79,7 +79,11 @@ port(
 	rtg_clut_idx : in std_logic_vector(7 downto 0) := X"00";
 	rtg_clut_r : out std_logic_vector(7 downto 0);
 	rtg_clut_g : out std_logic_vector(7 downto 0);
-	rtg_clut_b : out std_logic_vector(7 downto 0)
+	rtg_clut_b : out std_logic_vector(7 downto 0);
+	-- Host interface
+	host_req : out std_logic;
+	host_ack : in std_logic :='0';
+	host_q : in std_logic_vector(15 downto 0) := "----------------"
 );
 end TG68K;
 
@@ -159,6 +163,7 @@ signal akiko_q : std_logic_vector(15 downto 0);
 signal akiko_wr : std_logic;
 signal akiko_req : std_logic;
 signal akiko_ack : std_logic;
+signal host_req_r : std_logic;
 
 SIGNAL NMI_addr         : std_logic_vector(31 downto 0);
 SIGNAL sel_nmi_vector   : std_logic;
@@ -335,6 +340,7 @@ PROCESS (clk, turbochipram, turbokick) BEGIN
 END PROCESS;
 
 
+host_req<=host_req_r;
 myakiko : entity work.akiko
 port map
 (
@@ -346,6 +352,9 @@ port map
 	wr => akiko_wr,
 	req => akiko_req,
 	ack => akiko_ack,
+	host_req => host_req_r,
+	host_ack => host_ack,
+	host_q => host_q,
 	rtg_addr => rtg_addr,
 	rtg_vbend => rtg_vbend,
 	rtg_ext => rtg_ext,

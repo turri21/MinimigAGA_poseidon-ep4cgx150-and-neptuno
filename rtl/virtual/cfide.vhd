@@ -61,7 +61,14 @@ entity cfide is
 		interrupt	: out std_logic;
 		c64_keys	: in std_logic_vector(63 downto 0) :=X"FFFFFFFFFFFFFFFF";
 		amiga_key	: out std_logic_vector(7 downto 0);
-		amiga_key_stb	: out std_logic
+		amiga_key_stb	: out std_logic;
+		
+		amiga_addr : in std_logic_vector(7 downto 0);
+		amiga_d : in std_logic_vector(15 downto 0);
+		amiga_q : out std_logic_vector(15 downto 0);
+		amiga_req : in std_logic;
+		amiga_wr : in std_logic;
+		amiga_ack : out std_logic
    );
 
 end cfide;
@@ -113,6 +120,9 @@ signal interrupt_select : std_logic;
 signal interrupt_ena : std_logic;
 signal keyboard_select : std_logic;
 signal keyboard_q : std_logic_vector(15 downto 0);
+signal amigatohost  : std_logic_vector(15 downto 0);
+signal amiga_select : std_logic;
+signal amiga_req_d : std_logic;
 
 begin
 
@@ -122,6 +132,7 @@ q(15 downto 0) <=	IOdata WHEN rs232_select='1' or SPI_select='1' ELSE
 		timecnt when timer_select='1' ELSE 
 		audio_q when audio_select='1' else
 		keyboard_q when keyboard_select='1' else
+		amigatohost when amiga_select='1' else
 		part_in;
 		
 part_in <=  X"000"&"001"&menu_button; -- Reconfig not currently supported, 32 meg of RAM, menu button.
@@ -155,6 +166,34 @@ platform_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"C" ELSE '0';
 audio_select <='1' when addr(23)='1' and addr(7 downto 4)=X"B" else '0';
 interrupt_select <='1' when addr(23)='1' and addr(7 downto 4)=X"A" else '0';
 keyboard_select <='1' when addr(23)='1' and addr(7 downto 4)=X"9" else '0';
+amiga_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"8" else '0';
+
+
+-- Amiga interface at 0fffff80
+
+process (sysclk,n_reset)
+begin
+	if rising_edge(sysclk) then
+
+		amiga_ack<='0';
+
+		if amiga_select='1' and req='1' then
+
+			if wr='1' then
+				amiga_q<=d(15 downto 0);
+				amiga_ack<='1';
+			end if;
+
+			if addr(2)='1' then
+				amigatohost<=amiga_d;
+			else
+				amigatohost<=amiga_req&amiga_wr&"000000"&amiga_addr;
+			end if;
+		
+		end if;	
+	end if;
+end process;
+
 
 -- C64 Keyboard handling at 0fffff90
 
@@ -191,7 +230,8 @@ begin
 		interrupt<='0';
 		interrupt_ena<='0';
 	elsif rising_edge(sysclk) then
-		if vbl_int='1' then
+		amiga_req_d<=amiga_req;
+		if vbl_int='1' or (amiga_req='1' and amiga_req_d='0') then
 			interrupt<=interrupt_ena;
 		end if;
 		if interrupt_select='1' and req='1' then
@@ -243,7 +283,7 @@ begin
 						uart_ld <= '1';
 						support_state <= io_aktion;
 						IOcpuena <= '1';
-					END IF;	
+					END IF;
 				ELSIF SPI_select='1' and req='1' THEN
 					IF SD_busy='0' THEN
 						support_state <= io_aktion;

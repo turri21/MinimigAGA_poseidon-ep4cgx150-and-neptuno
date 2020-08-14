@@ -12,6 +12,10 @@ port (
 	ack : out std_logic;
 	d : in std_logic_vector(15 downto 0);
 	q : out std_logic_vector(15 downto 0);
+	-- Host interface
+	host_req : out std_logic;
+	host_ack : in std_logic;
+	host_q : in std_logic_vector(15 downto 0);
 	-- RTG signals
 	rtg_addr : out std_logic_vector(24 downto 4);
 	rtg_vbend : out std_logic_vector(6 downto 0);
@@ -33,6 +37,9 @@ signal id_ack : std_logic;
 signal ct_sel : std_logic;
 signal ct_q : std_logic_vector(15 downto 0);
 signal ct_ack : std_logic;
+
+signal host_sel : std_logic;
+signal host_ack_d : std_logic;
 
 signal rtg_sel : std_logic;
 signal rtg_ack : std_logic;
@@ -67,6 +74,13 @@ port map
 	req => req and ct_sel,
 	ack => ct_ack
 );
+
+
+-- Host interface
+-- Defer any requests not handled by the Cornerturn or RTG to the host CPU
+
+host_sel <= not (rtg_sel or clut_sel or ct_sel);
+host_req <= req and host_sel;
 
 
 -- RTG registers and CLUT
@@ -120,11 +134,24 @@ end process;
 
 q <= id_q when id_sel='1'
 	else ct_q when ct_sel='1'
+	else host_q when host_sel='1'
 		-- No reading from RTG registers
 	else X"ffff";
-	
-ack <= ct_ack or id_ack or rtg_ack;
 
+process(clk)
+begin
+	if rising_edge(clk) then
+		if host_ack='1' then
+			host_ack_d<='1';
+		end if;
+		if host_sel='0' then
+			host_ack_d<='0';
+		end if;
+
+		ack <= ct_ack or id_ack or rtg_ack or host_ack_d;
+
+	end if;
+end process;
 	
 end architecture;
 

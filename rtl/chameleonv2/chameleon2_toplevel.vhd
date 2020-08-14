@@ -458,7 +458,7 @@ end process;
 
 
 --joy1<=not gp1_run & not gp1_select & (c64_joy1 and cdtv_joy1);
-runstop<='0' when c64_keys(63)='0' and c64_joy1="1111111" else '1';
+--runstop<='0' when c64_keys(63)='0' and c64_joy1="1111111" else '1';
 -- gp1_run<=c64_keys(11) and c64_keys(56) when c64_joy1="111111" else '1';
 -- gp1_select<=c64_keys(60) when c64_joy1="111111" else '1';
 joy1<='1' & c64_joy1(6) & (c64_joy1(5 downto 0) and cdtv_joya);
@@ -472,7 +472,7 @@ vga_window<='1';
 virtual_top : COMPONENT minimig_virtual_top
 generic map
 	(
-		debug => 1
+		debug => 0
 	)
 PORT map
 	(
@@ -480,7 +480,7 @@ PORT map
 		CLK_28 => clk_28,
 		CLK_114 => clk_114,
 		RESET_N => n_reset,
-		MENU_BUTTON => runstop and (not power_button) and usart_cts,
+		MENU_BUTTON => (not power_button) and usart_cts,
 		LED_POWER => led_green,
 		LED_DISK => led_red,
 		CTRL_TX => rs232_txd,
