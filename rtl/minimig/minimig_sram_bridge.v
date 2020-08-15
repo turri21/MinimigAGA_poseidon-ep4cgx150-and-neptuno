@@ -72,6 +72,7 @@ wire	enable;				// indicates memory access cycle
 
 // generate enable signal if any of the banks is selected
 //assign enable = |bank[7:0];
+
 assign enable = (bank[7:0]==8'b00000000) ? 1'b0 : 1'b1;
 
 // generate _we
@@ -126,10 +127,11 @@ assign _ble = !lwr | !enable;
 //	else if (c1 && !c3) // assert chip selects in Q1
 //		_ce[3:0] <= {~|bank[7:6],~|bank[5:4],~|bank[3:2],~|bank[1:0]};
 
+
 // ram address bus
 assign address[17:1] = address_in[17:1];
-assign address[22:18] = (bank[7] ? // access to $F8-$FF or ovl
-								{ 4'b111_1, address_in[18] } : (bank[5] ? // chipram access
+assign address[22:18] = (bank[7]|bank[6] ? // access to $F8-$FF or ovl
+								{ 3'b111, bank[7], address_in[18] } : (bank[5] ? // chipram access
 								{ 2'b0, bank[3]|bank[2], bank[3]|bank[1], address_in[18] } : address_in[22:18]));
 
 //assign address = {bank[7]|bank[5]|bank[3]|bank[1],address_in[18:1]};

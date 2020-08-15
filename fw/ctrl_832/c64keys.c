@@ -1,6 +1,17 @@
+#include <stdio.h>
+
 #include "interrupts.h"
 
 #include "c64keys.h"
+
+#define AKIKOBASE 0x0fffff80
+#define HW_AKIKO(x) *(volatile unsigned short *)(AKIKOBASE+x)
+
+#define REG_AKIKO_ADDR 2
+#define REG_AKIKO_DATA 6
+
+#define AKIKO_REQ 0x8000
+#define AKIKO_WRITE 0x4000
 
 #define QUAL_SPECIAL 0x8000
 #define QUAL_LSHIFT 0x100
@@ -129,6 +140,20 @@ void keyinthandler()
 	int idx=63;
 	int nextframe=(c64frame+4)%12;
 	int prevframe=(c64frame+8)%12;
+
+	unsigned int aa;
+	unsigned int ad;
+
+	aa=HW_AKIKO(REG_AKIKO_ADDR);
+	ad=HW_AKIKO(REG_AKIKO_DATA);
+	if(aa&AKIKO_REQ)
+	{
+		if(aa&AKIKO_WRITE)
+			printf("Akiko write: %x, %x\n",aa,ad);
+		else
+			printf("Akiko read: %x\n",aa);
+		HW_AKIKO(REG_AKIKO_DATA)=0;
+	}
 
 	for(i=0;i<4;++i)
 	{

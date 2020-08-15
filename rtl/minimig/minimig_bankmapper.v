@@ -11,6 +11,7 @@ module minimig_bankmapper
 	input	slow1,					// slow ram select: 2nd 512 KB block
 	input	slow2,					// slow ram select: 3rd 512 KB block
 	input	kick,					// Kickstart ROM address range select
+	input	kickext,				// Kickstart extended ROM select
 	input	kick1mb,				// 1MB Kickstart 'upper' half
 	input	cart,					// Action Replay memory range select
 //	input	aron,					// Action Replay enable
@@ -22,7 +23,7 @@ module minimig_bankmapper
 
 always @(*)
   begin
-    bank[7:4] = { kick, 1'b0, chip3 | chip2 | chip1 | chip0, kick1mb | slow0 | slow1 | slow2 | cart };
+    bank[7:4] = { kick , kickext, chip3 | chip2 | chip1 | chip0, kick1mb | slow0 | slow1 | slow2 | cart };
     case (memory_config[1:0])
       2'b00 : bank[3:0] = {  1'b0,  1'b0,          1'b0, chip3 | chip2 | chip1 | chip0 }; // 0.5M CHIP
       2'b01 : bank[3:0] = {  1'b0,  1'b0, chip3 | chip1,                 chip2 | chip0 }; // 1.0M CHIP

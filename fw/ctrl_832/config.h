@@ -1,5 +1,7 @@
 #include "fat.h"
 
+#define CONFIG_VERSION 2
+
 typedef struct
 {
     char name[8];
@@ -44,6 +46,7 @@ typedef struct
 	unsigned char fastram;	// Contains fast mem (bit 0 & 1) and turbo chipram (bit 7) settings.
 	unsigned char kick13patch;
 	unsigned char autofire;
+    kickstartTYPE extrom;
 } configTYPE;
 
 extern fileTYPE file;	// Temporary file available for use by other modules, to avoid repeated memory usage.

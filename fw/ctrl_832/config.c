@@ -128,6 +128,31 @@ char UploadKickstart(char *name)
 	return(0);
 }
 
+
+// Upload Extended ROM
+char UploadExtROM(char *name)
+{
+	char filename[12];
+
+	strncpy(filename, name, 8); // copy base name
+	strcpy(&filename[8], "ROM"); // add extension
+
+	if (RAOpen(&romfile, filename)) {
+		ClearError(ERROR_FILESYSTEM);
+		if(romfile.size == 0x80000) {
+			// 512KB Kickstart ROM
+			SendFileV2(&romfile, NULL, 0, 0xf00000, romfile.size>>9);
+			return(1);
+		}
+		else
+		{
+			FatalError(ERROR_ROM,"ExtROM size incorrect",romfile.size,0);
+		}
+	}
+	return(0);
+}
+
+
 //// UploadActionReplay() ////
 char UploadActionReplay()
 {
@@ -217,32 +242,43 @@ unsigned char LoadConfiguration(char *filename)
     // load configuration data
     if (FileOpen(&file, filename))
     {
+		configTYPE *tmpconf=(configTYPE *)&sector_buffer;
 		BootPrint("Opened configuration file\n");
         printf("Configuration file size: %lu\r", file.size);
-        if (file.size == sizeof(config))
+        if (file.size <= sizeof(config))
         {
             FileRead(&file, sector_buffer);
 
-			configTYPE *tmpconf=(configTYPE *)&sector_buffer;
+			// A few more sanity checks...
+			if(tmpconf->floppy.drives<=4) 
+			{
+				// If either the old config and new config have a different kickstart file,
+				// or this is the first boot, we need to upload a kickstart image.
+				if(strncmp(tmpconf->kickstart.name,config.kickstart.name,8)!=0)
+					updatekickstart=true;
+				result=1; // We successfully loaded the config.
+			}
+			else
+				BootPrint("Config file sanity check failed!\n");
 
             // check file id and version
-            if (strncmp(tmpconf->id, config_id, sizeof(config.id)) == 0)
-            {
-				// A few more sanity checks...
-				if(tmpconf->floppy.drives<=4) 
-				{
-					// If either the old config and new config have a different kickstart file,
-					// or this is the first boot, we need to upload a kickstart image.
-					if(strncmp(tmpconf->kickstart.name,config.kickstart.name,8)!=0)
-						updatekickstart=true;
-	                memcpy((void*)&config, (void*)sector_buffer, sizeof(config));
-					result=1; // We successfully loaded the config.
-				}
-				else
-					BootPrint("Config file sanity check failed!\n");
-            }
-            else
-                BootPrint("Wrong configuration file format!\n");
+            if (strncmp(tmpconf->id, config_id, sizeof(config.id)) != 0)
+				result=0;
+
+            if(tmpconf->version<CONFIG_VERSION)
+			{
+				BootPrint("Updating config file version");
+				tmpconf->version=CONFIG_VERSION;
+				strncpy(tmpconf->extrom.name, "EXTENDED", sizeof(config.extrom.name));
+			}
+			else if(tmpconf->version>CONFIG_VERSION)
+			{
+				BootPrint("Wrong configuration file format!\n");
+				result=0;
+			}
+
+			if(result)
+                memcpy((void*)&config, (void*)sector_buffer, sizeof(config));
         }
     }
     if(!result)
@@ -253,6 +289,7 @@ unsigned char LoadConfiguration(char *filename)
 		memset((void*)&config, 0, sizeof(config));	// Finally found default config bug - params were reversed!
 		strncpy(config.id, config_id, sizeof(config.id));
 		strncpy(config.kickstart.name, "KICK    ", sizeof(config.kickstart.name));
+		config.version = CONFIG_VERSION;
 		config.misc = 1<<(PLATFORM_SCANDOUBLER);  // platform register - enable scandoubler by default
 		config.kickstart.long_name[0] = 0;
 		config.memory = 0x15;
@@ -268,6 +305,9 @@ unsigned char LoadConfiguration(char *filename)
 		config.hardfile[1].long_name[0]=0;
 		config.hardfile[1].enabled = 2;	// Default is access to entire SD card
 		updatekickstart=true;
+
+		/* Version 2 configuration fields */
+		strncpy(config.extrom.name, "EXTENDED", sizeof(config.extrom.name));
 
 		BootPrint("Defaults set\n");
 	}
@@ -366,6 +406,16 @@ int ApplyConfiguration(char reloadkickstart, char applydrives)
 		{
 			strcpy(config.kickstart.name, "KICK    ");
 			result=UploadKickstart(config.kickstart.name);
+		}
+		/* Attempt to upload an extended ROM */
+		if (UploadExtROM(config.extrom.name))
+		{
+			result=1;
+		}
+		else
+		{
+			strcpy(config.extrom.name, "EXTENDED");
+			result=UploadExtROM(config.kickstart.name);
 		}
     }
 	return(result);
