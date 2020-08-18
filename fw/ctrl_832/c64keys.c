@@ -1,22 +1,35 @@
 #include <stdio.h>
 
 #include "interrupts.h"
-
+#include "amiga_rawkey.h"
 #include "c64keys.h"
 
-#define AKIKOBASE 0x0fffff80
-#define HW_AKIKO(x) *(volatile unsigned short *)(AKIKOBASE+x)
-
-#define REG_AKIKO_ADDR 2
-#define REG_AKIKO_DATA 6
-
-#define AKIKO_REQ 0x8000
-#define AKIKO_WRITE 0x4000
-
-#define QUAL_SPECIAL 0x8000
+#define QUAL_SPECIAL 0x8000	/* Key emits a different keycode if shift is held */
+#define QUAL_LAYERKEY 0x4000 /* This key causes layers to switch */
+#define QUAL_ALTLAYER 0x2000 /* Last keydown event happened while ctrl was held */
 #define QUAL_LSHIFT 0x100
 #define QUAL_RSHIFT 0x200
 #define QUAL_MASK 0x7f00
+
+/*
+Need to support multiple layers.
+Ideally want shift keypresses to transfer between layers.
+Need to make the layer sticky when a key is pressed, so the
+key release event always matches the key press event.
+The keytable currently contains 32-bit ints so plenty of room
+for storing layer details in the map.
+If just two layers will be sufficient, could simply store a second
+entry shifted left 16 bits, accessed when the commodore key is held.
+Use Run/Stop as an "Fn" key
+*/
+
+struct c64keyboard
+{
+	int frame;
+	int layer;
+	int qualifiers;
+};
+
 
 struct keyspecial
 {
@@ -25,90 +38,92 @@ struct keyspecial
 
 struct keyspecial specialtable[]=
 {
-	{0x4e,0x4f},	/* cursor keys */
-	{0x4d,0x4c},
-	{0x50,0x51},	/* F keys */
-	{0x52,0x53},
-	{0x54,0x55},
-	{0x56,0x57}
+	{RK_Right,RK_Left},	/* cursor keys */
+	{RK_Down,RK_Up},
+	{RK_F1,RK_F2},	/* F keys */
+	{RK_F3,RK_F4},
+	{RK_F5,RK_F6},
+	{RK_F7,RK_F8}
 };
+
+#define LAYER(x,y) ((x&0xffff)<<16)|(y)
 
 unsigned int keytable[]=
 {
-	0x41, /* $00	Inst/Del */
-	0x44, /* $01	Return */
+	RK_BackSpace, /* $00	Inst/Del */
+	LAYER(RK_Enter,RK_Return), /* $01	Return */
 	QUAL_SPECIAL|0, /* $02	Crsr l/r	- special handling needed */
-	QUAL_SPECIAL|5, /* $03	F7/F8 */
-	QUAL_SPECIAL|2, /* $04	F1/F2 */
-	QUAL_SPECIAL|3, /* $05	F3/F4 */
+	LAYER(RK_Help,QUAL_SPECIAL|5), /* $03	F7/F8 */
+	LAYER(RK_F9,QUAL_SPECIAL|2), /* $04	F1/F2 */
+	LAYER(RK_F10,QUAL_SPECIAL|3), /* $05	F3/F4 */
 	QUAL_SPECIAL|4, /* $06	F5/F6 */
 	QUAL_SPECIAL|1, /* $07	Crsr u/d	- special handling needed */
 
-	0x3,  /* $08	3 */
-	0x11, /* $09	W */
-	0x20, /* $0A	A */
-	0x04, /* $0B	4 */
-	0x31, /* $0C	Z */
-	0x21, /* $0D	S */
-	0x12, /* $0E	E */
-	QUAL_LSHIFT|0x60, /* $0F	Left Shift - special handling needed */
+	RK_3,  /* $08	3 */
+	RK_W, /* $09	W */
+	RK_A, /* $0A	A */
+	RK_4, /* $0B	4 */
+	RK_Z, /* $0C	Z */
+	RK_S, /* $0D	S */
+	RK_E, /* $0E	E */
+	LAYER(RK_LAlt,QUAL_LSHIFT|RK_LShift), /* $0F	Left Shift - special handling needed */
 
-	0x05, /* $10	5 */
-	0x13, /* $11	R */
-	0x22, /* $12	D */
-	0x06, /* $13	6 */
-	0x33, /* $14	C */
-	0x23, /* $15	F */
-	0x14, /* $16	T */
-	0x32, /* $17	X */
+	RK_5, /* $10	5 */
+	RK_R, /* $11	R */
+	RK_D, /* $12	D */
+	RK_6, /* $13	6 */
+	RK_C, /* $14	C */
+	RK_F, /* $15	F */
+	RK_T, /* $16	T */
+	RK_X, /* $17	X */
 
-	0x07, /* $18	7 */
-	0x15, /* $19	Y */
-	0x24, /* $1A	G */
-	0x08, /* $1B	8 */
-	0x35, /* $1C	B */
-	0x25, /* $1D	H */
-	0x16, /* $1E	U */
-	0x34, /* $1F	V */
+	LAYER(RK_NK7,RK_7), /* $18	7 */
+	RK_Y, /* $19	Y */
+	RK_G, /* $1A	G */
+	LAYER(RK_NK8,RK_8), /* $1B	8 */
+	RK_B, /* $1C	B */
+	RK_H, /* $1D	H */
+	LAYER(RK_NK4,RK_U), /* $1E	U */
+	RK_V, /* $1F	V */
 
-	0x09, /* $20	9 */
-	0x17, /* $21	I */
-	0x26, /* $22	J */
-	0x0a, /* $23	0 */
-	0x37, /* $24	M */
-	0x27, /* $25	K */
-	0x18, /* $26	O */
-	0x36, /* $27	N */
+	LAYER(RK_NK9,RK_9), /* $20	9 */
+	LAYER(RK_NK5,RK_I), /* $21	I */
+	LAYER(RK_NK1,RK_J), /* $22	J */
+	LAYER(RK_NKSlash,RK_0), /* $23	0 */
+	LAYER(RK_NK0,RK_M), /* $24	M */
+	LAYER(RK_NK2,RK_K), /* $25	K */
+	LAYER(RK_NK6,RK_O), /* $26	O */
+	RK_N, /* $27	N */
 
-	0x0c, /* $28	+ */
-	0x19, /* $29	P */
-	0x28, /* $2A	L */
-	0x0b, /* $2B	− */
-	0x38, /* $2C	> */
-	0x29, /* $2D	[ */
-	0x1a, /* $2E	@ */
-	0x39, /* $2F	< */
+	RK_Equals, /* $28	+ */
+	LAYER(RK_NKAsterisk,RK_P), /* $29	P */
+	LAYER(RK_NK3,RK_L), /* $2A	L */
+	RK_Minus, /* $2B	− */
+	LAYER(RK_Point,RK_Period), /* $2C	> */
+	LAYER(RK_NKMinus,RK_Semicolon), /* $2D	[ */
+	LAYER(RK_NKLeftBracket,RK_LeftBrace), /* $2E	@ */
+	RK_Comma, /* $2F	< */
 	
-	0x0d, /* $30	£ */
-	0x1b, /* $31	* */
-	0x2a, /* $32	] */
-	0x46, /* $33	Clr/ Home */
-	QUAL_RSHIFT|0x61, /* $34	Right shift - special handling needed */
-	0x2b, /* $35	= */
-	0x00, /* $36	↑ */
-	0x3a, /* $37	? */
+	RK_Backslash, /* $30	£ */
+	LAYER(RK_NKRightBracket,RK_RightBrace), /* $31	* */
+	RK_Apostrophe, /* $32	] */
+	RK_Delete, /* $33	Clr/ Home */
+	LAYER(RK_RAlt,QUAL_RSHIFT|RK_RShift), /* $34	Right shift - special handling needed */
+	RK_RightIntl, /* $35	= */
+	RK_LeftIntl, /* $36	↑ */
+	LAYER(RK_NKPlus,RK_Slash), /* $37	? */
 
-	0x01, /* $38	1 */
-	0x45, /* $39	← */
-	0x63, /* $3A	(Unused) */
-	0x02, /* $3B	2 */
-	0x40, /* $3C	Space */
-	0x66, /* $3D	(Unused) */
-	0x10, /* $3E	Q */
-	0x64  /* $3F	Run/Stop */
+	RK_1, /* $38	1 */
+	LAYER(RK_Tick,RK_Esc), /* $39	← */
+	LAYER(RK_Tab,RK_Ctrl), /* $3A	Control */
+	RK_2, /* $3B	2 */
+	RK_Space, /* $3C	Space */
+	LAYER(RK_RAmiga,RK_LAmiga), /* $3D	Commodore */
+	RK_Q, /* $3E	Q */
+	QUAL_LAYERKEY  /* $3F	Run/Stop */
 };
 
-
+int c64layer;
 int c64frame;
 unsigned short c64keys[12];
 int c64qualifiers;
@@ -133,7 +148,8 @@ void ringbuffer_write(struct ringbuffer *r,int in)
 }
 
 struct ringbuffer kbbuffer;
-void keyinthandler()
+
+void c64keys_inthandler()
 {
 	int i;
 	int count=0;
@@ -144,16 +160,6 @@ void keyinthandler()
 	unsigned int aa;
 	unsigned int ad;
 
-	aa=HW_AKIKO(REG_AKIKO_ADDR);
-	ad=HW_AKIKO(REG_AKIKO_DATA);
-	if(aa&AKIKO_REQ)
-	{
-		if(aa&AKIKO_WRITE)
-			printf("Akiko write: %x, %x\n",aa,ad);
-		else
-			printf("Akiko read: %x\n",aa);
-		HW_AKIKO(REG_AKIKO_DATA)=0;
-	}
 
 	for(i=0;i<4;++i)
 	{
@@ -173,7 +179,29 @@ void keyinthandler()
 		for(i=0;i<4;++i)
 		{
 			int j;
-			unsigned int changed=c64keys[nextframe+i]^(c64keys[prevframe+i]|c64keys[c64frame+i]);
+
+			/*  Keystroke detection:
+				The C64 keyboard shares lines with joystick port 1, so reading the keyboard robustly
+				is difficult.  The above test filters out reading where a whole row is shorted to ground
+				by the joystick, but we can still get transients if the joystick event happens while scanning the keyboard.
+				We therefore filter the data with an edge-detection:
+
+				nextframe contains the data from two frames ago, prevframe and c64frame are self-explanatory.
+				Edge detection works like this:  (A is nextframe, B is prevframe, C is c64frame)
+				A B C	Edge?
+				0 0 0	0	- key is held down
+				0 0 1	0	- key release
+				0 1 0	0	- transient
+				0 1 1	1	- key release, stable
+				1 0 0	1	- key press, stable
+				1 0 1	0	- transient keypress
+				1 1 0	0	- keypress, not yet verified
+				1 1 1	0	- key up.
+
+				edge = (A^B) & (A^C)
+			*/
+
+			unsigned int changed=(c64keys[nextframe+i]^c64keys[prevframe+i])&(c64keys[nextframe+i]^c64keys[c64frame+i]);
 			unsigned int status=c64keys[c64frame+i];
 			for(j=0;j<16;++j)
 			{
@@ -187,46 +215,70 @@ void keyinthandler()
 					code=((code<<3)|(code>>3))&63;	/* bit numbers are transposed compared with c64 scancodes */
 					amicode=keytable[code];
 
-					if(amicode&QUAL_SPECIAL)
+					if(amicode&QUAL_LAYERKEY) /* Has the run/stop key (acting as Fn) been pressed? */
 					{
-						/* If the key requires special handling, cancel any shifting before sending the key code
-							unless both shift keys are down */
-						switch(c64qualifiers&(QUAL_LSHIFT|QUAL_RSHIFT))
-						{
-							case 0:
-								amicode=specialtable[amicode&0xff].unshifted;
-								break;
-							case QUAL_LSHIFT:
-								amicode=specialtable[amicode&0xff].shifted;
-								if(status&0x8000)
-									amiqualdown=0x60;
-								else
-									amiqualup=0x60|0x80;
-								break;
-							case QUAL_RSHIFT:
-								amicode=specialtable[amicode&0xff].shifted;
-								if(status&0x8000)
-									amiqualdown=0x61;
-								else
-								amiqualup=0x61|0x80;
-								break;
-							default:
-								amicode=specialtable[amicode&0xff].shifted;
-								break;
-						}
-					}
-					if(status&0x8000)
-					{
-						amicode|=0x80; /* Key up */
-						c64qualifiers&=(~amicode)&QUAL_MASK;
+						if(status&0x8000)	/* Key up? */
+							c64layer=0;
+						else
+							c64layer=1;
 					}
 					else
-						c64qualifiers|=amicode&QUAL_MASK;
-					if(amiqualup)
-						ringbuffer_write(&kbbuffer,amiqualup);
-					ringbuffer_write(&kbbuffer,amicode);
-					if(amiqualdown)
-						ringbuffer_write(&kbbuffer,amiqualdown);
+					{
+						/* If this is a keyup event, make sure it happens on the same layer as the corresponding keydown. */
+						if(status&0x8000) /* key up? */
+						{
+							if(amicode&QUAL_ALTLAYER) /* Was the keydown on the alternative layer? */
+								amicode>>=16;
+							keytable[code]&=~QUAL_ALTLAYER;
+						}
+						/* Otherwise generate a keydown for the appropriate layer */
+						else if(c64layer && (amicode>>16))
+						{
+							keytable[code]|=QUAL_ALTLAYER;
+							amicode>>=16;
+						}
+
+						if(amicode&QUAL_SPECIAL)
+						{
+							/* If the key requires special handling, cancel any shifting before sending the key code
+								unless both shift keys are down */
+							switch(c64qualifiers&(QUAL_LSHIFT|QUAL_RSHIFT))
+							{
+								case 0:
+									amicode=specialtable[amicode&0xff].unshifted;
+									break;
+								case QUAL_LSHIFT:
+									amicode=specialtable[amicode&0xff].shifted;
+									if(status&0x8000)
+										amiqualdown=0x60;
+									else
+										amiqualup=0x60|0x80;
+									break;
+								case QUAL_RSHIFT:
+									amicode=specialtable[amicode&0xff].shifted;
+									if(status&0x8000)
+										amiqualdown=0x61;
+									else
+									amiqualup=0x61|0x80;
+									break;
+								default:
+									amicode=specialtable[amicode&0xff].shifted;
+									break;
+							}
+						}
+						if(status&0x8000)
+						{
+							amicode|=0x80; /* Key up */
+							c64qualifiers&=(~amicode)&QUAL_MASK;
+						}
+						else
+							c64qualifiers|=amicode&QUAL_MASK;
+						if(amiqualup)
+							ringbuffer_write(&kbbuffer,amiqualup);
+						ringbuffer_write(&kbbuffer,amicode);
+						if(amiqualdown)
+							ringbuffer_write(&kbbuffer,amiqualdown);
+					}
 				}
 				changed<<=1;
 				status<<=1;
@@ -240,8 +292,6 @@ void keyinthandler()
 		HW_KEYBOARD(REG_KEYBOARD_OUT)=kbbuffer.outbuf[kbbuffer.out_hw];
 		kbbuffer.out_hw=(kbbuffer.out_hw+1) & (RINGBUFFER_SIZE-1);
 	}
-	GetInterrupts(); /* Clear interrupt flag last.  If we did this earlier
-						we would have disable interrupts first and re-enable them here. */
 }
 
 __constructor(101.c64keys) void c64keysconstructor()
@@ -250,9 +300,8 @@ __constructor(101.c64keys) void c64keysconstructor()
 	for(i=0;i<8;++i)
 		c64keys[i]=0xffff;
 	c64frame=0;
+	c64layer=0;
 	c64qualifiers=0;
 	ringbuffer_init(&kbbuffer);
-	SetIntHandler(keyinthandler);
-	EnableInterrupts();
 }
 

@@ -22,6 +22,7 @@ struct ringbuffer
 void ringbuffer_init(struct ringbuffer *r);
 void ringbuffer_write(struct ringbuffer *r,int in);
 
+void c64keys_inthandler();
 extern int c64qualifiers;
 
 #endif

@@ -186,6 +186,18 @@ int ColdBoot()
 	return(result);
 }
 
+
+void inthandler()
+{
+	int ints=GetInterrupts();
+	DisableInterrupts();
+	akiko_inthandler();
+	c64keys_inthandler();
+	EnableInterrupts();
+}
+
+
+
 struct cdimage cd;
 
 void setstack();
@@ -207,13 +219,12 @@ __geta4 int main(void)
 //	cd_setcuefile(&cd,"EXODUS_THELASTWAR.CUE");
 //	cd_playaudio(&cd,4);
 
+	SetIntHandler(inthandler);
+	EnableInterrupts();
+
     while(1)
     {
 		cd_continueaudio(&cd);
-		if(c64qualifiers)
-		{
-			putchar('.');
-		}
         HandleFpga();
         HandleUI();
 		if(ErrorMask)
