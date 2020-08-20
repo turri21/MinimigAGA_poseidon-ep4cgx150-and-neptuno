@@ -224,6 +224,9 @@ __geta4 int main(void)
 
     while(1)
     {
+		if(c64keyboard_checkreset())
+			OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
+			
 		cd_continueaudio(&cd);
         HandleFpga();
         HandleUI();

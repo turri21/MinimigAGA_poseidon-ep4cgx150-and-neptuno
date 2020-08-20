@@ -17,6 +17,7 @@ module ciaa_ps2keyboard_map
   output  caps,         //amiga capslock key
   output  reg numlock = 0,  //ps/2 numlock status
   output  reg [7:0] osd_ctrl, //osd menu control
+  output  reg osd_strobe,
   output  reg _lmb,     //mouse button emulation
   output  reg _rmb,     //mouse button emulation
   output  reg [5:0] _joy2,  //joystick emulation
@@ -92,10 +93,13 @@ assign akey[7:0] = {upstroke, keyrom[6:0]};
 //keyrom[8] - OSD key, keyrom[15] - Amiga key
 always @(posedge clk) begin
   if (clk7_en) begin
+    osd_strobe<=1'b0;
     if (reset)
       osd_ctrl[7:0] <= 8'd0;
-    else if (enable2 && (keyrom[8] || keyrom[15]))
+    else if (enable2 && (keyrom[8] || keyrom[15])) begin
+		osd_strobe<=1'b1;
       osd_ctrl[7:0] <= {upstroke, keyrom[6:0]};
+	end
   end
 end
 

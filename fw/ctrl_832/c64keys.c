@@ -9,6 +9,8 @@
 #define QUAL_ALTLAYER 0x2000 /* Last keydown event happened while ctrl was held */
 #define QUAL_LSHIFT 0x100
 #define QUAL_RSHIFT 0x200
+#define QUAL_CTRL 0x400
+#define QUAL_MENU 0x1000
 #define QUAL_MASK 0x7f00
 
 /*
@@ -23,12 +25,8 @@ entry shifted left 16 bits, accessed when the commodore key is held.
 Use Run/Stop as an "Fn" key
 */
 
-struct c64keyboard
-{
-	int frame;
-	int layer;
-	int qualifiers;
-};
+
+struct c64keyboard c64keys;
 
 
 struct keyspecial
@@ -52,12 +50,12 @@ unsigned int keytable[]=
 {
 	RK_BackSpace, /* $00	Inst/Del */
 	LAYER(RK_Enter,RK_Return), /* $01	Return */
-	QUAL_SPECIAL|0, /* $02	Crsr l/r	- special handling needed */
+	LAYER(RK_RAmiga,QUAL_SPECIAL|0), /* $02	Crsr l/r	- special handling needed */
 	LAYER(RK_Help,QUAL_SPECIAL|5), /* $03	F7/F8 */
 	LAYER(RK_F9,QUAL_SPECIAL|2), /* $04	F1/F2 */
 	LAYER(RK_F10,QUAL_SPECIAL|3), /* $05	F3/F4 */
 	QUAL_SPECIAL|4, /* $06	F5/F6 */
-	QUAL_SPECIAL|1, /* $07	Crsr u/d	- special handling needed */
+	LAYER(RK_RAlt,QUAL_SPECIAL|1), /* $07	Crsr u/d	- special handling needed */
 
 	RK_3,  /* $08	3 */
 	RK_W, /* $09	W */
@@ -104,37 +102,27 @@ unsigned int keytable[]=
 	LAYER(RK_NKLeftBracket,RK_LeftBrace), /* $2E	@ */
 	RK_Comma, /* $2F	< */
 	
-	RK_Backslash, /* $30	£ */
+	RK_BackSlash, /* $30	£ */
 	LAYER(RK_NKRightBracket,RK_RightBrace), /* $31	* */
 	RK_Apostrophe, /* $32	] */
 	RK_Delete, /* $33	Clr/ Home */
-	LAYER(RK_RAlt,QUAL_RSHIFT|RK_RShift), /* $34	Right shift - special handling needed */
-	RK_RightIntl, /* $35	= */
+	QUAL_RSHIFT|RK_RShift, /* $34	Right shift - special handling needed */
+	LAYER(RK_RightIntl,RK_Tick), /* $35	= */
 	RK_LeftIntl, /* $36	↑ */
 	LAYER(RK_NKPlus,RK_Slash), /* $37	? */
 
 	RK_1, /* $38	1 */
-	LAYER(RK_Tick,RK_Esc), /* $39	← */
-	LAYER(RK_Tab,RK_Ctrl), /* $3A	Control */
+	LAYER(RK_MinimigMenu,RK_Esc), /* $39	← */
+	LAYER(RK_Tab,QUAL_CTRL|RK_Ctrl), /* $3A	Control */
 	RK_2, /* $3B	2 */
 	RK_Space, /* $3C	Space */
-	LAYER(RK_RAmiga,RK_LAmiga), /* $3D	Commodore */
+	RK_LAmiga, /* $3D	Commodore */
 	RK_Q, /* $3E	Q */
 	QUAL_LAYERKEY  /* $3F	Run/Stop */
 };
 
-int c64layer;
-int c64frame;
-unsigned short c64keys[12];
-int c64qualifiers;
 
-void ringbuffer_init(struct ringbuffer *r)
-{
-	r->out_hw=0;
-	r->out_cpu=0;
-}
-
-void ringbuffer_write(struct ringbuffer *r,int in)
+void c64keyboard_write(struct c64keyboard *r,int in)
 {
 /*	Can't wait for the ringbuffer to empty if we're going to fill it from
 	within an interrupt.  We will have to accept that keystrokes will be lost
@@ -143,19 +131,18 @@ void ringbuffer_write(struct ringbuffer *r,int in)
 		;
 	DisableInterrupts(); */
 	r->outbuf[r->out_cpu]=in;
-	r->out_cpu=(r->out_cpu+1) & (RINGBUFFER_SIZE-1);
+	r->out_cpu=(r->out_cpu+1) & (C64KEY_RINGBUFFER_SIZE-1);
 /*	EnableInterrupts(); */
 }
 
-struct ringbuffer kbbuffer;
 
 void c64keys_inthandler()
 {
 	int i;
 	int count=0;
 	int idx=63;
-	int nextframe=(c64frame+4)%12;
-	int prevframe=(c64frame+8)%12;
+	int nextframe=(c64keys.frame+4)%12;
+	int prevframe=(c64keys.frame+8)%12;
 
 	unsigned int aa;
 	unsigned int ad;
@@ -164,7 +151,7 @@ void c64keys_inthandler()
 	for(i=0;i<4;++i)
 	{
 		unsigned int t=HW_KEYBOARD(REG_KEYBOARD_WORD0+4*i);
-		c64keys[c64frame+i]=t;
+		c64keys.keys[c64keys.frame+i]=t;
 		while(t)	/* Count the number of set bits */
 		{
 			t&=t-1;
@@ -201,8 +188,9 @@ void c64keys_inthandler()
 				edge = (A^B) & (A^C)
 			*/
 
-			unsigned int changed=(c64keys[nextframe+i]^c64keys[prevframe+i])&(c64keys[nextframe+i]^c64keys[c64frame+i]);
-			unsigned int status=c64keys[c64frame+i];
+			unsigned int changed=(c64keys.keys[nextframe+i]^c64keys.keys[prevframe+i])
+										&(c64keys.keys[nextframe+i]^c64keys.keys[c64keys.frame+i]);
+			unsigned int status=c64keys.keys[c64keys.frame+i];
 			for(j=0;j<16;++j)
 			{
 				--idx;
@@ -212,15 +200,16 @@ void c64keys_inthandler()
 					int amicode;
 					int amiqualup=0;
 					int amiqualdown=0;
+					c64keys.active=1;
 					code=((code<<3)|(code>>3))&63;	/* bit numbers are transposed compared with c64 scancodes */
 					amicode=keytable[code];
 
 					if(amicode&QUAL_LAYERKEY) /* Has the run/stop key (acting as Fn) been pressed? */
 					{
 						if(status&0x8000)	/* Key up? */
-							c64layer=0;
+							c64keys.layer=0;
 						else
-							c64layer=1;
+							c64keys.layer=1;
 					}
 					else
 					{
@@ -232,7 +221,7 @@ void c64keys_inthandler()
 							keytable[code]&=~QUAL_ALTLAYER;
 						}
 						/* Otherwise generate a keydown for the appropriate layer */
-						else if(c64layer && (amicode>>16))
+						else if(c64keys.layer && (amicode>>16))
 						{
 							keytable[code]|=QUAL_ALTLAYER;
 							amicode>>=16;
@@ -242,7 +231,7 @@ void c64keys_inthandler()
 						{
 							/* If the key requires special handling, cancel any shifting before sending the key code
 								unless both shift keys are down */
-							switch(c64qualifiers&(QUAL_LSHIFT|QUAL_RSHIFT))
+							switch(c64keys.qualifiers&(QUAL_LSHIFT|QUAL_RSHIFT))
 							{
 								case 0:
 									amicode=specialtable[amicode&0xff].unshifted;
@@ -269,39 +258,54 @@ void c64keys_inthandler()
 						if(status&0x8000)
 						{
 							amicode|=0x80; /* Key up */
-							c64qualifiers&=(~amicode)&QUAL_MASK;
+							c64keys.qualifiers&=(~amicode)&QUAL_MASK;
 						}
 						else
-							c64qualifiers|=amicode&QUAL_MASK;
+							c64keys.qualifiers|=amicode&QUAL_MASK;
 						if(amiqualup)
-							ringbuffer_write(&kbbuffer,amiqualup);
-						ringbuffer_write(&kbbuffer,amicode);
+							c64keyboard_write(&c64keys,amiqualup);
+						c64keyboard_write(&c64keys,amicode);
 						if(amiqualdown)
-							ringbuffer_write(&kbbuffer,amiqualdown);
+							c64keyboard_write(&c64keys,amiqualdown);
 					}
 				}
 				changed<<=1;
 				status<<=1;
 			}
 		}
-		c64frame=nextframe;
+		c64keys.frame=nextframe;
 	}
 
-	if(kbbuffer.out_hw!=kbbuffer.out_cpu)
+	if(c64keys.out_hw!=c64keys.out_cpu)
 	{
-		HW_KEYBOARD(REG_KEYBOARD_OUT)=kbbuffer.outbuf[kbbuffer.out_hw];
-		kbbuffer.out_hw=(kbbuffer.out_hw+1) & (RINGBUFFER_SIZE-1);
+		HW_KEYBOARD(REG_KEYBOARD_OUT)=c64keys.outbuf[c64keys.out_hw];
+		c64keys.out_hw=(c64keys.out_hw+1) & (C64KEY_RINGBUFFER_SIZE-1);
 	}
+}
+
+int c64keyboard_checkreset()
+{
+	int result=0;
+	DisableInterrupts();
+	if(c64keys.active)
+	{
+		if((c64keys.qualifiers&QUAL_MASK)==(QUAL_LSHIFT|QUAL_RSHIFT|QUAL_CTRL))
+			result=1;
+		c64keys.active=0;
+	}
+	EnableInterrupts();
+	return(result);
 }
 
 __constructor(101.c64keys) void c64keysconstructor()
 {
 	int i;
 	for(i=0;i<8;++i)
-		c64keys[i]=0xffff;
-	c64frame=0;
-	c64layer=0;
-	c64qualifiers=0;
-	ringbuffer_init(&kbbuffer);
+		c64keys.keys[i]=0xffff;
+	c64keys.frame=0;
+	c64keys.layer=0;
+	c64keys.qualifiers=0;
+	c64keys.out_hw=0;
+	c64keys.out_cpu=0;
 }
 

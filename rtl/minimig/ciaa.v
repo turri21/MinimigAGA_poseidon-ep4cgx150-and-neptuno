@@ -105,7 +105,7 @@ module ciaa
   input kms_level,
   input [1:0] kbd_mouse_type,
   input [7:0] kbd_mouse_data,
-  output  [7:0] osd_ctrl,    // osd control
+  output reg  [7:0] osd_ctrl,    // osd control
   output  _lmb,
   output  _rmb,
   output  [5:0] _joy2,
@@ -181,6 +181,8 @@ reg    [7:0] sdr_latch;
 
 wire freeze_out;
 wire keystrobe_ps2;
+wire [7:0] osd_ctrl_ps2;
+wire osd_ctrl_strobe_ps2;
 
 ciaa_ps2keyboard  kbd1
 (
@@ -198,7 +200,8 @@ ciaa_ps2keyboard  kbd1
   .keydat(keydat[7:0]),
   .keystrobe(keystrobe_ps2),
   .keyack(keyack),
-  .osd_ctrl(osd_ctrl),
+  .osd_ctrl(osd_ctrl_ps2),
+  .osd_strobe(osd_ctrl_strobe_ps2),
   ._lmb(_lmb),
   ._rmb(_rmb),
   ._joy2(_joy2),
@@ -216,7 +219,13 @@ assign keystrobe = keystrobe_reg | keystrobe_ps2;
 
 // sdr register
 // !!! Amiga receives keycode ONE STEP ROTATED TO THE RIGHT AND INVERTED !!!
-always @(posedge clk)
+always @(posedge clk) begin
+
+	if(osd_ctrl_strobe_ps2)
+		osd_ctrl<=osd_ctrl_ps2;
+	else if (kbd_mouse_strobe)
+		osd_ctrl<=kbd_mouse_data;
+
   if (clk7_en) begin
 		keystrobe_reg<=1'b0;
     if (reset)
@@ -231,6 +240,8 @@ always @(posedge clk)
       sdr_latch[7:0] <= data_in[7:0];
   end
 
+end
+
 `else
 
 assign keystrobe=keystrobe_ps2;
@@ -238,6 +249,7 @@ assign keystrobe=keystrobe_ps2;
 // sdr register
 // !!! Amiga receives keycode ONE STEP ROTATED TO THE RIGHT AND INVERTED !!!
 always @(posedge clk)
+	osd_ctrl<=osd_ctrl_ps2;
   if (clk7_en) begin
     if (reset)
       sdr_latch[7:0] <= 8'h00;

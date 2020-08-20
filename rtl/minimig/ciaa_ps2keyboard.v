@@ -65,7 +65,8 @@ module ciaa_ps2keyboard
 	output	[7:0] keydat,		//keyboard data out
 	output	reg keystrobe,		//keyboard data out strobe
 	input	keyack,				//keyboard data out acknowledge
-	output	[7:0] osd_ctrl,		//on-screen-display controll
+	output	[7:0] osd_ctrl,		//on-screen-display control
+	output	osd_strobe,
 	output	_lmb,				//emulated left mouse button
 	output	_rmb,				//emulated right mouse button
 	output	[5:0] _joy2,		//joystick emulation
@@ -73,6 +74,8 @@ module ciaa_ps2keyboard
   output [5:0] mou_emu,
   output [5:0] joy_emu
 );
+
+assign active = prready;
 
 //local signals
 reg		pclkout; 				//ps2 clk out
@@ -290,6 +293,7 @@ ciaa_ps2keyboard_map km1
 	.caps(caps),
 	.numlock(numlock),
 	.osd_ctrl(osd_ctrl),
+	.osd_strobe(osd_strobe),
 	._lmb(_lmb),
 	._rmb(_rmb),
 	._joy2(_joy2),
