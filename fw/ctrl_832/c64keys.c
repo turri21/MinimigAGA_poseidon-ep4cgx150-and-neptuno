@@ -10,7 +10,7 @@
 #define QUAL_LSHIFT 0x100
 #define QUAL_RSHIFT 0x200
 #define QUAL_CTRL 0x400
-#define QUAL_MENU 0x1000
+#define QUAL_BLOCKLAYER 0x800	/* R Amiga key or R Alt key - used to cancel layer shifting with quals */
 #define QUAL_MASK 0x7f00
 
 /*
@@ -50,12 +50,12 @@ unsigned int keytable[]=
 {
 	RK_BackSpace, /* $00	Inst/Del */
 	LAYER(RK_Enter,RK_Return), /* $01	Return */
-	LAYER(RK_RAmiga,QUAL_SPECIAL|0), /* $02	Crsr l/r	- special handling needed */
+	LAYER(QUAL_BLOCKLAYER|RK_RAmiga,QUAL_SPECIAL|0), /* $02	Crsr l/r	- special handling needed */
 	LAYER(RK_Help,QUAL_SPECIAL|5), /* $03	F7/F8 */
 	LAYER(RK_F9,QUAL_SPECIAL|2), /* $04	F1/F2 */
 	LAYER(RK_F10,QUAL_SPECIAL|3), /* $05	F3/F4 */
 	QUAL_SPECIAL|4, /* $06	F5/F6 */
-	LAYER(RK_RAlt,QUAL_SPECIAL|1), /* $07	Crsr u/d	- special handling needed */
+	LAYER(QUAL_BLOCKLAYER|RK_RAlt,QUAL_SPECIAL|1), /* $07	Crsr u/d	- special handling needed */
 
 	RK_3,  /* $08	3 */
 	RK_W, /* $09	W */
@@ -64,7 +64,7 @@ unsigned int keytable[]=
 	RK_Z, /* $0C	Z */
 	RK_S, /* $0D	S */
 	RK_E, /* $0E	E */
-	LAYER(RK_LAlt,QUAL_LSHIFT|RK_LShift), /* $0F	Left Shift - special handling needed */
+	LAYER(QUAL_BLOCKLAYER|RK_LAlt,QUAL_LSHIFT|RK_LShift), /* $0F	Left Shift - special handling needed */
 
 	RK_5, /* $10	5 */
 	RK_R, /* $11	R */
@@ -116,7 +116,7 @@ unsigned int keytable[]=
 	LAYER(RK_Tab,QUAL_CTRL|RK_Ctrl), /* $3A	Control */
 	RK_2, /* $3B	2 */
 	RK_Space, /* $3C	Space */
-	RK_LAmiga, /* $3D	Commodore */
+	QUAL_BLOCKLAYER|RK_LAmiga, /* $3D	Commodore */
 	RK_Q, /* $3E	Q */
 	QUAL_LAYERKEY  /* $3F	Run/Stop */
 };
@@ -204,7 +204,8 @@ void c64keys_inthandler()
 					code=((code<<3)|(code>>3))&63;	/* bit numbers are transposed compared with c64 scancodes */
 					amicode=keytable[code];
 
-					if(amicode&QUAL_LAYERKEY) /* Has the run/stop key (acting as Fn) been pressed? */
+					/* Has the run/stop key (acting as Fn) been pressed? */
+					if(amicode&QUAL_LAYERKEY)
 					{
 						if(status&0x8000)	/* Key up? */
 							c64keys.layer=0;
@@ -223,8 +224,12 @@ void c64keys_inthandler()
 						/* Otherwise generate a keydown for the appropriate layer */
 						else if(c64keys.layer && (amicode>>16))
 						{
-							keytable[code]|=QUAL_ALTLAYER;
-							amicode>>=16;
+							/* Cancel the second layer for non-qualifier keys if qualifiers are pressed */
+						 	if (!(c64keys.qualifiers&QUAL_BLOCKLAYER) || ((amicode>>16)&QUAL_BLOCKLAYER))
+							{
+								keytable[code]|=QUAL_ALTLAYER;
+								amicode>>=16;
+							}
 						}
 
 						if(amicode&QUAL_SPECIAL)

@@ -140,8 +140,8 @@ char UploadExtROM(char *name)
 	if (RAOpen(&romfile, filename)) {
 		ClearError(ERROR_FILESYSTEM);
 		if(romfile.size == 0x80000) {
-			// 512KB Kickstart ROM
-			SendFileV2(&romfile, NULL, 0, 0xf00000, romfile.size>>9);
+			// 512KB Extended CD32 ROM
+			SendFileV2(&romfile, NULL, 0, 0xe00000, romfile.size>>9);
 			return(1);
 		}
 		else

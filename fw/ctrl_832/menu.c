@@ -1812,11 +1812,13 @@ void HandleUI(void)
                 memcpy((void*)config.kickstart.name, (void*)file.name, sizeof(config.kickstart.name));
                 memcpy((void*)config.kickstart.long_name, (void*)file.long_name, sizeof(config.kickstart.long_name));
 
-                OsdHide();
+		        OsdWrite(7, "           Loading...", 0,0);
 
 				OsdDoReset(0,SPI_RST_CPU | SPI_CPU_HLT);
 
-				UploadKickstart(config.kickstart.name);
+				ApplyConfiguration(1,0);
+//				UploadKickstart(config.kickstart.name);
+                OsdHide();
 				OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
 
                 menustate = MENU_NONE1;
