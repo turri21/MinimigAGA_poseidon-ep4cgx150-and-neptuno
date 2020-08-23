@@ -159,6 +159,7 @@ architecture rtl of chameleon_toplevel is
 	signal amiga_key : unsigned(7 downto 0);
 	signal amiga_key_stb : std_logic;
 
+	signal vga_pixel : std_logic;
 	signal vga_window : std_logic;
 	signal vga_selcsync : std_logic;
 	signal vga_csync : std_logic;
@@ -212,6 +213,7 @@ architecture rtl of chameleon_toplevel is
 		CTRL_RX		:	 IN STD_LOGIC;
 		AMIGA_TX		:	 OUT STD_LOGIC;
 		AMIGA_RX		:	 IN STD_LOGIC;
+		VGA_PIXEL   :   OUT STD_LOGIC;
 		VGA_SELCS	:	 OUT STD_LOGIC;
 		VGA_CS		:	 OUT STD_LOGIC;
 		VGA_HS		:	 OUT STD_LOGIC;
@@ -428,6 +430,7 @@ PORT map
 		CTRL_RX => rs232_rxd,
 		AMIGA_TX => midi_txd,
 		AMIGA_RX => midi_rxd,
+		VGA_PIXEL => vga_pixel,
 		VGA_SELCS => vga_selcsync,
 		VGA_CS => vga_csync,
 		VGA_HS => vga_hsync,
@@ -496,6 +499,7 @@ vga_window<='1';
 			iCsync=>vga_csync,
 			iHsync=>vga_hsync,
 			iVsync=>vga_vsync,
+			pixel=>vga_pixel,
 			vidEna=>vga_window,
 			iRed => unsigned(vga_red),
 			iGreen => unsigned(vga_green),

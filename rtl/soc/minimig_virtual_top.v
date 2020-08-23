@@ -36,6 +36,7 @@ module minimig_virtual_top
   input wire            AMIGA_RX,    // UART Receiver
   
   // VGA
+  output wire				VGA_PIXEL,  // high pulse for each new pixel
   output wire           VGA_SELCS,  // Select CSYNC
   output wire           VGA_CS,     // VGA C_SYNC
   output wire           VGA_HS,     // VGA H_SYNC
@@ -251,8 +252,19 @@ wire [7:0] rtg_clut_b;
 // RTG data fetch strobe
 assign rtg_pixel=(rtg_ena && (!rtg_blank || (!rtg_blank_d && rtg_ext)) && rtg_pixelctr==rtg_pixelwidth) ? 1'b1 : 1'b0;
 
+wire rtg_clut_pixel;
+assign rtg_clut_pixel = rtg_clut_in_sel & !rtg_clut_in_sel_d; // Detect rising edge;
+
+// Export a VGA pixel strobe for the dither module.
+assign VGA_PIXEL=rtg_ena ? (rtg_pixel | (rtg_clut_pixel & rtg_clut)) : vga_strobe;
+
+reg [1:0] vga_strobe_ctr;
+wire vga_strobe;
+assign vga_strobe = vga_strobe_ctr==2'b00 ? 1'b1 : 1'b0;
 
 always @(posedge CLK_114) begin
+
+	vga_strobe_ctr<=vga_strobe_ctr+2'b1;
 
 	// Delayed copies of signals
 	rtg_blank_d<=rtg_blank;

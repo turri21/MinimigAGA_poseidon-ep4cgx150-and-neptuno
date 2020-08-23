@@ -10,6 +10,7 @@ entity video_vga_dither is
 		clk : in std_logic;
 --		invertSync : in std_logic :='0';
 		vidEna : in std_logic :='1';
+		pixel : in std_logic;
 		iCsync : in std_logic;
 		iHsync : in std_logic;
 		iVsync : in std_logic;
@@ -125,17 +126,19 @@ end generate;
 			
 			prevhsync<=iHsync;
 			
-			ctr(0) <= not ctr(0);
-			if ctr(0)='0' then
-				lfsr_reg<=lfsr_reg(23 downto 0) & (lfsr_reg(24) xor lfsr_reg(21));	
+			if pixel='1' then
+				ctr(0) <= not ctr(0);
+				if ctr(0)='0' then
+					lfsr_reg<=lfsr_reg(23 downto 0) & (lfsr_reg(24) xor lfsr_reg(21));	
+				end if;
+				if prevvbl='1' and iVsync='0' then
+					field<=not field;
+					row<='0';
+					ctr<=(others=>'0');
+				end if;
+				prevvbl<=iVsync;
 			end if;
-			if prevvbl='1' and iVsync='0' then
-				field<=not field;
-				row<='0';
-				ctr<=(others=>'0');
-			end if;
-			prevvbl<=iVsync;
-			
+
 		end if;
 	end process;
 end architecture;

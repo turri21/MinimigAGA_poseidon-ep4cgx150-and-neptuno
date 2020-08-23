@@ -15,6 +15,8 @@
 #include <stdio.h>
 #include <string.h>
 
+//#define EXTENDED_ROM
+
 configTYPE config;
 fileTYPE file;
 extern char s[40];
@@ -132,6 +134,7 @@ char UploadKickstart(char *name)
 // Upload Extended ROM
 char UploadExtROM(char *name)
 {
+#ifdef EXTENDED_ROM
 	char filename[12];
 
 	strncpy(filename, name, 8); // copy base name
@@ -150,6 +153,9 @@ char UploadExtROM(char *name)
 		}
 	}
 	return(0);
+#else
+	return(1);
+#endif;
 }
 
 

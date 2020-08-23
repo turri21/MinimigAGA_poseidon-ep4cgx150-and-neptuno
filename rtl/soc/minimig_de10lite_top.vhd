@@ -91,6 +91,7 @@ architecture RTL of DE10liteToplevel is
 
 	
 -- Video
+	signal vga_pixel : std_logic;
 	signal vga_red: std_logic_vector(7 downto 0);
 	signal vga_green: std_logic_vector(7 downto 0);
 	signal vga_blue: std_logic_vector(7 downto 0);
@@ -148,6 +149,7 @@ architecture RTL of DE10liteToplevel is
 		CTRL_RX		:	 IN STD_LOGIC;
 		AMIGA_TX		:	 OUT STD_LOGIC;
 		AMIGA_RX		:	 IN STD_LOGIC;
+		VGA_PIXEL   : OUT STD_LOGIC;
 		VGA_SELCS   : OUT STD_LOGIC;
 		VGA_CS		:	 OUT STD_LOGIC;
 		VGA_HS		:	 OUT STD_LOGIC;
@@ -242,6 +244,7 @@ PORT map
 		CTRL_RX => rs232_rxd,
 		AMIGA_TX => open,
 		AMIGA_RX => '1',
+		VGA_PIXEL => vga_pixel,
 		VGA_SELCS => vga_selcsync,
 		VGA_CS => vga_csync,
 		VGA_HS => vga_hsync,
@@ -312,6 +315,7 @@ mydither : entity work.video_vga_dither
 	)
 	port map(
 		clk=>sysclk,
+		pixel=> vga_pixel,
 		vidEna=>vga_window,
 		iSelcsync=>vga_selcsync,
 		iCsync=>vga_csync,

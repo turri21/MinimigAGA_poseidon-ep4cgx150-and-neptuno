@@ -218,9 +218,10 @@ void fpga_init() {
 
 	BootHome();
 
-	sprintf(rtl_ver, "Minimig AGA%s version %d.%d.%d for Turbo Chameleon 64", ver_beta ? " BETA" : "", ver_major, ver_minor, ver_minion);
+	sprintf(rtl_ver, "Minimig AGA%s version 20%d-%d-%d for Turbo Chameleon 64", ver_beta ? " BETA" : "",
+		ver_major, ver_minor, ver_minion);
 	BootPrintEx(rtl_ver);
-	sprintf(rtl_ver, "Firmware version %x",MM_FIRMWARE_VERSION);
+	sprintf(rtl_ver, "Firmware version: %s",MM_FIRMWARE_VERSION);
 	BootPrintEx(rtl_ver);
 	BootPrintEx(" ");
 	BootPrintEx("Minimig AGA by Rok Krajnc.  Original Minimig by Dennis van Weeren");

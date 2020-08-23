@@ -157,6 +157,7 @@ architecture rtl of chameleon2_toplevel is
 	signal vga_r: std_logic_vector(7 downto 0);
 	signal vga_g: std_logic_vector(7 downto 0);
 	signal vga_b: std_logic_vector(7 downto 0);
+	signal vga_pixel : std_logic;
 	signal vga_window : std_logic;
 	signal vga_hsync : std_logic;
 	signal vga_vsync : std_logic;
@@ -229,6 +230,7 @@ architecture rtl of chameleon2_toplevel is
 		CTRL_RX		:	 IN STD_LOGIC;
 		AMIGA_TX		:	 OUT STD_LOGIC;
 		AMIGA_RX		:	 IN STD_LOGIC;
+		VGA_PIXEL   :   OUT STD_LOGIC;
 		VGA_SELCS   :   OUT STD_LOGIC;
 		VGA_CS		:	 OUT STD_LOGIC;
 		VGA_HS		:	 OUT STD_LOGIC;
@@ -487,6 +489,7 @@ PORT map
 		CTRL_RX => rs232_rxd,
 		AMIGA_TX => amiser_txd,
 		AMIGA_RX => amiser_rxd,
+		VGA_PIXEL => vga_pixel,
 		VGA_SELCS => vga_selcsync,
 		VGA_CS => vga_csync,
 		VGA_HS => vga_hsync,
@@ -551,6 +554,7 @@ PORT map
 		)
 		port map(
 			clk=>clk_114,
+			pixel=>vga_pixel,
 --			invertSync=>'1',
 			iSelcsync=>vga_selcsync,
 			iCsync=>vga_csync,
@@ -566,7 +570,7 @@ PORT map
 			oGreen => grn,
 			oBlue => blu
 		);
-	
+
 sdaudio: component hybrid_pwm_sd
 	port map
 	(
