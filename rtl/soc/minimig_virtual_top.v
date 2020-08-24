@@ -817,14 +817,26 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.amiga_ack(amigahost_ack)
 	);
 
+wire [15:0] aud_amiga_left_filtered;
+wire [15:0] aud_amiga_right_filtered;
+
+audiofilter myaudiofilter
+(
+	.clk(CLK_28),
+	.filter_ena(LED_POWER),
+	.audio_in_left({aud_amiga_left,1'b0}),
+	.audio_in_right({aud_amiga_right,1'b0}),
+	.audio_out_left(aud_amiga_left_filtered),
+	.audio_out_right(aud_amiga_right_filtered)
+);
 
 AudioMix myaudiomix
 (
 	.clk(CLK_28),
 	.reset_n(reset_out),
-	.audio_in_l1({aud_amiga_left,1'b0}),
+	.audio_in_l1(aud_amiga_left_filtered),
 	.audio_in_l2(aud_left),
-	.audio_in_r1({aud_amiga_right,1'b0}),
+	.audio_in_r1(aud_amiga_right_filtered),
 	.audio_in_r2(aud_right),
 	.audio_l(AUDIO_L),
 	.audio_r(AUDIO_R)
