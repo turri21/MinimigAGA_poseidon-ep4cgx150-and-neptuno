@@ -202,6 +202,7 @@ module minimig
 	input	_15khz,				//scandoubler disable
 	output pwr_led,				//power led
 	output disk_led,				//fdd led
+	output filter,
 	input		msdat_i,				//PS2 mouse data
 	input		msclk_i,				//PS2 mouse clk
 	input		kbddat_i,				//PS2 keyboard data
@@ -457,7 +458,7 @@ end
 
 //assign pwrled = (_led & (led_dim | ~turbo)) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
 assign pwr_led = (_led & led_dim) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
-
+assign filter = !_led;
 
 assign memcfg = memory_config[5:0];
 

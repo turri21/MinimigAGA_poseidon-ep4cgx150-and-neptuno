@@ -36,10 +36,17 @@ derive_clock_uncertainty
 # Really shouldn't need to worry about these since the clock edge will
 # be 8.8ns away from the data.  Provided the signals all stay reasonably
 # together there shouldn't be a problem.
-set_input_delay -clock [get_clocks $clk_114] -min 0.5 [get_ports {mux_q[*]}]
-set_input_delay -clock [get_clocks $clk_114] -max 1.0 [get_ports {mux_q[*]}]
-set_output_delay -clock [get_clocks $clk_114] -min 0.0 [get_ports {mux[*]}]
-set_output_delay -clock [get_clocks $clk_114] -max 0.5 [get_ports {mux[*]}]
+
+# mux[0] seems to be on a tortuous path compared with the others
+# Since it has a whole clock cycle to propagate before mux_clk triggers
+# we multicycle it, but give it tight timing requirements on the second
+# cycle, giving the router freedom use about 1.2 cycles, since 1 cycle
+# seems to be unattainable.
+
+set_input_delay -clock [get_clocks $clk_114] -min 4.0 [get_ports {mux_q[*]}]
+set_input_delay -clock [get_clocks $clk_114] -max 4.5 [get_ports {mux_q[*]}]
+set_output_delay -clock [get_clocks $clk_114] -min 6.0 [get_ports {mux[*]}]
+set_output_delay -clock [get_clocks $clk_114] -max 6.5 [get_ports {mux[*]}]
 set_output_delay -clock [get_clocks $clk_114] -min 0.0 [get_ports {mux_clk}]
 set_output_delay -clock [get_clocks $clk_114] -max 0.5 [get_ports {mux_clk}]
 
@@ -90,3 +97,6 @@ set_multicycle_path -from {minimig_virtual_top:virtual_top|VideoStream:myvs|outp
 set_multicycle_path -from {minimig_virtual_top:virtual_top|VideoStream:myvs|outptr[*]} -to {minimig_virtual_top:virtual_top|sdram_ctrl:sdram|*} -hold -end 2
 set_multicycle_path -from {minimig_virtual_top:virtual_top|VideoStream:myaudiostream|*} -to {minimig_virtual_top:virtual_top|sdram_ctrl:sdram|*} -setup -end 2
 set_multicycle_path -from {minimig_virtual_top:virtual_top|VideoStream:myaudiostream|*} -to {minimig_virtual_top:virtual_top|sdram_ctrl:sdram|*} -hold -end 2
+
+
+set_multicycle_path -from {chameleon_io:myIO|mux_reg[*]} -to {mux[*]} -setup -end 2

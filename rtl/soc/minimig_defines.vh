@@ -3,7 +3,7 @@
 
 // virtual
 `ifdef MINIMIG_VIRTUAL
-`define MINIMIG_TOPLEVELDITHER  // Use our own dithering since target boards have 4 or 5 bits per gun
+`define MINIMIG_TOPLEVEL_DITHER  // Use our own dithering since target boards have 4 or 5 bits per gun
 `define MINIMIG_EXTRA_KEYBOARD
 `define MINIMIG_ALTERA
 `define MINIMIG_CYCLONE3

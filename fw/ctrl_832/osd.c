@@ -61,6 +61,7 @@ const char *supporters[]=
 	"Valentin Angelovski",
 	"Claudio Russo",
 	"Dominic Skilton",
+	"Sebastian Hermann",
 	"+ all other contributors.",
 	"Thanks also to Espen Skog,",
 	"Jens Drossler and everyone",

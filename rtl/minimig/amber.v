@@ -217,9 +217,15 @@ assign vi_b = vi_b_tmp[8+2-1:2];
 
 `ifdef MINIMIG_TOPLEVEL_DITHER
 
+wire [ 8-1:0] dither_r;
+wire [ 8-1:0] dither_g;
+wire [ 8-1:0] dither_b;
+wire f_cnt;
+
 assign dither_r = vi_r;
 assign dither_g = vi_g;
 assign dither_b = vi_b;
+assign f_cnt=1'b0;
 
 `else
 //// dither ////

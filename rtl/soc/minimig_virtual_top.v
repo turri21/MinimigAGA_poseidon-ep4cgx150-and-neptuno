@@ -148,6 +148,7 @@ wire [ 32-1:0] tg68_VBR_out;
 wire           tg68_ovr;
 
 // minimig
+wire           filter;
 wire           led;
 wire [ 16-1:0] ram_data;      // sram data bus
 wire [ 16-1:0] ramdata_in;    // sram data bus in
@@ -254,17 +255,17 @@ assign rtg_pixel=(rtg_ena && (!rtg_blank || (!rtg_blank_d && rtg_ext)) && rtg_pi
 
 wire rtg_clut_pixel;
 assign rtg_clut_pixel = rtg_clut_in_sel & !rtg_clut_in_sel_d; // Detect rising edge;
-
+reg rtg_pixel_d;
 // Export a VGA pixel strobe for the dither module.
-assign VGA_PIXEL=rtg_ena ? (rtg_pixel | (rtg_clut_pixel & rtg_clut)) : vga_strobe;
+assign VGA_PIXEL=rtg_ena ? (rtg_pixel_d | (rtg_clut_pixel & rtg_clut)) : vga_strobe;
 
-reg [1:0] vga_strobe_ctr;
+reg [2:0] vga_strobe_ctr;
 wire vga_strobe;
-assign vga_strobe = vga_strobe_ctr==2'b00 ? 1'b1 : 1'b0;
+assign vga_strobe = vga_strobe_ctr==3'b000 ? 1'b1 : 1'b0;
 
 always @(posedge CLK_114) begin
-
-	vga_strobe_ctr<=vga_strobe_ctr+2'b1;
+	rtg_pixel_d<=rtg_pixel;
+	vga_strobe_ctr<=_15khz ? {vga_strobe_ctr[2:1],1'b0}+3'b010 : vga_strobe_ctr+3'b001;
 
 	// Delayed copies of signals
 	rtg_blank_d<=rtg_blank;
@@ -707,6 +708,7 @@ minimig minimig (
 	._15khz       (_15khz           ), // scandoubler disable
 	.pwr_led      (LED_POWER        ), // power led
 	.disk_led     (LED_DISK         ), // power led
+	.filter       (filter           ), // audio filter
 	.msdat_i      (PS2_MDAT_I       ), // PS2 mouse data
 	.msclk_i      (PS2_MCLK_I       ), // PS2 mouse clk
 	.kbddat_i     (PS2_DAT_I        ), // PS2 keyboard data
@@ -823,7 +825,7 @@ wire [15:0] aud_amiga_right_filtered;
 audiofilter myaudiofilter
 (
 	.clk(CLK_28),
-	.filter_ena(LED_POWER),
+	.filter_ena(filter),
 	.audio_in_left({aud_amiga_left,1'b0}),
 	.audio_in_right({aud_amiga_right,1'b0}),
 	.audio_out_left(aud_amiga_left_filtered),

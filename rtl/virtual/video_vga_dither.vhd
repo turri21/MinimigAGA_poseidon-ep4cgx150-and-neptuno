@@ -131,13 +131,14 @@ end generate;
 				if ctr(0)='0' then
 					lfsr_reg<=lfsr_reg(23 downto 0) & (lfsr_reg(24) xor lfsr_reg(21));	
 				end if;
-				if prevvbl='1' and iVsync='0' then
-					field<=not field;
-					row<='0';
-					ctr<=(others=>'0');
-				end if;
-				prevvbl<=iVsync;
 			end if;
+
+			if prevvbl='1' and iVsync='0' then
+				field<=not field;
+				row<='0';
+				ctr<=(others=>'0');
+			end if;
+			prevvbl<=iVsync;
 
 		end if;
 	end process;

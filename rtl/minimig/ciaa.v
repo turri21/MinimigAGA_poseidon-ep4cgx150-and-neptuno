@@ -275,12 +275,12 @@ reg freeze_reg=0;
 assign freeze = freeze_reg;
 assign aflock = 1'b0;
 
-reg [7:0] osd_ctrl_reg;
+//reg [7:0] osd_ctrl_reg;
 
 reg keystrobe_reg;
 assign keystrobe = keystrobe_reg && ((kbd_mouse_type == 2) || (kbd_mouse_type == 3));
 
-assign osd_ctrl = osd_ctrl_reg;
+//assign osd_ctrl = osd_ctrl_reg;
 
 reg kms_levelD;
 always @(posedge clk) begin
@@ -297,7 +297,7 @@ always @(posedge clk) begin
   if (clk7_en) begin
     if (reset) begin
       sdr_latch[7:0] <= 8'h00;
-      osd_ctrl_reg[7:0] <= 8'd0;
+      osd_ctrl[7:0] <= 8'd0;
       freeze_reg <= #1 1'b0;
      end else begin
       if (keystrobe && (kbd_mouse_type == 2) && ~keyboard_disabled) begin
@@ -308,7 +308,7 @@ always @(posedge clk) begin
         sdr_latch[7:0] <= data_in[7:0];
 
       if(keystrobe && ((kbd_mouse_type == 2) || (kbd_mouse_type == 3)))
-        osd_ctrl_reg[7:0] <= kbd_mouse_data;
+        osd_ctrl[7:0] <= kbd_mouse_data;
     end
   end
 end
