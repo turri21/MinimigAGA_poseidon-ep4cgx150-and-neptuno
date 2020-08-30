@@ -144,7 +144,7 @@ begin
 		if host_ack='1' then
 			host_ack_d<='1';
 		end if;
-		if host_sel='0' then
+		if (req and host_sel)='0' then
 			host_ack_d<='0';
 		end if;
 

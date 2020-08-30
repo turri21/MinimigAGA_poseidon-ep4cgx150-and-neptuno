@@ -446,18 +446,19 @@ assign vblank_out = vbl_int;
 //--------------------------------------------------------------------------------------
 
 // power led control
-reg [3:0] led_cnt;
-reg led_dim;
+//reg [3:0] led_cnt;
+//reg led_dim;
 
-always @ (posedge clk) begin
-  if (_hsync) begin
-    led_cnt <= led_cnt + 1;
-    led_dim <= |led_cnt;
-  end
-end
+//always @ (posedge clk) begin
+//  if (_hsync) begin
+//    led_cnt <= led_cnt + 1;
+//    led_dim <= |led_cnt;
+//  end
+//end
 
 //assign pwrled = (_led & (led_dim | ~turbo)) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
-assign pwr_led = (_led & led_dim) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
+//assign pwr_led = (_led & led_dim) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
+assign pwr_led = (_led & !hblank_out) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
 assign filter = !_led;
 
 assign memcfg = memory_config[5:0];

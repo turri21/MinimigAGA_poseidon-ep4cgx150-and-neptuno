@@ -377,7 +377,7 @@ unsigned char FileOpen(fileTYPE *file, const char *name)
             {
 				if(doLFN(pEntry,fileLFN))
 				{
-					printf("Have long filename entry\n");
+//					printf("Have long filename entry\n");
 				}
                 else if (!(pEntry->Attributes & (ATTR_VOLUME | ATTR_DIRECTORY))) // not a volume nor directory
                 {

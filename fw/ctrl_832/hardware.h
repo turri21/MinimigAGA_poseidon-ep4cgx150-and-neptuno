@@ -46,7 +46,7 @@
 
 #endif
 
-#define SPI_slow()  HW_SPI(HW_SPI_SPEED)=0xef
+#define SPI_slow()  HW_SPI(HW_SPI_SPEED)=0x3f
 #define SPI_fast()  HW_SPI(HW_SPI_SPEED)=0x1
 
 // Yuk.  The following monstrosity does a dummy read from the timer register, writes, then reads from

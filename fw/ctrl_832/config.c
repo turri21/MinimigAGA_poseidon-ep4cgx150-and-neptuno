@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 
-//#define EXTENDED_ROM
+#define EXTENDED_ROM
 
 configTYPE config;
 fileTYPE file;

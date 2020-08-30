@@ -815,8 +815,11 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.amiga_d(tg68_dat_out),
 		.amiga_q(amigahost_q),
 		.amiga_req(amigahost_req),
-		.amiga_wr(!tg68_rw),
-		.amiga_ack(amigahost_ack)
+		.amiga_wr(tg68_cpustate[0]),
+		.amiga_ack(amigahost_ack),
+	
+		.clk_28(CLK_28),
+		.tick_in(aud_tick),
 	);
 
 wire [15:0] aud_amiga_left_filtered;

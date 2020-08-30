@@ -75,7 +75,7 @@ module ciaa_ps2keyboard
   output [5:0] joy_emu
 );
 
-assign active = prready;
+//assign active = prready;
 
 //local signals
 reg		pclkout; 				//ps2 clk out

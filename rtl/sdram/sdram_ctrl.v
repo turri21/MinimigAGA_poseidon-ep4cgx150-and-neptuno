@@ -283,14 +283,10 @@ reg zreq;
 reg zbusy;
 wire zcachevalid;
 
-// data_a <= {1'b0,cpu_addr[8:2]}; // 7 bits for data address
-
 wire [zcachebits-1:0] zdata_a;
 wire [31:0] zdata_q;
 reg[31:0] zdata_w;
 reg zdata_wren;
-
-// tag_a <= {3'b100,cpu_addr[8:4]}; // 5 bits for tag address, since the tag is constant for a cacheline
 
 wire [zcachebits-1:0] ztag_a;
 wire [31:0] ztag_q;
@@ -306,6 +302,25 @@ localparam	zWRITE1=4, zWRITE2=5, zWAITFILL=6;
 localparam  zFLUSH1=7,zFLUSH2=8;
 reg [17:0] zstate;
 reg zinitcache;
+
+
+// In the data blockram the lower two bits of the address determine
+// which word of the burst we're reading.  When reading from the cache, this comes
+// from the CPU address; when writing to the cache it's determined by the state
+// machine.
+
+reg zreadword_burst; // Set to 1 when the lsb of the cache address should
+							// track the SDRAM controller.
+reg [1:0] zreadword;
+
+wire [zcachebits-1:0] zcacheline;
+assign zcacheline = {1'b0,zmAddr[zcachebits:4],(zreadword_burst ? zreadword : zmAddr[3:2])};
+
+//   zmAddr bits 3:2 specify which words of a burst we're interested in.
+//   Bits 10:4 specify the seven bit address of the cachelines;
+assign zdata_a = zcacheline;
+assign zcachevalid = (ztag_hit && zdata_valid) && !hostwe && !zbusy;
+
 
 // Dual port RAM.
 dpram_inf_generic #(.depth(zcachebits),.width(32)) hostcache(
@@ -324,37 +339,13 @@ wire zdata_valid;
 
 assign zdata_valid = ztag_q[31];
 
-//   bits 3:2 specify which words of a burst we're interested in.
-//   Bits 10:4 specify the seven bit address of the cachelines;
-//   Since we're building a 2-way cache, we'll map this to 
-//   {1'b0,addr[10:4]} and {1;b1,addr[10:4]} respectively.
-
-wire [zcachebits-1:0] zcacheline;
-
-//FIXME assign data_to_cpu = zdata_q;
-
-reg zreadword_burst; // Set to 1 when the lsb of the cache address should
-							// track the SDRAM controller.
-reg [1:0] zreadword;
-
-assign zcacheline = {1'b0,zmAddr[zcachebits:4],(zreadword_burst ? zreadword : zmAddr[3:2])};
 
 reg [zcachebits-2:0] zinitctr;
-
 assign ztag_a = zinitcache ? {1'b1,zinitctr} :
 			{3'b100,zmAddr[zcachebits:4]};
 
 wire ztag_hit;
 assign ztag_hit = ztag_q[20:0]==zmAddr[24:4];
-
-
-// In the data blockram the lower two bits of the address determine
-// which word of the burst we're reading.  When reading from the cache, this comes
-// from the CPU address; when writing to the cache it's determined by the state
-// machine.
-
-assign zdata_a = zcacheline;
-assign zcachevalid = (ztag_hit && zdata_valid) && !hostwe && !zbusy;
 
 always @(posedge sysclk)
 begin

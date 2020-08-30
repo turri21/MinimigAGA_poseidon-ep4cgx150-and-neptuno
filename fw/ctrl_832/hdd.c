@@ -378,7 +378,7 @@ void HandleHDD(unsigned int c1, unsigned int c2)
         else if (tfr[7] == ACMD_READ_SECTORS) // Read Sectors
         {
 			long lba;
-
+			putchar('r');
             sector = tfr[3];
             cylinder = tfr[4] | (tfr[5] << 8);
             head = tfr[6] & 0x0F;
@@ -513,6 +513,7 @@ void HandleHDD(unsigned int c1, unsigned int c2)
         {
 			long lba;
             WriteStatus(IDE_STATUS_RDY); // pio in (class 1) command type
+			putchar('R');
 
             sector = tfr[3];
             cylinder = tfr[4] | (tfr[5] << 8);
@@ -530,7 +531,7 @@ void HandleHDD(unsigned int c1, unsigned int c2)
 				    if (hdf[unit].file.size)
 				        HardFileSeek(&hdf[unit], (lba+hdf[unit].offset) < 0 ? 0 : lba + hdf[unit].offset);
 					// FIXME - READM could cross the fake RDB -> real disk boundary.
-					// FIXME - but first we should make some attempt to generate fake RGB in multiple mode.
+					// FIXME - but first we should make some attempt to generate fake RDB in multiple mode.
 
 				    while (sector_count)
 				    {
@@ -621,7 +622,7 @@ void HandleHDD(unsigned int c1, unsigned int c2)
         else if (tfr[7] == ACMD_WRITE_SECTORS) // write sectors
         {
             WriteStatus(IDE_STATUS_REQ); // pio out (class 2) command type
-
+			putchar('w');
             sector = tfr[3];
             cylinder = tfr[4] | (tfr[5] << 8);
             head = tfr[6] & 0x0F;
@@ -632,7 +633,12 @@ void HandleHDD(unsigned int c1, unsigned int c2)
 		    long lba=chs2lba(cylinder, head, sector, unit);
 			DEBUG2("Write lba %ld",lba);
 //			if(hdf[unit].type>=HDF_CARDPART0)
+				printf("Write lba before offset: %d\n",lba);
 				lba+=hdf[unit].offset;
+				printf("Write lba after offset: %d\n",lba);
+
+				if(lba<0)
+					SetError(ERROR_HDD,"Write to auto-generated RDB!",lba,0);
 
 		        if (hdf[unit].file.size)	// File size will be 0 in direct card modes
 		            HardFileSeek(&hdf[unit], (lba>-1) ? lba : 0);
@@ -704,7 +710,7 @@ void HandleHDD(unsigned int c1, unsigned int c2)
        else if (tfr[7] == ACMD_WRITE_MULTIPLE) // write sectors
         {
             WriteStatus(IDE_STATUS_REQ); // pio out (class 2) command type
-
+			putchar('W');
             sector = tfr[3];
             cylinder = tfr[4] | (tfr[5] << 8);
             head = tfr[6] & 0x0F;
@@ -715,7 +721,11 @@ void HandleHDD(unsigned int c1, unsigned int c2)
 		    long lba=chs2lba(cylinder, head, sector, unit);
 			DEBUG2("WriteM lba %ld",lba);
 //			if(hdf[unit].type>=HDF_CARDPART0)
+//				printf("Writem lba before offset: %d (%d sectors)\n",lba,sector_count);
 				lba+=hdf[unit].offset;
+//				printf("Writem lba after offset: %d\n",lba);
+				if(lba<0)
+					SetError(ERROR_HDD,"Write to auto-generated RDB!",lba,0);
 
 		        if (hdf[unit].file.size)	// File size will be 0 in direct card modes
 		            HardFileSeek(&hdf[unit], (lba>-1) ? lba : 0);
