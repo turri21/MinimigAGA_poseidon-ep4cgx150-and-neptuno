@@ -18,6 +18,7 @@ module cpu_cache_new (
   input  wire           cache_inhibit,  // cache inhibit
   // cpu
   input  wire           cpu_cs,         // cpu activity
+  input  wire           cpu_32bit,      // Is this a 32-bit access?
   input  wire [ 25-1:0] cpu_adr,        // cpu address
   input  wire [  2-1:0] cpu_bs,         // cpu byte selects
   input  wire           cpu_we,         // cpu write
@@ -194,8 +195,9 @@ localparam [3:0]
   CPU_SM_FILL6 = 4'd11,
   CPU_SM_FILL7 = 4'd12,
   CPU_SM_FILL8 = 4'd13,
-  CPU_SM_FILLW = 4'd14;
-
+  CPU_SM_FILLW = 4'd14,
+  CPU_SM_WAIT32BIT  = 4'd15;
+ 
 // sdram-side state machine
 localparam [3:0]
   SDR_SM_INIT0 = 4'd0,
@@ -240,6 +242,8 @@ assign cpu_adr_blk = cpu_adr[3:1];    // cache block address (inside cache row),
 assign cpu_adr_idx = cpu_adr[10:4];   // cache row address, 8 bits
 assign cpu_adr_tag = cpu_adr[24:11];  // tag, 13 bits
 
+reg longword;
+
 // cpu side state machine
 always @ (posedge clk) begin
   if (rst) begin
@@ -267,6 +271,7 @@ always @ (posedge clk) begin
     cpu_sm_dram0_we   <= #1 1'b0;
     cpu_sm_dram1_we   <= #1 1'b0;
     cpu_sm_bs         <= #1 2'b11;
+
     // state machine
     case (cpu_sm_state)
       CPU_SM_INIT : begin
@@ -343,7 +348,17 @@ always @ (posedge clk) begin
         end
       end
       CPU_SM_WAIT : begin
-        if (!cpu_cs) cpu_sm_state <= #1 CPU_SM_IDLE;
+			longword<=1'b0;
+			if (cpu_32bit && cpu_adr[3:1]!=3'b111)
+				cpu_sm_state <= #1 CPU_SM_WAIT32BIT;
+			else if (!cpu_cs)
+				cpu_sm_state <= #1 CPU_SM_IDLE;
+      end
+      CPU_SM_WAIT32BIT : begin
+			if (!cpu_cs) begin
+				cpu_sm_state <= #1 CPU_SM_READ;
+				longword<=1'b1;
+			end
       end
       CPU_SM_FILL1 : begin
         fill <= #1 1'b1;
@@ -472,9 +487,11 @@ always @ (posedge clk) begin
         end
       end
     endcase
+
     // when CPU lowers its request signal, lower ack too
-    if (!cpu_cs) cpu_ack <= #1 1'b0;
-  end
+    if (!cpu_cs && !longword) cpu_ack <= #1 1'b0;
+
+	end
 end
 
 
