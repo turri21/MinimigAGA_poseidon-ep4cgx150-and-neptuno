@@ -55,6 +55,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "config.h"
 #include "bincue.h"
 #include "c64keys.h"
+#include "akiko.h"
+#include "interrupts.h"
+#include "drivesounds.h"
+#include "audio.h"
 
 #include <stdio.h>
 
@@ -180,6 +184,8 @@ int ColdBoot()
 			BootPrintEx("Loading kickstart ROM...");
 			result=ApplyConfiguration(1,1);
 
+			drivesounds_init("DRIVESNDBIN");
+
 			OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
 		}
 	}
@@ -207,6 +213,7 @@ void c_entry(void)
 __geta4 int main(void)
 #endif
 {
+	int c=0;
 	setstack();
 	debugmsg[0]=0;
 	debugmsg2[0]=0;
@@ -222,12 +229,19 @@ __geta4 int main(void)
 	SetIntHandler(inthandler);
 	EnableInterrupts();
 
+//	drivesounds_start();
+//	drivesounds_queueevent(DRIVESOUND_MOTORSTART);
+
     while(1)
     {
 		if(c64keyboard_checkreset())
 			OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
-			
-		cd_continueaudio(&cd);
+
+//		++c;
+//		if((c&511)==0)
+//			drivesounds_queueevent(DRIVESOUND_STEP);
+
+//		cd_continueaudio(&cd);
         HandleFpga();
         HandleUI();
 		if(ErrorMask)
@@ -240,6 +254,7 @@ __geta4 int main(void)
 		        HandleUI();
             }
 		}
+//		drivesounds_fill();
     }
 }
 

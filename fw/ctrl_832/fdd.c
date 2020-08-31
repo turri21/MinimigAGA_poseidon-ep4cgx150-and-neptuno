@@ -33,6 +33,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "hdd.h"
 #include "config.h"
 
+#include "drivesounds.h"
+
 #include <stdio.h>
 
 unsigned char DEBUG=0;
@@ -700,6 +702,10 @@ void HandleFDD(unsigned char c1, unsigned char c2, unsigned char c3, unsigned ch
 		{
 			if((c4&1)!=df[sel].motor)
 			{
+				if(c4&1)
+					drivesounds_queueevent(DRIVESOUND_MOTORSTART);
+				else
+					drivesounds_queueevent(DRIVESOUND_MOTORSTOP);
 				printf("DF%d: motor %s\n",sel,(c4&1) ? "On" : "Off");
 				df[sel].motor=c4&1;
 			}
@@ -710,6 +716,7 @@ void HandleFDD(unsigned char c1, unsigned char c2, unsigned char c3, unsigned ch
 		{
 			printf("DF%d: track changed to %d\n",sel,c2);
 			df[sel].track=c2;
+			drivesounds_queueevent(DRIVESOUND_STEP);
 		}
 	}
 }

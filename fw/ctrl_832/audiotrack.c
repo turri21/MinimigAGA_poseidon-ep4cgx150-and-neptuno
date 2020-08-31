@@ -105,7 +105,7 @@ int audiotrack_init(struct audiotrack *track, const char *filename,int offset,in
 	int result=1;
 	track->buffer=buffer;
 	track->currentbuffer=0;
-	track->buffersize=32768;
+	track->buffersize=AUDIO_BUFFER_SIZE;
 	audiotrack_stop(track);
 	if(RAOpen(&track->file,filename))
 	{

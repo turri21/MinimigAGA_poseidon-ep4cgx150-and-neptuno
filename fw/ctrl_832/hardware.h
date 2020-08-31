@@ -24,6 +24,11 @@
 #define AUDIOF_CLEAR 2
 #define AUDIOF_ENA 1
 
+/* AUDIO_BUFFER at host address 0x680000, is 0xb00000 in Amiga space */
+#define AUDIO_BUFFER 0x680000
+/* We have two alternating buffers of this size */
+#define AUDIO_BUFFER_SIZE 0x8000
+
 #define HW_SPI(x) (*(volatile unsigned char *)(0x0fffffe0+x))
 #define HW_SPI_CS 7
 #define HW_SPI_DATA 3
