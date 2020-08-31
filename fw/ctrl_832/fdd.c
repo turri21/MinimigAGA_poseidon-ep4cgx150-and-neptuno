@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "hardware.h"
 #include "fat.h"
 #include "fdd.h"
+#include "hdd.h"
 #include "config.h"
 
 #include <stdio.h>
@@ -672,7 +673,7 @@ void UpdateDriveStatus(void)
     DisableFpga();
 }
 
-void HandleFDD(unsigned char c1, unsigned char c2)
+void HandleFDD(unsigned char c1, unsigned char c2, unsigned char c3, unsigned char c4)
 {
     unsigned int sel;
     drives = (c1 >> 4) & 0x03; // number of active floppy drives
@@ -693,5 +694,23 @@ void HandleFDD(unsigned char c1, unsigned char c2)
         WriteTrack(&df[sel]);
         DISKLED_OFF;
     }
+	else if ((c1 & (CMD_IDECMD | CMD_IDEDAT))==0)
+	{
+		for(sel=0;sel<4;++sel)
+		{
+			if((c4&1)!=df[sel].motor)
+			{
+				printf("DF%d: motor %s\n",sel,(c4&1) ? "On" : "Off");
+				df[sel].motor=c4&1;
+			}
+			c4>>=1;
+		}
+        sel = (c1 >> 6) & 0x03;
+		if(df[sel].track!=c2)
+		{
+			printf("DF%d: track changed to %d\n",sel,c2);
+			df[sel].track=c2;
+		}
+	}
 }
 

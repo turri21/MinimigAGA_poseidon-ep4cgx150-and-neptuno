@@ -102,18 +102,18 @@ void FatalError(unsigned long error)
 
 void HandleFpga(void)
 {
-    unsigned char  c1, c2;
+    unsigned char  c1, c2,c3,c4;
 
     EnableFpga();
     c1 = SPI(0); // cmd request and drive number
     c2 = SPI(0); // track number
     SPI(0);
     SPI(0);
-    SPI(0);
-    SPI(0);
+    c3 = SPI(0);
+    c4 = SPI(0);
     DisableFpga();
 
-    HandleFDD(c1, c2);
+    HandleFDD(c1, c2, c3 ,c4);
     HandleHDD(c1, c2);
 
     UpdateDriveStatus();

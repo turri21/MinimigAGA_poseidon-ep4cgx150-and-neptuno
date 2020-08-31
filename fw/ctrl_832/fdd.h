@@ -20,6 +20,7 @@ typedef struct
     unsigned char sector_offset; /*sector offset to handle tricky loaders*/
     unsigned char track; /*current track*/
     unsigned char track_prev; /*previous track*/
+	unsigned char motor;
     char          name[22]; /*floppy name*/
 } adfTYPE;
 
@@ -34,7 +35,7 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector);
 unsigned char GetData(void);
 void WriteTrack(adfTYPE *drive);
 void UpdateDriveStatus(void);
-void HandleFDD(unsigned char c1, unsigned char c2);
+void HandleFDD(unsigned char c1, unsigned char c2, unsigned char c3, unsigned char c4);
 
 #endif
 

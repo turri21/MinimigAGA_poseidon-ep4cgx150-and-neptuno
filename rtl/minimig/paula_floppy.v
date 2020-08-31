@@ -408,7 +408,7 @@ always @(*)
 	else if (trackwr)
 		spi_tx_data_2 = wr_fifo_status;
 	else
-		spi_tx_data_2 = 16'd0;
+		spi_tx_data_2 = {12'd0,motor_on};
 
 always @(*)	
 	if (cmd_fdd)
