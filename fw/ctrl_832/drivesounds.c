@@ -73,16 +73,145 @@ struct dsevent *drivesounds_nextevent()
 }
 
 
+void drivesounds_finishsound(int i)
+{
+	int result=0;
+	drivesounds.sounds[i].active=0;
+	drivesounds.sounds[i].cursor=0;
+	i=drivesounds.sounds[i].chain;
+	if(i)
+	{
+//						printf("chained with sound %d\n",drivesounds.sounds[i].chain);
+		drivesounds.sounds[i].active=1;
+		drivesounds.sounds[i].cursor=0;
+	}
+}
+
+
 int drivesounds_render(int timestamp)
 {
 	int samples;
-	short *buf=(short *)AUDIO_BUFFER;
-	int cursor=drivesounds.cursor;
+	int *buf=(int *)AUDIO_BUFFER;
+	short *src,*src2;
+	int srcc,srcc2;
+	int srcl,srcl2;
+	int srcs,srcs2;
+	int i;
 	int active=0;
+	int b1,b2;
 	samples=(timestamp-drivesounds.timestamp);
 	if(samples<0)
 		samples+=65536;
+	if(samples>127)
+		samples=127;
 	samples*=256;
+
+//	printf("Rendering %d samples\n",samples);
+
+	while(samples)
+	{
+		int span=samples;
+
+		src=src2=0;
+
+		for(i=0;i<DRIVESOUND_COUNT;++i)
+		{
+			if(drivesounds.sounds[i].active)
+			{
+				src=drivesounds.sounds[i].base;
+				srcl=drivesounds.sounds[i].length;
+				srcc=drivesounds.sounds[i].cursor;
+				src+=srcc;
+				srcs=i;
+				++i;
+				break;
+			}
+		}
+		for(;i<DRIVESOUND_COUNT;++i)
+		{
+			if(drivesounds.sounds[i].active)
+			{
+				src2=drivesounds.sounds[i].base;
+				srcl2=drivesounds.sounds[i].length;
+				srcc2=drivesounds.sounds[i].cursor;
+				src2+=srcc2;
+				srcs2=i;
+				++i;
+				break;
+			}
+		}
+		for(;i<DRIVESOUND_COUNT;++i)
+		{
+			drivesounds.sounds[i].active=0;
+		}
+
+		if(((AUDIO_BUFFER_SIZE-drivesounds.cursor)>>1)<span)
+			span=(AUDIO_BUFFER_SIZE-drivesounds.cursor)>>1;
+		if(src && ((srcl-srcc)<span))
+			span=srcl-srcc;
+		if(src2 && ((srcl2-srcc2)<span))
+			span=srcl2-srcc2;
+
+		buf=(int *)AUDIO_BUFFER;
+		buf+=drivesounds.cursor>>1;
+		b1=drivesounds.cursor&0x4000;
+		drivesounds.cursor+=2*span;
+		drivesounds.cursor&=(AUDIO_BUFFER_SIZE)-1;
+		b2=drivesounds.cursor&0x4000;
+
+//		putchar('s');
+//		if(b1!=b2)
+//		{
+//			putchar('-');
+//			while(audio_busy(b2 ? 1 : 0))
+//				;
+//		}
+
+//		printf("%x,%x,%x,%x,%x\n",(int)buf,(int)src,(int)src2,samples,span);
+
+ 		samples-=span;
+
+		if(src && src2)
+		{
+			srcc+=span;
+			srcc2+=span;
+			while(span--)
+			{
+				int c=*src++;
+				c+=*src2++;
+				c=((c&255)<<8) | ((c>>8)&255);
+				c=c*0x10001;
+				*buf++=c;
+			}
+			drivesounds.sounds[srcs].cursor=srcc;
+			drivesounds.sounds[srcs2].cursor=srcc2;
+			if(srcc>=srcl)
+				drivesounds_finishsound(srcs);
+			if(srcc2>=srcl2)
+				drivesounds_finishsound(srcs2);
+		}
+		else if(src)
+		{
+			srcc+=span;
+			while(span--)
+			{
+				int c=*src++;
+				c=((c&255)<<8) | ((c>>8)&255);
+				c=c*0x10001;
+				*buf++=c;
+			}
+			drivesounds.sounds[srcs].cursor=srcc;
+			if(srcc>=srcl)
+				drivesounds_finishsound(srcs);
+		}
+		else if(span)
+		{
+			while(span--)
+				*buf++=0;
+		}
+	}
+
+#if 0
 //	printf("Rendering %d samples at cursor position %d\n",samples,cursor);
 	while(samples--)
 	{
@@ -113,7 +242,7 @@ int drivesounds_render(int timestamp)
 		buf[cursor++]=i;
 		cursor&=(AUDIO_BUFFER_SIZE)-1;
 	}
-	drivesounds.cursor=cursor;
+#endif
 	drivesounds.timestamp=timestamp;
 //	printf("Timestamp set to %d\n",drivesounds.timestamp);
 	return(active);

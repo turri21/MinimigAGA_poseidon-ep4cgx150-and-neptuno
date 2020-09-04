@@ -38,6 +38,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "config.h"
 #include "menu.h"
 #include "hexdump.h"
+#include "drivesounds.h"
 
 #define OSDCOLOR_TOPLEVEL 0x01
 #define OSDCOLOR_SUBMENU 0x03
@@ -455,6 +456,7 @@ void HandleUI(void)
                 {
                     df[menusub].status = 0;
                     menustate = MENU_MAIN1;
+					drivesounds_queueevent(DRIVESOUND_EJECT);
                 }
                 else
                 {
@@ -2155,6 +2157,7 @@ void InsertFloppy(adfTYPE *drive)
     printf("file size: %lu (%lu KB)\r", file.size, file.size >> 10);
     printf("drive tracks: %u\r", drive->tracks);
     printf("drive status: 0x%02X\r", drive->status);
+	drivesounds_queueevent(DRIVESOUND_INSERT);
 }
 
 /*  Error Message */

@@ -700,7 +700,7 @@ void HandleFDD(unsigned char c1, unsigned char c2, unsigned char c3, unsigned ch
 	{
 		for(sel=0;sel<4;++sel)
 		{
-			if((c4&1)!=df[sel].motor)
+			if((c4&1)!=df[sel].motor && (df[sel].status&DSK_INSERTED))
 			{
 				if(c4&1)
 					drivesounds_queueevent(DRIVESOUND_MOTORSTART);
@@ -712,7 +712,7 @@ void HandleFDD(unsigned char c1, unsigned char c2, unsigned char c3, unsigned ch
 			c4>>=1;
 		}
         sel = (c1 >> 6) & 0x03;
-		if(df[sel].track!=c2)
+		if((df[sel].status&DSK_INSERTED) && (df[sel].track&254)!=(c2&254))
 		{
 			printf("DF%d: track changed to %d\n",sel,c2);
 			df[sel].track=c2;

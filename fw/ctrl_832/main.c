@@ -229,11 +229,15 @@ __geta4 int main(void)
 	SetIntHandler(inthandler);
 	EnableInterrupts();
 
-//	drivesounds_start();
+	audio_stop();
+	drivesounds_start();
 //	drivesounds_queueevent(DRIVESOUND_MOTORSTART);
+	while(audio_busy(0))
+		;
 
     while(1)
     {
+		drivesounds_fill();
 		if(c64keyboard_checkreset())
 			OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
 
@@ -254,7 +258,6 @@ __geta4 int main(void)
 		        HandleUI();
             }
 		}
-//		drivesounds_fill();
     }
 }
 
