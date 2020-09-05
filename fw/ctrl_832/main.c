@@ -232,8 +232,8 @@ __geta4 int main(void)
 	audio_stop();
 	drivesounds_start();
 //	drivesounds_queueevent(DRIVESOUND_MOTORSTART);
-	while(audio_busy(0))
-		;
+//	while(audio_busy(0))
+//		;
 
     while(1)
     {

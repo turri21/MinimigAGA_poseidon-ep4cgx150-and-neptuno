@@ -16,6 +16,11 @@ void audio_start()
 
 void audio_stop()
 {
+	AUDIO=AUDIOF_CLEAR;
+}
+
+void audio_clear()
+{
 	unsigned char *p=AUDIO_BUFFER;
 	int i;
 	AUDIO=AUDIOF_CLEAR;
