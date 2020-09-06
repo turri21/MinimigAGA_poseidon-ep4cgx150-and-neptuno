@@ -229,7 +229,7 @@ __geta4 int main(void)
 	SetIntHandler(inthandler);
 	EnableInterrupts();
 
-	audio_stop();
+	audio_clear();
 	drivesounds_start();
 //	drivesounds_queueevent(DRIVESOUND_MOTORSTART);
 //	while(audio_busy(0))

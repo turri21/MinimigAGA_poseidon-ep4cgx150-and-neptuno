@@ -248,6 +248,44 @@ void drivesounds_render(int timestamp)
 }
 
 
+/* Pick a step sound at random, while keeping no more than "maxactive" other step sounds playing. */
+
+int pickstep(int maxactive)
+{
+	int bestcursor=0;
+	int best=0;
+	int count=4;
+	int step;
+	while(count>maxactive)
+	{
+		best=0;
+		bestcursor=0;
+		count=0;
+		for(step=0;step<4;++step)
+		{
+			if(drivesounds.sounds[DRIVESOUND_STEP+step].active)
+			{
+				++count;
+				if(drivesounds.sounds[DRIVESOUND_STEP+step].cursor>=bestcursor)
+				{
+					best=step;	
+					bestcursor=drivesounds.sounds[DRIVESOUND_STEP+step].cursor;
+				}
+			}
+		}
+		if(count>maxactive)
+		{
+			drivesounds.sounds[DRIVESOUND_STEP+best].active=0;
+			drivesounds.sounds[DRIVESOUND_STEP+best].cursor=0;
+		}
+	}
+	step=TIMER&3;
+	while(drivesounds.sounds[DRIVESOUND_STEP+step].active)
+		step=(step+1)&3;
+	return(step);
+}
+
+
 int drivesounds_fill()
 {
 	struct dsevent *dse;
@@ -266,7 +304,7 @@ int drivesounds_fill()
 				drivesounds.sounds[DRIVESOUND_MOTORLOOP].chain=DRIVESOUND_MOTORSTOP;
 				break;
 			case DRIVESOUND_STEP:
-				dse->type+=TIMER&3;	/* Pick a step sound at "random" */
+				dse->type=DRIVESOUND_STEP+pickstep(1);	/* Pick a step sound at "random" */
 				drivesounds.sounds[dse->type].active=1;
 				drivesounds.sounds[dse->type].chain=0;				
 			default:
