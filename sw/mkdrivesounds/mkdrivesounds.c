@@ -5,6 +5,11 @@ enum DriveSound_Type {
 	DRIVESOUND_STEP1,DRIVESOUND_STEP2,DRIVESOUND_STEP3,DRIVESOUND_STEP4
 };
 
+int gains[]=
+{
+	90,90,90,90,90,220,220,220,220
+};
+
 
 void emit_longword_be(unsigned int v)
 {
@@ -16,14 +21,14 @@ void emit_longword_be(unsigned int v)
 
 unsigned char buffer[512];
 
-int bufferswap(unsigned char *b,int c)
+int bufferswap(unsigned char *b,int c,int gain)
 {
 	while(c>0)
 	{
 		int a=b[0] | (b[1]<<8);
-		a>>=1;
-		if(a&0x4000)
-			a|=0x8000;
+		if(a&0x8000)
+			a=-(0x10000-a);
+		a=(a*gain)>>8;
 		b[0]=a>>8;
 		b[1]=a&0xff;
 		b+=2;
@@ -48,10 +53,11 @@ int main(int argc,char **argv)
 		fprintf(stderr,"Size %d\n",l);
 		emit_longword_be(i-1);
 		emit_longword_be(l);
+		fprintf(stderr,"Gain: %d\n",gains[i-1]);
 		while(l>0)
 		{
 			int r=fread(buffer,1,512,f);
-			bufferswap(buffer,r);
+			bufferswap(buffer,r,gains[i-1]);
 			l-=r;
 			fwrite(buffer,1,r,stdout);
 		}

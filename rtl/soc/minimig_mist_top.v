@@ -132,8 +132,8 @@ wire           _ram_oe;       // sram output enable
 wire           _15khz;        // scandoubler disable
 wire           joy_emu_en;    // joystick emulation enable
 wire           sdo;           // SPI data output
-wire [ 15-1:0] ldata;         // left DAC data
-wire [ 15-1:0] rdata;         // right DAC data
+wire [ 16-1:0] ldata;         // left DAC data
+wire [ 16-1:0] rdata;         // right DAC data
 wire           audio_left;
 wire           audio_right;
 wire           vs;
@@ -488,7 +488,7 @@ user_io user_io(
      .CORE_TYPE(8'ha5),    // minimig core id (a1 - old minimig id, a5 - new aga minimig id)
      .CONF(core_config)
   );
-
+  
 
 //// minimig top ////
 minimig minimig (
@@ -538,6 +538,7 @@ minimig minimig (
   .mouse_btn1   (1'b1             ), // mouse button 1
   .mouse_btn2   (1'b1             ), // mouse button 2
   .mouse_btn    (mouse_buttons    ),  // mouse buttons
+  .kbd_reset_n  (1'b1             ),  // Aux keyboard reset (not used with MiST)
   .kbd_mouse_data (kbd_mouse_data ),  // mouse direction data, keycodes
   .kbd_mouse_type (kbd_mouse_type ),  // type of data
   .kbd_mouse_strobe (kbd_mouse_strobe), // kbd/mouse data strobe
@@ -561,10 +562,10 @@ minimig minimig (
   .green        (green            ),  // green
   .blue         (blue             ),  // blue
   //audio
-  .left         (AUDIO_L          ),  // audio bitstream left
-  .right        (AUDIO_R          ),  // audio bitstream right
-  .ldata        (                 ),  // left DAC data
-  .rdata        (                 ),  // right DAC data
+  .left         (                 ),  // audio bitstream left
+  .right        (                 ),  // audio bitstream right
+  .ldata        (ldata            ),  // left DAC data
+  .rdata        (rdata            ),  // right DAC data
   //user i/o
   .cpu_config   (cpu_config       ), // CPU config
   .memcfg       (memcfg           ), // memory config
@@ -581,6 +582,22 @@ minimig minimig (
   .hd_frd       (                 )   // hd fifo  ading
 );
 
+
+wire [15:0] lunsigned;
+assign lunsigned[15]=!ldata[15];
+assign lunsigned[14:0]=ldata[14:0];
+
+wire [15:0] runsigned;
+assign runsigned[15]=!rdata[15];
+assign runsigned[14:0]=rdata[14:0];
+
+hybrid_pwm_sd sd(
+	.clk(clk_114),
+	.d_l(lunsigned),
+	.q_l(AUDIO_L),
+	.d_r(runsigned),
+	.q_r(AUDIO_R)
+);
 
 endmodule
 

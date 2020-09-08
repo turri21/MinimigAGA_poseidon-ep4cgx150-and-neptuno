@@ -21,7 +21,7 @@ reg [15:0] sigma_l;
 reg [15:0] sigma_r;
 
 // Periodic dumping of the accumulator to kill standing tones.
-reg [9:0] dumpcounter;
+reg [12:0] dumpcounter;
 reg dump;
 
 always @(posedge clk)

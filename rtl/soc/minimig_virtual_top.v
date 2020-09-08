@@ -148,7 +148,6 @@ wire [ 32-1:0] tg68_VBR_out;
 wire           tg68_ovr;
 
 // minimig
-wire           filter;
 wire           led;
 wire [ 16-1:0] ram_data;      // sram data bus
 wire [ 16-1:0] ramdata_in;    // sram data bus in
@@ -193,8 +192,8 @@ wire [  16-1:0] joyd;
 //wire [  3-1:0] mouse_buttons;
 
 // Audio
-wire [14:0] aud_amiga_left;
-wire [14:0] aud_amiga_right;    // sigma-delta DAC output right
+wire [15:0] aud_amiga_left;
+wire [15:0] aud_amiga_right;    // sigma-delta DAC output right
 
 // UART
 wire minimig_rxd;
@@ -708,7 +707,6 @@ minimig minimig (
 	._15khz       (_15khz           ), // scandoubler disable
 	.pwr_led      (LED_POWER        ), // power led
 	.disk_led     (LED_DISK         ), // power led
-	.filter       (filter           ), // audio filter
 	.msdat_i      (PS2_MDAT_I       ), // PS2 mouse data
 	.msclk_i      (PS2_MCLK_I       ), // PS2 mouse clk
 	.kbddat_i     (PS2_DAT_I        ), // PS2 keyboard data
@@ -822,26 +820,13 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.tick_in(aud_tick),
 	);
 
-wire [15:0] aud_amiga_left_filtered;
-wire [15:0] aud_amiga_right_filtered;
-
-audiofilter myaudiofilter
-(
-	.clk(CLK_28),
-	.filter_ena(filter),
-	.audio_in_left({aud_amiga_left,1'b0}),
-	.audio_in_right({aud_amiga_right,1'b0}),
-	.audio_out_left(aud_amiga_left_filtered),
-	.audio_out_right(aud_amiga_right_filtered)
-);
-
 AudioMix myaudiomix
 (
 	.clk(CLK_28),
 	.reset_n(reset_out),
-	.audio_in_l1(aud_amiga_left_filtered),
+	.audio_in_l1(aud_amiga_left),
 	.audio_in_l2(aud_left),
-	.audio_in_r1(aud_amiga_right_filtered),
+	.audio_in_r1(aud_amiga_right),
 	.audio_in_r2(aud_right),
 	.audio_l(AUDIO_L),
 	.audio_r(AUDIO_R)

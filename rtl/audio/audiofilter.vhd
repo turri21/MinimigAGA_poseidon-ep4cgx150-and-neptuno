@@ -21,7 +21,7 @@ end entity;
 
 architecture behavioural of audiofilter is
 
-signal clkdiv : unsigned (8 downto 0);
+signal clkdiv : unsigned (7 downto 0);
 
 signal y_n_left : signed(18 downto 0);
 signal y_n_right : signed(18 downto 0);
@@ -37,18 +37,18 @@ signal sum : signed(18 downto 0);
 begin
 
 -- Multiplex input based on high bit of clkdiv
-x_n <= audio_in_left when clkdiv(8)='1' else audio_in_right;
+x_n <= audio_in_left when clkdiv(1)='1' else audio_in_right;
 -- Sign extend
 x_n_ext <= x_n(15) & x_n(15) & x_n(15) & x_n;
 
 -- Select which channel the previous value comes from...
-y_nminus1 <= y_n_left when clkdiv(8)='1' else y_n_right;
+y_nminus1 <= y_n_left when clkdiv(1)='1' else y_n_right;
 -- Shift and sign-extend.
 y_nminus1_shifted <= y_nminus1(18) & y_nminus1(18) & y_nminus1(18) & y_nminus1(18 downto 3);
 
 -- Output multiplexers - bypass filter when filter_ena is low.
-audio_out_left <= y_n_left(18 downto 3) when filter_ena='1' else audio_in_left;
-audio_out_right <= y_n_right(18 downto 3) when filter_ena='1' else audio_in_right;
+audio_out_left <= y_n_left(18 downto 3); -- when filter_ena='1' else audio_in_left;
+audio_out_right <= y_n_right(18 downto 3); -- when filter_ena='1' else audio_in_right;
 
 process(clk)
 begin
@@ -60,9 +60,9 @@ begin
 
 		sum <= y_nminus1 + x_n_ext - y_nminus1_shifted;
 
-		if clkdiv(8 downto 0)="000000001" then
+		if (filter_ena='1' and clkdiv(7 downto 0)="00000001") or (filter_ena='0' and clkdiv(1 downto 0)="01") then
 			y_n_right<=sum;
-		elsif clkdiv(8 downto 0)="100000001" then
+		elsif (filter_ena='1' and clkdiv(7 downto 0)="10000011") or (filter_ena='0' and clkdiv(1 downto 0)="11") then
 			y_n_left<=sum;
 		end if;
 	end if;

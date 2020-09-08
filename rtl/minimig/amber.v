@@ -374,15 +374,7 @@ assign osd_blank_out = dblscan ? sd_lbuf_o_d[28] : osd_blank;
 assign osd_pixel_out = dblscan ? sd_lbuf_o_d[27] : osd_pixel;
 
 
-//// osd ////
-//wire [  8-1:0] osd_r;
-//wire [  8-1:0] osd_g;
-//wire [  8-1:0] osd_b;
-
-//assign osd_r = (bm_osd_blank ? (bm_osd_pixel ? OSD_R : {2'b00, bm_r[7:2]}) : bm_r);
-//assign osd_g = (bm_osd_blank ? (bm_osd_pixel ? OSD_G : {2'b00, bm_g[7:2]}) : bm_g);
-//assign osd_b = (bm_osd_blank ? (bm_osd_pixel ? OSD_B : {2'b10, bm_b[7:2]}) : bm_b);
-
+`ifdef MINIMIG_TOPLEVEL_DITHER
 
 //// output registers ////
 always @ (posedge clk) begin
@@ -391,11 +383,33 @@ always @ (posedge clk) begin
   red_out    <= #1 bm_r;
   green_out  <= #1 bm_g;
   blue_out   <= #1 bm_b;
-//  red_out    <= #1 osd_r;
-//  green_out  <= #1 osd_g;
-//  blue_out   <= #1 osd_b;
 end
 
+`else
+
+//// osd ////
+wire [  8-1:0] osd_r;
+wire [  8-1:0] osd_g;
+wire [  8-1:0] osd_b;
+
+assign osd_r = (bm_osd_blank ? (bm_osd_pixel ? OSD_R : {2'b00, bm_r[7:2]}) : bm_r);
+assign osd_g = (bm_osd_blank ? (bm_osd_pixel ? OSD_G : {2'b00, bm_g[7:2]}) : bm_g);
+assign osd_b = (bm_osd_blank ? (bm_osd_pixel ? OSD_B : {2'b10, bm_b[7:2]}) : bm_b);
+
+
+//// output registers ////
+always @ (posedge clk) begin
+  _hsync_out <= #1 bm_hsync;
+  _vsync_out <= #1 bm_vsync;
+//  red_out    <= #1 bm_r;
+//  green_out  <= #1 bm_g;
+//  blue_out   <= #1 bm_b;
+  red_out    <= #1 osd_r;
+  green_out  <= #1 osd_g;
+  blue_out   <= #1 osd_b;
+end
+
+`endif
 
 endmodule
 

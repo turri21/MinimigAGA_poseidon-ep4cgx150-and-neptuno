@@ -202,7 +202,6 @@ module minimig
 	input	_15khz,				//scandoubler disable
 	output pwr_led,				//power led
 	output disk_led,				//fdd led
-	output filter,
 	input		msdat_i,				//PS2 mouse data
 	input		msclk_i,				//PS2 mouse clk
 	input		kbddat_i,				//PS2 keyboard data
@@ -236,8 +235,8 @@ module minimig
 	//audio
 	output	left,				//audio bitstream left
 	output	right,				//audio bitstream right
-	output	[14:0]ldata,			//left DAC data
-	output	[14:0]rdata, 			//right DAC data
+	output	[15:0]ldata,			//left DAC data
+	output	[15:0]rdata, 			//right DAC data
 	//user i/o
   output  [3:0] cpu_config,
   output  [5:0] memcfg,
@@ -459,7 +458,6 @@ assign vblank_out = vbl_int;
 //assign pwrled = (_led & (led_dim | ~turbo)) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
 //assign pwr_led = (_led & led_dim) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
 assign pwr_led = (_led & !hblank_out) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
-assign filter = !_led;
 
 assign memcfg = memory_config[5:0];
 
@@ -606,7 +604,8 @@ paula PAULA1
 	.trackdisp(trackdisp),
 	.secdisp(secdisp),
   .floppy_fwr (floppy_fwr),
-  .floppy_frd (floppy_frd)
+  .floppy_frd (floppy_frd),
+  .filter(!_led)
 );
 
 wire	[6:0] userio_memory_config;	//memory configuration
