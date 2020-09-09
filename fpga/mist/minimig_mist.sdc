@@ -44,7 +44,7 @@ set_output_delay -clock $clk_sdram -reference_pin [get_ports SDRAM_CLK] -min -0.
 
 # input delay on SPI pins
 set_input_delay -clock { spi_clk } .5 [get_ports SPI*]
-set_input_delay -clock { spi_clk } .5 [get_ports CONF_DATA]
+set_input_delay -clock { spi_clk } .5 [get_ports CONF_DATA0]
 
 # output delay on SPI pins
 set_output_delay -clock { spi_clk } .5 [get_ports SPI*]
@@ -69,6 +69,13 @@ set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -setup 
 set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -hold 3
 
 set_multicycle_path -from [get_clocks $clk_sdram] -to [get_clocks $clk_114] -setup 2
+
+set_multicycle_path -to {red_mixed_r[*]} -setup -end 3
+set_multicycle_path -to {green_mixed_r[*]} -setup -end 3
+set_multicycle_path -to {blue_mixed_r[*]} -setup -end 3
+set_multicycle_path -to {red_mixed_r[*]} -hold -end 2
+set_multicycle_path -to {green_mixed_r[*]} -hold -end 2
+set_multicycle_path -to {blue_mixed_r[*]} -hold -end 2
 
 # JTAG
 set ports [get_ports -nowarn {altera_reserved_tck}]

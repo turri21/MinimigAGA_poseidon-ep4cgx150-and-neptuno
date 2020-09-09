@@ -136,21 +136,43 @@ wire [ 16-1:0] ldata;         // left DAC data
 wire [ 16-1:0] rdata;         // right DAC data
 wire           audio_left;
 wire           audio_right;
+
+wire           cs;
 wire           vs;
 wire           hs;
 wire [  8-1:0] red;
 wire [  8-1:0] green;
 wire [  8-1:0] blue;
+
 wire [  6-1:0] mixer_red;
 wire [  6-1:0] mixer_green;
 wire [  6-1:0] mixer_blue;
 wire           mixer_vs;
 wire           mixer_hs;
+
+reg [  6-1:0] red_mixed_r;
+reg [  6-1:0] green_mixed_r;
+reg [  6-1:0] blue_mixed_r;
+reg           vs_mixed_r;
+reg           hs_mixed_r;
+
+wire [  8-1:0] dithered_red;
+wire [  8-1:0] dithered_green;
+wire [  8-1:0] dithered_blue;
+wire           dithered_vs;
+wire           dithered_hs;
+
 reg            vs_reg;
 reg            hs_reg;
-reg  [  6-1:0] red_reg;
-reg  [  6-1:0] green_reg;
-reg  [  6-1:0] blue_reg;
+reg				cs_reg;
+reg  [  8-1:0] red_reg;
+reg  [  8-1:0] green_reg;
+reg  [  8-1:0] blue_reg;
+
+wire vga_selcs;
+wire vga_window;
+wire vga_selcsync;
+wire vga_pixel;
 
 // sdram
 wire           reset_out;
@@ -200,19 +222,19 @@ assign joy_emu_en       = 1'b1;
 assign LED              = ~led;
 
 // VGA data
-always @ (posedge clk_28) begin
-  vs_reg    <= #1 mixer_vs;
-  hs_reg    <= #1 mixer_hs;
-  red_reg   <= #1 mixer_red;
-  green_reg <= #1 mixer_green;
-  blue_reg  <= #1 mixer_blue;
+always @ (posedge clk_114) begin
+  vs_mixed_r    <= #1 mixer_vs;
+  hs_mixed_r    <= #1 mixer_hs;
+  red_mixed_r   <= #1 mixer_red;
+  green_mixed_r <= #1 mixer_green;
+  blue_mixed_r  <= #1 mixer_blue;
 end
 
-assign VGA_VS           = vs_reg;
-assign VGA_HS           = hs_reg;
-assign VGA_R[5:0]       = red_reg[5:0];
-assign VGA_G[5:0]       = green_reg[5:0];
-assign VGA_B[5:0]       = blue_reg[5:0];
+assign VGA_VS           = vs_mixed_r;
+assign VGA_HS           = hs_mixed_r;
+assign VGA_R[5:0]       = red_mixed_r[5:0];
+assign VGA_G[5:0]       = green_mixed_r[5:0];
+assign VGA_B[5:0]       = blue_mixed_r[5:0];
 
 wire   ypbpr            = core_config[1];
 
@@ -226,11 +248,11 @@ video_mixer video_mixer
 	.ypbpr(ypbpr),
 	.ypbpr_full(1),
 
-	.r_p      (red      ),
-	.g_p      (green    ),
-	.b_p      (blue     ),
-	.hsync_p  (hs       ),
-	.vsync_p  (vs       ),
+	.r_p      (dithered_red      ),
+	.g_p      (dithered_green    ),
+	.b_p      (dithered_blue     ),
+	.hsync_p  (dithered_hs       ),
+	.vsync_p  (dithered_vs       ),
 
 	.VGA_HS (mixer_hs   ),
 	.VGA_VS (mixer_vs   ),
@@ -339,7 +361,17 @@ TG68K tg68k (
   .ramlds       (tg68_clds        ),
   .ramuds       (tg68_cuds        ),
   .CACR_out     (tg68_CACR_out    ),
-  .VBR_out      (tg68_VBR_out     )
+  .VBR_out      (tg68_VBR_out     ),
+  // RTG signals
+	.rtg_addr(rtg_baseaddr),
+	.rtg_vbend(rtg_vbend),
+	.rtg_ext(rtg_ext),
+	.rtg_pixelclock(rtg_pixelwidth),
+	.rtg_clut(rtg_clut),
+	.rtg_clut_idx(rtg_clut_idx),
+	.rtg_clut_r(rtg_clut_r),
+	.rtg_clut_g(rtg_clut_g),
+	.rtg_clut_b(rtg_clut_b),
 );
 
 `endif
@@ -455,6 +487,10 @@ sdram_ctrl sdram (
   .cpuena       (tg68_cpuena      ),
   .chipRD       (ramdata_in       ),
   .chip48       (chip48           ),
+  .rtgAddr      (rtg_addr_mangled ),
+  .rtgce        (rtg_ramreq       ),
+  .rtgfill      (rtg_fill         ),
+  .rtgRd        (rtg_fromram      ), 
   .reset_out    (reset_out        ),
   .enaRDreg     (                 ),
   .enaWRreg     (tg68_enaWR       ),
@@ -489,7 +525,14 @@ user_io user_io(
      .CONF(core_config)
   );
   
-
+  
+wire           VGA_CS_INT;     // VGA C_SYNC
+wire           VGA_HS_INT;     // VGA H_SYNC
+wire           VGA_VS_INT;     // VGA V_SYNC
+wire [  8-1:0] VGA_R_INT;      // VGA Red[5:0]
+wire [  8-1:0] VGA_G_INT;      // VGA Green[5:0]
+wire [  8-1:0] VGA_B_INT;      // VGA Blue[5:0]
+  
 //// minimig top ////
 minimig minimig (
   //m68k pins
@@ -556,11 +599,13 @@ minimig minimig (
   .sdo          (minimig_sdo      ),  // SPI data output
   .sck          (SPI_SCK          ),  // SPI clock
   //video
-  ._hsync       (hs               ),  // horizontal sync
-  ._vsync       (vs               ),  // vertical sync
-  .red          (red              ),  // red
-  .green        (green            ),  // green
-  .blue         (blue             ),  // blue
+	.selcsync     (vga_selcs        ),
+	._csync       (cs               ),  // horizontal sync
+	._hsync       (hs               ),  // horizontal sync
+	._vsync       (vs               ),  // vertical sync
+	.red          (red              ),  // red
+	.green        (green            ),  // green
+	.blue         (blue             ),  // blue
   //audio
   .left         (                 ),  // audio bitstream left
   .right        (                 ),  // audio bitstream right
@@ -579,7 +624,12 @@ minimig minimig (
   .floppy_fwr   (                 ),  // floppy fifo writing
   .floppy_frd   (                 ),  // floppy fifo reading
   .hd_fwr       (                 ),  // hd fifo writing
-  .hd_frd       (                 )   // hd fifo  ading
+  .hd_frd       (                 ),   // hd fifo  ading
+	.hblank_out   (hblank_out       ),
+	.vblank_out   (vblank_out       ),
+	.osd_blank_out(osd_window       ),  // Let the toplevel dither module handle drawing the OSD.
+	.osd_pixel_out(osd_pixel        ),
+	.rtg_ena      (rtg_ena          )
 );
 
 
@@ -599,5 +649,172 @@ hybrid_pwm_sd sd(
 	.q_r(AUDIO_R)
 );
 
+assign vga_window = 1'b1;
+video_vga_dither #(.outbits(6)) dither
+(
+	.clk(clk_114),
+	.pixel(vga_pixel),
+	.vidEna(vga_window),
+	.iSelcsync(vga_selcsync),
+	.iCsync(VGA_CS_INT),
+	.iHsync(VGA_HS_INT),
+	.iVsync(VGA_VS_INT),
+	.iRed(VGA_R_INT),
+	.iGreen(VGA_G_INT),
+	.iBlue(VGA_B_INT),
+	.oHsync(dithered_hs),
+	.oVsync(dithered_vs),
+	.oRed(dithered_red[7:2]),
+	.oGreen(dithered_green[7:2]),
+	.oBlue(dithered_blue[7:2])
+	);
+
+assign dithered_red[1:0]=2'b0;
+assign dithered_green[1:0]=2'b0;
+assign dithered_blue[1:0]=2'b0;
+	
+
+// RTG support...
+
+wire rtg_ena;	// RTG screen on/off
+wire rtg_clut;	// Are we in high-colour or 8-bit CLUT mode?
+
+reg [3:0] rtg_pixelctr;	// Counter, compared against rtg_pixelwidth
+wire [3:0] rtg_pixelwidth; // Number of clocks per fetch - 1
+wire [7:0] rtg_clut_idx;	// The currently selected colour in indexed mode
+wire rtg_pixel;	// Strobe the next pixel from the FIFO
+
+wire hblank_out;
+wire vblank_out;
+reg rtg_vblank;
+wire rtg_blank;
+reg rtg_blank_d;
+reg [6:0] rtg_vbcounter;	// Vvbco counter
+wire [6:0] rtg_vbend; // Size of VBlank area
+
+
+wire [7:0] rtg_r;	// 16-bit mode RGB data
+wire [7:0] rtg_g;
+wire [7:0] rtg_b;
+reg rtg_clut_in_sel;	// Select first or second byte of 16-bit word as CLUT index
+reg rtg_clut_in_sel_d;
+wire rtg_ext;	// Extend the active area by one clock.
+wire [7:0] rtg_clut_r;	// RGB data from CLUT
+wire [7:0] rtg_clut_g;
+wire [7:0] rtg_clut_b;
+
+
+// RTG data fetch strobe
+assign rtg_pixel=(rtg_ena && (!rtg_blank || (!rtg_blank_d && rtg_ext)) && rtg_pixelctr==rtg_pixelwidth) ? 1'b1 : 1'b0;
+
+wire rtg_clut_pixel;
+assign rtg_clut_pixel = rtg_clut_in_sel & !rtg_clut_in_sel_d; // Detect rising edge;
+reg rtg_pixel_d;
+// Export a VGA pixel strobe for the dither module.
+assign vga_pixel=rtg_ena ? (rtg_pixel_d | (rtg_clut_pixel & rtg_clut)) : vga_strobe;
+
+reg [2:0] vga_strobe_ctr;
+wire vga_strobe;
+assign vga_strobe = vga_strobe_ctr==3'b000 ? 1'b1 : 1'b0;
+
+always @(posedge clk_114) begin
+	rtg_pixel_d<=rtg_pixel;
+	vga_strobe_ctr<=_15khz ? {vga_strobe_ctr[2:1],1'b0}+3'b010 : vga_strobe_ctr+3'b001;
+
+	// Delayed copies of signals
+	rtg_blank_d<=rtg_blank;
+	rtg_clut_in_sel_d<=rtg_clut_in_sel;
+
+	// Alternate colour index at twice the fetch clock.
+	if(rtg_pixelctr=={1'b0,rtg_pixelwidth[3:1]})
+		rtg_clut_in_sel<=1'b1;
+	
+	// Increment the fetch clock, reset during blank.
+	if(rtg_blank || rtg_pixel) begin
+		rtg_pixelctr<=3'b0;
+		rtg_clut_in_sel<=1'b0;
+	end else begin
+		rtg_pixelctr<=rtg_pixelctr+1;
+	end
+end
+
+
+always @(posedge clk_28)
+begin
+	// Handle vblank manually, since the OS makes it awkward to use the chipset for this.
+  cs_reg    <= #1 cs;
+  vs_reg    <= #1 vs;
+  hs_reg    <= #1 hs;
+	if(vblank_out) begin
+		rtg_vblank<=1'b1;
+		rtg_vbcounter<=5'b0;
+	end else if(rtg_vbcounter==rtg_vbend) begin
+		rtg_vblank<=1'b0;
+	end else if(hs & !hs_reg) begin
+		rtg_vbcounter<=rtg_vbcounter+1;
+	end
+end
+
+assign rtg_blank = rtg_vblank | hblank_out;
+
+assign rtg_clut_idx = rtg_clut_in_sel_d ? rtg_dat[7:0] : rtg_dat[15:8];
+assign rtg_r=!rtg_blank ? {rtg_dat[14:10],rtg_dat[14:12]} : 16'b0 ;
+assign rtg_g=!rtg_blank ? {rtg_dat[9:5],rtg_dat[9:7]} : 16'b0 ;
+assign rtg_b=!rtg_blank ? {rtg_dat[4:0],rtg_dat[4:2]} : 16'b0 ;
+
+wire [24:4] rtg_baseaddr;
+wire [24:0] rtg_addr;
+wire [15:0] rtg_dat;
+
+wire rtg_ramreq;
+wire [15:0] rtg_fromram;
+wire rtg_fill;
+
+// Replicate the CPU's address mangling.
+wire [24:0] rtg_addr_mangled;
+assign rtg_addr_mangled[24]=rtg_addr[24];
+assign rtg_addr_mangled[23]=rtg_addr[23]^(rtg_addr[22]|rtg_addr[21]);
+assign rtg_addr_mangled[22:0]=rtg_addr[22:0];
+
+VideoStream myvs
+(
+	.clk(clk_114),
+	.reset_n((!vblank_out) & rtg_ena),
+	.enable(rtg_ena),
+	.baseaddr({rtg_baseaddr[24:4],4'b0}),
+	// SDRAM interface
+	.a(rtg_addr),
+	.req(rtg_ramreq),
+	.d(rtg_fromram),
+	.fill(rtg_fill),
+	// Display interface
+	.rdreq(rtg_pixel),
+	.q(rtg_dat)
+);
+
+
+always @ (posedge clk_114) begin
+  red_reg   <= #1 rtg_ena && !rtg_blank ? rtg_clut ? rtg_clut_r : rtg_r : red;
+  green_reg <= #1 rtg_ena && !rtg_blank ? rtg_clut ? rtg_clut_g : rtg_g : green;
+  blue_reg  <= #1 rtg_ena && !rtg_blank ? rtg_clut ? rtg_clut_b : rtg_b : blue;
+end
+
+
+wire osd_window;
+wire osd_pixel;
+wire [1:0] osd_r;
+wire [1:0] osd_g;
+wire [1:0] osd_b;
+assign osd_r = osd_pixel ? 2'b11 : 2'b00;
+assign osd_g = osd_pixel ? 2'b11 : 2'b00;
+assign osd_b = osd_pixel ? 2'b11 : 2'b10;
+assign VGA_CS_INT           = cs_reg;
+assign VGA_VS_INT           = vs_reg;
+assign VGA_HS_INT           = hs_reg;
+assign VGA_R_INT[7:0]       = osd_window ? {osd_r,red_reg[7:2]} : red_reg[7:0];
+assign VGA_G_INT[7:0]       = osd_window ? {osd_g,green_reg[7:2]} : green_reg[7:0];
+assign VGA_B_INT[7:0]       = osd_window ? {osd_b,blue_reg[7:2]} : blue_reg[7:0];
+
+	
 endmodule
 

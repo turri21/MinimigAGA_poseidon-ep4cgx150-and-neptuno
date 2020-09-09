@@ -362,7 +362,7 @@ assign VGA_HS           = hs_reg;
 assign VGA_G[7:0]       = osd_window ? {osd_g,green_reg[7:2]} : green_reg[7:0];
 assign VGA_B[7:0]       = osd_window ? {osd_b,blue_reg[7:2]} : blue_reg[7:0];
 // The lengths we go to in order to make an otherwise unused signal visible in signaltap!
-assign VGA_R[7:0]       = osd_window ? {osd_r,red_reg[7:6],debug_sdr} : red_reg[7:0];
+assign VGA_R[7:0]       = osd_window ? {osd_r,red_reg[7:2]} : red_reg[7:0];
 
 
 
