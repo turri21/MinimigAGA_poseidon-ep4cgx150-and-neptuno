@@ -816,7 +816,7 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.amiga_wr(tg68_cpustate[0]),
 		.amiga_ack(amigahost_ack),
 	
-		.clk_28(CLK_28),
+		.clk_28(CLK_114),
 		.tick_in(aud_tick),
 	);
 
