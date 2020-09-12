@@ -30,6 +30,7 @@ struct dseventbuffer
 {
 	volatile int in;
 	volatile int out;
+	int	loaded;
 	int timestamp;
 	int	cursor;
 	int silence;
@@ -104,6 +105,13 @@ void drivesounds_render(int timestamp)
 	int srcs,srcs2,srcs3;
 	int i;
 	int b1,b2;
+
+	if(!drivesounds.loaded)
+	{
+		drivesounds.timestamp=timestamp;
+		return;
+	}
+
 	samples=(timestamp-drivesounds.timestamp);
 	if(samples<0)
 		samples+=65536;
@@ -329,6 +337,7 @@ int drivesounds_init(const char *filename)
 	RAFile file;
 	drivesounds.in=0;
 	drivesounds.out=0;
+	drivesounds.loaded=0;
 	if(RAOpen(&file,filename))
 	{
 		int size=file.size;
@@ -363,6 +372,7 @@ int drivesounds_init(const char *filename)
 						size=0;
 					}
 				}
+				drivesounds.loaded=1;
 			}
 			else
 				printf("Bad signature in DriveSounds file\n");

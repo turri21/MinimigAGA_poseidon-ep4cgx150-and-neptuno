@@ -273,10 +273,10 @@ end process;
 -----------------------------------------------------------------
 -- Support States
 -----------------------------------------------------------------
-process(clk_28, shift)
+process(sysclk, shift)
 begin
-  	IF rising_edge(clk_28) THEN
-		support_state <= idle;
+  	IF rising_edge(sysclk) THEN
+--		support_state <= idle;
 		uart_ld <= '0';
 		IOcpuena <= '0';
 		CASE support_state IS
@@ -297,6 +297,8 @@ begin
 			WHEN io_aktion =>
 				if req='0' then
 					support_state <= idle;
+				else
+					IOcpuena <= '1';
 				end if;
 				
 			WHEN OTHERS => 
@@ -313,7 +315,7 @@ end process;
 	sd_do <= sd_out(15);
 	SD_busy <= shiftcnt(13);
 	
-	PROCESS (clk_28, n_reset, scs, sd_di, sd_dimm) BEGIN
+	PROCESS (sysclk, n_reset, scs, sd_di, sd_dimm) BEGIN
 		IF scs(1)='0' THEN
 			sd_di_in <= sd_di;
 		ELSE	
@@ -327,7 +329,7 @@ end process;
 			spi_speed <= "00000000";
 --			dscs <= '0';
 			spi_wait <= '0';
-		ELSIF rising_edge(clk_28) THEN
+		ELSIF rising_edge(sysclk) THEN
 
 			spi_wait_d<=spi_wait;
 			

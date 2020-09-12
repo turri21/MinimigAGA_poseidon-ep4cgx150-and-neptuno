@@ -447,6 +447,10 @@ userio_ps2mouse pm1
   .test_data  (test_data)
 );
 
+assign _mleft1  = 1'b1;
+assign _mright1 = 1'b1;
+assign _mthird1 = 1'b1;
+
 `else
 
 //// MiST mouse ////

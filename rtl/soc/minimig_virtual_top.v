@@ -698,6 +698,8 @@ minimig minimig (
 	.mouse_btn1   (1'b1             ), // mouse button 1
 	.mouse_btn2   (1'b1             ), // mouse button 2
 	//  .mouse_btn    (mouse_buttons    ),  // mouse buttons
+	.mouse0_btn   (3'b000           ),
+	.mouse1_btn   (3'b000           ),
 	.kbd_reset_n  (kbd_reset_n),
 	.kbd_mouse_data (kbd_mouse_data ),  // mouse direction data, keycodes
 	//  .kbd_mouse_type (kbd_mouse_type ),  // type of data
@@ -815,7 +817,7 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.amiga_wr(tg68_cpustate[0]),
 		.amiga_ack(amigahost_ack),
 	
-		.clk_28(CLK_114),
+		.clk_28(CLK_28),
 		.tick_in(aud_tick),
 	);
 

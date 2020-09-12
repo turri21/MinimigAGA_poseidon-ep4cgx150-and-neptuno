@@ -57,8 +57,8 @@ reg 	[10:0] wraddr;			//osd buffer write address
 wire	[7:0] wrdat;			//osd buffer write data
 wire	wren;					//osd buffer write enable
 
-reg		[3:0] highlight;		//highlighted line number
-reg		invert;					//invertion of highlighted line
+//reg		[3:0] highlight;		//highlighted line number
+//reg		invert;					//invertion of highlighted line
 reg		[5:0] vpos;
 reg		vena;
 
@@ -170,19 +170,20 @@ always @(posedge clk)
     
 assign osdframe = vframe & hframe & osd_enabled;
 
-always @(posedge clk)
-  if (clk7_en) begin
-    if (~highlight[3] && verbeam_osdclk[5:3]==highlight[2:0] && !verbeam_osdclk[6])
-  		invert <= 1;
-  	else if (verbeam[0])
-  		invert <= 0;
-  end
+//always @(posedge clk)
+//  if (clk7_en) begin
+//    if (~highlight[3] && verbeam_osdclk[5:3]==highlight[2:0] && !verbeam_osdclk[6])
+//  		invert <= 1;
+//  	else if (verbeam[0])
+//  		invert <= 0;
+//  end
 
 
 //--------------------------------------------------------------------------------------
 
 //assign osd blank and pixel outputs
-assign osd_pixel = invert ^ (vena & bufout[vpos[2:0]]);
+//assign osd_pixel = invert ^ (vena & bufout[vpos[2:0]]);
+assign osd_pixel = vena & bufout[vpos[2:0]];
 assign osd_blank = osdframe;
 
 
@@ -450,14 +451,14 @@ end
 
 
 // highlight - TODO remove!
-always @ (posedge clk) begin
-  if (clk7_en) begin
-    if (~osd_enable)
-      highlight <= #1 4'b1000;
-    else if (rx && !cmd && spi_osd_buffer_sel && (dat_cnt == 3) && wrdat[4])
-      highlight <= #1 wrdat[3:0];
-  end
-end
+//always @ (posedge clk) begin
+//  if (clk7_en) begin
+//    if (~osd_enable)
+//      highlight <= #1 4'b1000;
+//    else if (rx && !cmd && spi_osd_buffer_sel && (dat_cnt == 3) && wrdat[4])
+//      highlight <= #1 wrdat[3:0];
+//  end
+//end
 
 `ifdef MINIMIG_HOST_DIRECT  // Does the host CPU have direct access to the Minimig's memory?
 
