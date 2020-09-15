@@ -224,11 +224,11 @@ assign LED              = ~led;
 
 // VGA data
 always @ (posedge clk_114) begin
-  vs_mixed_r    <= #1 mixer_vs;
-  hs_mixed_r    <= #1 mixer_hs;
-  red_mixed_r   <= #1 mixer_red;
-  green_mixed_r <= #1 mixer_green;
-  blue_mixed_r  <= #1 mixer_blue;
+  vs_mixed_r    <= #1 ypbpr ? 1'b1 : dithered_vs;
+  hs_mixed_r    <= #1 ypbpr ? VGA_CS_INT : dithered_hs;
+  red_mixed_r   <= #1 ypbpr ? mixer_red : dithered_red[7:2];
+  green_mixed_r <= #1 ypbpr ? mixer_green : dithered_green[7:2];
+  blue_mixed_r  <= #1 ypbpr ? mixer_blue : dithered_blue[7:2];
 end
 
 assign VGA_VS           = vs_mixed_r;
@@ -249,11 +249,11 @@ video_mixer video_mixer
 	.ypbpr(ypbpr),
 	.ypbpr_full(1),
 
-	.r_p      (dithered_red      ),
-	.g_p      (dithered_green    ),
-	.b_p      (dithered_blue     ),
-	.hsync_p  (dithered_hs       ),
-	.vsync_p  (dithered_vs       ),
+	.r_p      (VGA_R_INT         ),
+	.g_p      (VGA_G_INT         ),
+	.b_p      (VGA_B_INT         ),
+	.hsync_p  (VGA_HS_INT        ),
+	.vsync_p  (VGA_VS_INT        ),
 
 	.VGA_HS (mixer_hs   ),
 	.VGA_VS (mixer_vs   ),

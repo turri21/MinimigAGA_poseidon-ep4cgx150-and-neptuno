@@ -406,9 +406,9 @@ always @(posedge clk)//sync
   	else if (hpos==hsstrt)//end of sync pulse	(sync pulse = 4.65us)
   		vser <= 1'b0;
   end
-		
+
 //composite sync
-assign _csync = _hsync & _vsync | vser; //composite sync with serration pulses
+assign _csync = (_hsync ^ hsynctrue) & (_vsync ^ vsynctrue) | vser; //composite sync with serration pulses
 
 //--------------------------------------------------------------------------------------//
 //                                                                                      //
