@@ -137,6 +137,8 @@ wire [ 16-1:0] rdata;         // right DAC data
 wire           audio_left;
 wire           audio_right;
 
+wire				hsyncpol;
+wire				vsyncpol;
 wire           cs;
 wire           vs;
 wire           hs;
@@ -169,7 +171,6 @@ reg  [  8-1:0] red_reg;
 reg  [  8-1:0] green_reg;
 reg  [  8-1:0] blue_reg;
 
-wire vga_selcs;
 wire vga_window;
 wire vga_selcsync;
 wire vga_pixel;
@@ -224,15 +225,20 @@ assign LED              = ~led;
 
 // VGA data
 always @ (posedge clk_114) begin
-  vs_mixed_r    <= #1 ypbpr ? 1'b1 : dithered_vs;
-  hs_mixed_r    <= #1 ypbpr ? VGA_CS_INT : dithered_hs;
-  red_mixed_r   <= #1 ypbpr ? mixer_red : dithered_red[7:2];
-  green_mixed_r <= #1 ypbpr ? mixer_green : dithered_green[7:2];
-  blue_mixed_r  <= #1 ypbpr ? mixer_blue : dithered_blue[7:2];
+//  vs_mixed_r    <= #1 ypbpr ? mixer_vs : dithered_vs;
+//  hs_mixed_r    <= #1 ypbpr ? mixer_hs : dithered_hs;
+//  red_mixed_r   <= #1 ypbpr ? mixer_red : dithered_red[7:2];
+//  green_mixed_r <= #1 ypbpr ? mixer_green : dithered_green[7:2];
+//  blue_mixed_r  <= #1 ypbpr ? mixer_blue : dithered_blue[7:2];
+  vs_mixed_r    <= #1 mixer_vs;
+  hs_mixed_r    <= #1 mixer_hs;
+  red_mixed_r   <= #1 mixer_red;
+  green_mixed_r <= #1 mixer_green;
+  blue_mixed_r  <= #1 mixer_blue;
 end
 
-assign VGA_VS           = vs_mixed_r;
-assign VGA_HS           = hs_mixed_r;
+assign VGA_VS           = vs_mixed_r ^ (vsyncpol & !(ypbpr | vga_selcsync));
+assign VGA_HS           = hs_mixed_r ^ (hsyncpol & !(ypbpr | vga_selcsync));
 assign VGA_R[5:0]       = red_mixed_r[5:0];
 assign VGA_G[5:0]       = green_mixed_r[5:0];
 assign VGA_B[5:0]       = blue_mixed_r[5:0];
@@ -249,11 +255,16 @@ video_mixer video_mixer
 	.ypbpr(ypbpr),
 	.ypbpr_full(1),
 
-	.r_p      (VGA_R_INT         ),
-	.g_p      (VGA_G_INT         ),
-	.b_p      (VGA_B_INT         ),
-	.hsync_p  (VGA_HS_INT        ),
-	.vsync_p  (VGA_VS_INT        ),
+//	.r_p      (VGA_R_INT         ),
+//	.g_p      (VGA_G_INT         ),
+//	.b_p      (VGA_B_INT         ),
+//	.hsync_p  (VGA_HS_INT        ),
+//	.vsync_p  (VGA_VS_INT        ),
+	.r_p      (dithered_red      ),
+	.g_p      (dithered_green    ),
+	.b_p      (dithered_blue     ),
+	.hsync_p  (dithered_hs       ),
+	.vsync_p  (dithered_vs       ),
 
 	.VGA_HS (mixer_hs   ),
 	.VGA_VS (mixer_vs   ),
@@ -376,77 +387,6 @@ TG68K tg68k (
 
 `endif
 
-/*
-//// TG68 main CPU ////
-TG68 tg68 (
-  .clk          (clk_114          ),
-  .reset        (tg68_rst         ),
-  .clkena_in    (1'b1             ),
-  .data_in      (tg68_dat_in      ),
-  .data_out     (tg68_dat_out     ),
-  .IPL          (tg68_IPL         ),
-  .dtack        (tg68_dtack       ),
-  .addr         (tg68_adr         ),
-  .as           (tg68_as          ),
-  .uds          (tg68_uds         ),
-  .lds          (tg68_lds         ),
-  .rw           (tg68_rw          ),
-  .drive_data   (                 ),
-  .enaRDreg     (tg68_ena7RD      ),
-  .enaWRreg     (tg68_ena7WR      )
-);
-*/
-
-
-//// sdram ////
-/*
-sdram_ctrl sdram (
-  // sys
-  .sysclk       (clk_114          ),
-  .reset_in     (sdctl_rst        ),
-  .cache_rst    (tg68_rst         ),
-  .reset_out    (reset_out        ),
-  .cache_ena    (cpu_config[2]    ),
-  // sdram
-  .sdaddr       (SDRAM_A[12:0]    ),
-  .sd_cs        (sdram_cs         ),
-  .ba           (sdram_ba         ),
-  .sd_we        (SDRAM_nWE        ),
-  .sd_ras       (SDRAM_nRAS       ),
-  .sd_cas       (SDRAM_nCAS       ),
-  .dqm          (sdram_dqm        ),
-  .sdata        (SDRAM_DQ         ),
-  // host
-  .host_cs      (1'b0             ),
-  .host_adr     (22'hxxxxxx       ),
-  .host_we      (1'b0             ),
-  .host_bs      (2'bxx            ),
-  .host_wdat    (16'hxxxx         ),
-  .host_rdat    (                 ),
-  .host_ack     (                 ),
-  // chip
-  .chipAddr     ({2'b00, ram_address[21:1]}),
-  .chipL        (_ram_ble         ),
-  .chipU        (_ram_bhe         ),
-  .chipRW       (_ram_we          ),
-  .chip_dma     (_ram_oe          ),
-  .chipWR       (ram_data         ),
-  .chipRD       (ramdata_in       ),
-  .chip48       (chip48           ),
-  // cpu
-  .cpuAddr      (tg68_cad[24:1]   ),
-  .cpustate     (tg68_cpustate    ),
-  .cpuL         (tg68_clds        ),
-  .cpuU         (tg68_cuds        ),
-  .cpu_dma      (tg68_cdma        ),
-  .cpuWR        (tg68_dat_out     ),
-  .cpuRD        (tg68_cout        ),
-  .enaWRreg     (tg68_enaWR       ),
-  .ena7RDreg    (tg68_ena7RD      ),
-  .ena7WRreg    (tg68_ena7WR      ),
-  .cpuena       (tg68_cpuena      )
-);
-*/
 
 //sdram sdram (
 sdram_ctrl sdram (
@@ -605,10 +545,12 @@ minimig minimig (
   .sdo          (minimig_sdo      ),  // SPI data output
   .sck          (SPI_SCK          ),  // SPI clock
   //video
-	.selcsync     (vga_selcs        ),
+	.selcsync     (vga_selcsync     ),
 	._csync       (cs               ),  // horizontal sync
 	._hsync       (hs               ),  // horizontal sync
+	.hsyncpol     (hsyncpol         ),
 	._vsync       (vs               ),  // vertical sync
+	.vsyncpol     (vsyncpol         ),
 	.red          (red              ),  // red
 	.green        (green            ),  // green
 	.blue         (blue             ),  // blue
@@ -656,7 +598,7 @@ hybrid_pwm_sd sd(
 );
 
 assign vga_window = 1'b1;
-video_vga_dither #(.outbits(6)) dither
+video_vga_dither #(.outbits(6), .flickerreduce("false")) dither
 (
 	.clk(clk_114),
 	.pixel(vga_pixel),
@@ -670,14 +612,10 @@ video_vga_dither #(.outbits(6)) dither
 	.iBlue(VGA_B_INT),
 	.oHsync(dithered_hs),
 	.oVsync(dithered_vs),
-	.oRed(dithered_red[7:2]),
-	.oGreen(dithered_green[7:2]),
-	.oBlue(dithered_blue[7:2])
+	.oRed(dithered_red),
+	.oGreen(dithered_green),
+	.oBlue(dithered_blue)
 	);
-
-assign dithered_red[1:0]=2'b0;
-assign dithered_green[1:0]=2'b0;
-assign dithered_blue[1:0]=2'b0;
 	
 
 // RTG support...

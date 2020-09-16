@@ -70,7 +70,9 @@ module agnus
   output  reg dbr,          // agnus requests data bus
   output  reg dbwe,          // agnus does a memory write cycle (only disk and blitter dma channels may do this)
   output  _hsync,            // horizontal sync
+  output  hsyncpol,			  // horizontal sync polarity
   output  _vsync,            // vertical sync
+  output  vsyncpol,			  // vertical sync polarity
   output  _csync,            // composite sync
   output  blank,            // video blanking
   output  sol,            // start of video line (active during last pixel of previous line)
@@ -469,7 +471,9 @@ agnus_beamcounter  bc1
   .hpos(hpos),
   .vpos(vpos),
   ._hsync(_hsync),
+  .hsyncpol(hsyncpol),
   ._vsync(_vsync),
+  .vsyncpol(vsyncpol),
   ._csync(_csync),
   .blank(blank),
   .vbl(vbl),

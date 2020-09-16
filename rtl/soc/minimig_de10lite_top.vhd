@@ -326,9 +326,9 @@ mydither : entity work.video_vga_dither
 		iBlue => unsigned(vga_blue),
 		oHsync=>VGA_HS,
 		oVsync=>VGA_VS,
-		oRed => VGA_R,
-		oGreen => VGA_G,
-		oBlue => VGA_B
+		oRed(7 downto 4) => VGA_R,
+		oGreen(7 downto 4) => VGA_G,
+		oBlue(7 downto 4) => VGA_B
 	);
 
 

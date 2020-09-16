@@ -4,7 +4,8 @@ use IEEE.numeric_std.ALL;
 
 entity video_vga_dither is
 	generic (
-		outbits : integer :=4
+		outbits : integer :=4;
+		flickerreduce : boolean := true
 	);
 	port (
 		clk : in std_logic;
@@ -20,9 +21,9 @@ entity video_vga_dither is
 		iBlue : in unsigned(7 downto 0);
 		oHsync : out std_logic;
 		oVsync : out std_logic;
-		oRed : out unsigned(outbits-1 downto 0);
-		oGreen : out unsigned(outbits-1 downto 0);
-		oBlue : out unsigned(outbits-1 downto 0)
+		oRed : out unsigned(7 downto 0);
+		oGreen : out unsigned(7 downto 0);
+		oBlue : out unsigned(7 downto 0)
 	);
 end entity;
 
@@ -50,9 +51,9 @@ begin
 	oHsync<=iCsync when iSelcsync='1' else iHsync;
 	oVsync<='1' when iSelcsync='1' else iVsync;
 
-	oRed <= red(7 downto (8-outbits)) when vid_ena_d='1' else (others=>'0');
-	oGreen <= green(7 downto (8-outbits)) when vid_ena_d='1' else (others=>'0');
-	oBlue <= blue(7 downto (8-outbits)) when vid_ena_d='1' else (others=>'0');
+	oRed <= red when vid_ena_d='1' else (others=>'0');
+	oGreen <= green when vid_ena_d='1' else (others=>'0');
+	oBlue <= blue when vid_ena_d='1' else (others=>'0');
 
 -- Ordered dithering kernel, four-pixel clusters, two bits per pixel:
 -- 0, 3,
@@ -72,13 +73,26 @@ with selkernel select rdither(7-outbits downto 6-outbits) <=
 	kernel(3 downto 2) when "10",
 	kernel(1 downto 0) when "11";
 
+fr1:
+if flickerreduce=true generate
 gdither(7 downto 8-outbits)<=(others=>'0');
 with selkernel select gdither(7-outbits downto 6-outbits) <=
 	not kernel(7 downto 6) when "00",
 	not kernel(5 downto 4) when "01",
 	not kernel(3 downto 2) when "10",
 	not kernel(1 downto 0) when "11";
-	
+end generate;
+
+fr2:
+if flickerreduce=false generate
+gdither(7 downto 8-outbits)<=(others=>'0');
+with selkernel select gdither(7-outbits downto 6-outbits) <=
+	kernel(7 downto 6) when "00",
+	kernel(5 downto 4) when "01",
+	kernel(3 downto 2) when "10",
+	kernel(1 downto 0) when "11";
+end generate;
+
 bdither(7 downto 8-outbits)<=(others=>'0');
 with selkernel select bdither(7-outbits downto 6-outbits) <=
 	kernel(7 downto 6) when "00",
@@ -125,7 +139,7 @@ end generate;
 			end if;
 			
 			prevhsync<=iHsync;
-			
+
 			if pixel='1' then
 				ctr(0) <= not ctr(0);
 				if ctr(0)='0' then

@@ -361,8 +361,8 @@ wire           bm_osd_blank;
 wire           bm_osd_pixel;
 
 assign selcsync     = dblscan ? 1'b0 : varbeamen ? 1'b0 : 1'b1;
-assign bm_hsync     = dblscan ? !sd_lbuf_o_d[29] : _hsync_in;
-assign bm_vsync     = dblscan ? !_vsync_in       : _vsync_in;
+assign bm_hsync     = dblscan ? sd_lbuf_o_d[29] : _hsync_in;
+assign bm_vsync     = dblscan ? _vsync_in       : _vsync_in;
 //assign bm_hsync     = dblscan ? sd_lbuf_o_d[29] : varbeamen ? _hsync_in : ns_csync;
 //assign bm_vsync     = dblscan ? _vsync_in       : varbeamen ? _vsync_in : 1'b1;
 assign bm_r         = dblscan ? sl_r            : varbeamen ? red_in    : ns_r;

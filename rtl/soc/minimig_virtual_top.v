@@ -168,6 +168,8 @@ wire [  8-1:0] blue;
 reg            cs_reg;
 reg            vs_reg;
 reg            hs_reg;
+wire				hsyncpol;
+wire				vsyncpol;
 reg  [  8-1:0] red_reg;
 reg  [  8-1:0] green_reg;
 reg  [  8-1:0] blue_reg;
@@ -356,8 +358,8 @@ assign osd_r = osd_pixel ? 2'b11 : 2'b00;
 assign osd_g = osd_pixel ? 2'b11 : 2'b00;
 assign osd_b = osd_pixel ? 2'b11 : 2'b10;
 assign VGA_CS           = cs_reg;
-assign VGA_VS           = vs_reg;
-assign VGA_HS           = hs_reg;
+assign VGA_VS           = vsyncpol ^ vs_reg;
+assign VGA_HS           = hsyncpol ^ hs_reg;
 //assign VGA_R[7:0]       = osd_window ? {osd_r,red_reg[7:2]} : red_reg[7:0];
 assign VGA_G[7:0]       = osd_window ? {osd_g,green_reg[7:2]} : green_reg[7:0];
 assign VGA_B[7:0]       = osd_window ? {osd_b,blue_reg[7:2]} : blue_reg[7:0];
@@ -726,7 +728,9 @@ minimig minimig (
 	.selcsync     (VGA_SELCS        ),
 	._csync       (cs               ),  // horizontal sync
 	._hsync       (hs               ),  // horizontal sync
+	.hsyncpol     (hsyncpol         ),
 	._vsync       (vs               ),  // vertical sync
+	.vsyncpol     (vsyncpol         ),
 	.red          (red              ),  // red
 	.green        (green            ),  // green
 	.blue         (blue             ),  // blue

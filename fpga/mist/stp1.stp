@@ -2,219 +2,175 @@
   <display_tree gui_logging_enabled="0">
     <display_branch instance="auto_signaltap_0" log="USE_GLOBAL_TEMP" signal_set="USE_GLOBAL_TEMP" trigger="USE_GLOBAL_TEMP"/>
   </display_tree>
-  <instance entity_name="sld_signaltap" is_auto_node="yes" is_expanded="true" name="auto_signaltap_0" source_file="sld_signaltap.vhd">
+  <global_info>
+    <single attribute="active instance" value="0"/>
+    <multi attribute="frame size" size="2" value="1268,957"/>
+    <single attribute="jtag widget visible" value="1"/>
+    <multi attribute="jtag widget size" size="2" value="390,133"/>
+    <single attribute="instance widget visible" value="1"/>
+    <single attribute="config widget visible" value="1"/>
+    <single attribute="hierarchy widget visible" value="1"/>
+    <single attribute="data log widget visible" value="1"/>
+  </global_info>
+  <instance entity_name="sld_signaltap" is_auto_node="yes" name="auto_signaltap_0" source_file="sld_signaltap.vhd">
     <node_ip_info instance_id="0" mfg_id="110" node_id="0" version="6"/>
     <position_info>
       <single attribute="active tab" value="0"/>
-      <single attribute="data vertical scroll position" value="2"/>
-      <single attribute="data horizontal scroll position" value="11"/>
-      <single attribute="zoom level numerator" value="4"/>
-      <single attribute="zoom level denominator" value="1"/>
-      <single attribute="zoom offset numerator" value="32736"/>
-      <single attribute="zoom offset denominator" value="1"/>
     </position_info>
-    <signal_set global_temp="1" name="signal_set: 2020/09/09 21:55:50  #0">
-      <clock name="sdram_ctrl:sdram|sysclk" polarity="posedge" tap_mode="classic"/>
+    <signal_set global_temp="1" name="signal_set: 2020/09/16 20:20:41  #0">
+      <clock name="amiga_clk:amiga_clk|clk_28" polarity="posedge" tap_mode="classic"/>
       <config ram_type="M4K" reserved_data_nodes="0" reserved_storage_qualifier_nodes="0" reserved_trigger_nodes="0" sample_depth="128" trigger_in_enable="no" trigger_out_enable="no"/>
       <top_entity/>
       <signal_vec>
         <trigger_input_vec>
-          <wire name="red_mixed_r[0]" tap_mode="classic"/>
-          <wire name="red_mixed_r[1]" tap_mode="classic"/>
-          <wire name="red_mixed_r[2]" tap_mode="classic"/>
-          <wire name="red_mixed_r[3]" tap_mode="classic"/>
-          <wire name="red_mixed_r[4]" tap_mode="classic"/>
-          <wire name="red_mixed_r[5]" tap_mode="classic"/>
-          <wire name="red_reg[0]" tap_mode="classic"/>
-          <wire name="red_reg[1]" tap_mode="classic"/>
-          <wire name="red_reg[2]" tap_mode="classic"/>
-          <wire name="red_reg[3]" tap_mode="classic"/>
-          <wire name="red_reg[4]" tap_mode="classic"/>
-          <wire name="red_reg[5]" tap_mode="classic"/>
-          <wire name="red_reg[6]" tap_mode="classic"/>
-          <wire name="red_reg[7]" tap_mode="classic"/>
-          <wire name="rtg_clut_pixel" tap_mode="classic"/>
-          <wire name="rtg_pixel" tap_mode="classic"/>
-          <wire name="rtg_pixel_d" tap_mode="classic"/>
-          <wire name="vga_pixel" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[0]" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[1]" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[2]" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[3]" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[4]" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[5]" tap_mode="classic"/>
-          <wire name="video_vga_dither:dither|pixel" tap_mode="classic"/>
+          <wire name="VGA_HS" tap_mode="classic"/>
+          <wire name="VGA_VS" tap_mode="classic"/>
+          <wire name="minimig:minimig|_csync" tap_mode="classic"/>
+          <wire name="minimig:minimig|_hsync" tap_mode="classic"/>
+          <wire name="minimig:minimig|_vsync" tap_mode="classic"/>
+          <wire name="minimig:minimig|agnus:AGNUS1|_csync" tap_mode="classic"/>
+          <wire name="minimig:minimig|agnus:AGNUS1|_hsync" tap_mode="classic"/>
+          <wire name="minimig:minimig|agnus:AGNUS1|_vsync" tap_mode="classic"/>
+          <wire name="minimig:minimig|agnus:AGNUS1|hsyncpol" tap_mode="classic"/>
+          <wire name="minimig:minimig|agnus:AGNUS1|vsyncpol" tap_mode="classic"/>
+          <wire name="minimig:minimig|selcsync" tap_mode="classic"/>
+          <wire name="video_mixer:video_mixer|hsync_i" tap_mode="classic"/>
+          <wire name="video_mixer:video_mixer|hsync_p" tap_mode="classic"/>
+          <wire name="video_mixer:video_mixer|vsync_i" tap_mode="classic"/>
+          <wire name="video_mixer:video_mixer|vsync_p" tap_mode="classic"/>
+          <wire name="video_vga_dither:dither|iHsync" tap_mode="classic"/>
+          <wire name="video_vga_dither:dither|iSelcsync" tap_mode="classic"/>
+          <wire name="video_vga_dither:dither|iVsync" tap_mode="classic"/>
+          <wire name="video_vga_dither:dither|oHsync" tap_mode="classic"/>
+          <wire name="video_vga_dither:dither|oVsync" tap_mode="classic"/>
         </trigger_input_vec>
         <data_input_vec>
-          <wire name="red_mixed_r[0]" tap_mode="classic"/>
-          <wire name="red_mixed_r[1]" tap_mode="classic"/>
-          <wire name="red_mixed_r[2]" tap_mode="classic"/>
-          <wire name="red_mixed_r[3]" tap_mode="classic"/>
-          <wire name="red_mixed_r[4]" tap_mode="classic"/>
-          <wire name="red_mixed_r[5]" tap_mode="classic"/>
-          <wire name="red_reg[0]" tap_mode="classic"/>
-          <wire name="red_reg[1]" tap_mode="classic"/>
-          <wire name="red_reg[2]" tap_mode="classic"/>
-          <wire name="red_reg[3]" tap_mode="classic"/>
-          <wire name="red_reg[4]" tap_mode="classic"/>
-          <wire name="red_reg[5]" tap_mode="classic"/>
-          <wire name="red_reg[6]" tap_mode="classic"/>
-          <wire name="red_reg[7]" tap_mode="classic"/>
-          <wire name="rtg_clut_pixel" tap_mode="classic"/>
-          <wire name="rtg_pixel" tap_mode="classic"/>
-          <wire name="rtg_pixel_d" tap_mode="classic"/>
-          <wire name="vga_pixel" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[0]" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[1]" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[2]" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[3]" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[4]" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[5]" tap_mode="classic"/>
-          <wire name="video_vga_dither:dither|pixel" tap_mode="classic"/>
+          <wire name="VGA_HS" tap_mode="classic"/>
+          <wire name="VGA_VS" tap_mode="classic"/>
+          <wire name="minimig:minimig|_csync" tap_mode="classic"/>
+          <wire name="minimig:minimig|_hsync" tap_mode="classic"/>
+          <wire name="minimig:minimig|_vsync" tap_mode="classic"/>
+          <wire name="minimig:minimig|agnus:AGNUS1|_csync" tap_mode="classic"/>
+          <wire name="minimig:minimig|agnus:AGNUS1|_hsync" tap_mode="classic"/>
+          <wire name="minimig:minimig|agnus:AGNUS1|_vsync" tap_mode="classic"/>
+          <wire name="minimig:minimig|agnus:AGNUS1|hsyncpol" tap_mode="classic"/>
+          <wire name="minimig:minimig|agnus:AGNUS1|vsyncpol" tap_mode="classic"/>
+          <wire name="minimig:minimig|selcsync" tap_mode="classic"/>
+          <wire name="video_mixer:video_mixer|hsync_i" tap_mode="classic"/>
+          <wire name="video_mixer:video_mixer|hsync_p" tap_mode="classic"/>
+          <wire name="video_mixer:video_mixer|vsync_i" tap_mode="classic"/>
+          <wire name="video_mixer:video_mixer|vsync_p" tap_mode="classic"/>
+          <wire name="video_vga_dither:dither|iHsync" tap_mode="classic"/>
+          <wire name="video_vga_dither:dither|iSelcsync" tap_mode="classic"/>
+          <wire name="video_vga_dither:dither|iVsync" tap_mode="classic"/>
+          <wire name="video_vga_dither:dither|oHsync" tap_mode="classic"/>
+          <wire name="video_vga_dither:dither|oVsync" tap_mode="classic"/>
         </data_input_vec>
         <storage_qualifier_input_vec>
-          <wire name="red_mixed_r[0]" tap_mode="classic"/>
-          <wire name="red_mixed_r[1]" tap_mode="classic"/>
-          <wire name="red_mixed_r[2]" tap_mode="classic"/>
-          <wire name="red_mixed_r[3]" tap_mode="classic"/>
-          <wire name="red_mixed_r[4]" tap_mode="classic"/>
-          <wire name="red_mixed_r[5]" tap_mode="classic"/>
-          <wire name="red_reg[0]" tap_mode="classic"/>
-          <wire name="red_reg[1]" tap_mode="classic"/>
-          <wire name="red_reg[2]" tap_mode="classic"/>
-          <wire name="red_reg[3]" tap_mode="classic"/>
-          <wire name="red_reg[4]" tap_mode="classic"/>
-          <wire name="red_reg[5]" tap_mode="classic"/>
-          <wire name="red_reg[6]" tap_mode="classic"/>
-          <wire name="red_reg[7]" tap_mode="classic"/>
-          <wire name="rtg_clut_pixel" tap_mode="classic"/>
-          <wire name="rtg_pixel" tap_mode="classic"/>
-          <wire name="rtg_pixel_d" tap_mode="classic"/>
-          <wire name="vga_pixel" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[0]" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[1]" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[2]" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[3]" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[4]" tap_mode="classic"/>
-          <wire name="video_mixer:video_mixer|VGA_R[5]" tap_mode="classic"/>
-          <wire name="video_vga_dither:dither|pixel" tap_mode="classic"/>
+          <wire name="VGA_HS" tap_mode="classic"/>
+          <wire name="VGA_VS" tap_mode="classic"/>
+          <wire name="minimig:minimig|_csync" tap_mode="classic"/>
+          <wire name="minimig:minimig|_hsync" tap_mode="classic"/>
+          <wire name="minimig:minimig|_vsync" tap_mode="classic"/>
+          <wire name="minimig:minimig|agnus:AGNUS1|_csync" tap_mode="classic"/>
+          <wire name="minimig:minimig|agnus:AGNUS1|_hsync" tap_mode="classic"/>
+          <wire name="minimig:minimig|agnus:AGNUS1|_vsync" tap_mode="classic"/>
+          <wire name="minimig:minimig|agnus:AGNUS1|hsyncpol" tap_mode="classic"/>
+          <wire name="minimig:minimig|agnus:AGNUS1|vsyncpol" tap_mode="classic"/>
+          <wire name="minimig:minimig|selcsync" tap_mode="classic"/>
+          <wire name="video_mixer:video_mixer|hsync_i" tap_mode="classic"/>
+          <wire name="video_mixer:video_mixer|hsync_p" tap_mode="classic"/>
+          <wire name="video_mixer:video_mixer|vsync_i" tap_mode="classic"/>
+          <wire name="video_mixer:video_mixer|vsync_p" tap_mode="classic"/>
+          <wire name="video_vga_dither:dither|iHsync" tap_mode="classic"/>
+          <wire name="video_vga_dither:dither|iSelcsync" tap_mode="classic"/>
+          <wire name="video_vga_dither:dither|iVsync" tap_mode="classic"/>
+          <wire name="video_vga_dither:dither|oHsync" tap_mode="classic"/>
+          <wire name="video_vga_dither:dither|oVsync" tap_mode="classic"/>
         </storage_qualifier_input_vec>
       </signal_vec>
       <presentation>
         <unified_setup_data_view>
-          <node name="red_mixed_r" order="msb_to_lsb" type="register">
-            <node data_index="5" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[5]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="5" tap_mode="classic" trigger_index="5" type="register"/>
-            <node data_index="4" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[4]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="4" tap_mode="classic" trigger_index="4" type="register"/>
-            <node data_index="3" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[3]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="3" tap_mode="classic" trigger_index="3" type="register"/>
-            <node data_index="2" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[2]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="2" tap_mode="classic" trigger_index="2" type="register"/>
-            <node data_index="1" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[1]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="1" tap_mode="classic" trigger_index="1" type="register"/>
-            <node data_index="0" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[0]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="0" tap_mode="classic" trigger_index="0" type="register"/>
-          </node>
-          <node name="red_reg" order="msb_to_lsb" state="expand" type="register">
-            <node data_index="13" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[7]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="13" tap_mode="classic" trigger_index="13" type="register"/>
-            <node data_index="12" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[6]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="12" tap_mode="classic" trigger_index="12" type="register"/>
-            <node data_index="11" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[5]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="11" tap_mode="classic" trigger_index="11" type="register"/>
-            <node data_index="10" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[4]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="10" tap_mode="classic" trigger_index="10" type="register"/>
-            <node data_index="9" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[3]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="9" tap_mode="classic" trigger_index="9" type="register"/>
-            <node data_index="8" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[2]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="8" tap_mode="classic" trigger_index="8" type="register"/>
-            <node data_index="7" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[1]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="7" tap_mode="classic" trigger_index="7" type="register"/>
-            <node data_index="6" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[0]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="6" tap_mode="classic" trigger_index="6" type="register"/>
-          </node>
-          <node name="video_mixer:video_mixer|VGA_R" order="msb_to_lsb" state="expand" type="combinatorial">
-            <node data_index="23" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[5]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="23" tap_mode="classic" trigger_index="23" type="combinatorial"/>
-            <node data_index="22" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[4]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="22" tap_mode="classic" trigger_index="22" type="combinatorial"/>
-            <node data_index="21" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[3]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="21" tap_mode="classic" trigger_index="21" type="combinatorial"/>
-            <node data_index="20" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[2]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="20" tap_mode="classic" trigger_index="20" type="combinatorial"/>
-            <node data_index="19" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[1]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="19" tap_mode="classic" trigger_index="19" type="combinatorial"/>
-            <node data_index="18" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[0]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="18" tap_mode="classic" trigger_index="18" type="combinatorial"/>
-          </node>
-          <node data_index="15" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="rtg_pixel" storage_index="15" tap_mode="classic" trigger_index="15" type="combinatorial"/>
-          <node data_index="14" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="rtg_clut_pixel" storage_index="14" tap_mode="classic" trigger_index="14" type="combinatorial"/>
-          <node data_index="16" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="rtg_pixel_d" storage_index="16" tap_mode="classic" trigger_index="16" type="register"/>
-          <node data_index="17" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="vga_pixel" storage_index="17" tap_mode="classic" trigger_index="17" type="combinatorial"/>
-          <node data_index="24" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|pixel" storage_index="24" tap_mode="classic" trigger_index="24" type="combinatorial"/>
+          <node data_index="2" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|_csync" storage_index="2" tap_mode="classic" trigger_index="2" type="combinatorial"/>
+          <node data_index="3" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|_hsync" storage_index="3" tap_mode="classic" trigger_index="3" type="combinatorial"/>
+          <node data_index="4" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="rising edge" name="minimig:minimig|_vsync" storage_index="4" tap_mode="classic" trigger_index="4" type="combinatorial"/>
+          <node data_index="10" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|selcsync" storage_index="10" tap_mode="classic" trigger_index="10" type="combinatorial"/>
+          <node data_index="5" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|agnus:AGNUS1|_csync" storage_index="5" tap_mode="classic" trigger_index="5" type="combinatorial"/>
+          <node data_index="6" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|agnus:AGNUS1|_hsync" storage_index="6" tap_mode="classic" trigger_index="6" type="combinatorial"/>
+          <node data_index="7" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|agnus:AGNUS1|_vsync" storage_index="7" tap_mode="classic" trigger_index="7" type="combinatorial"/>
+          <node data_index="8" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|agnus:AGNUS1|hsyncpol" storage_index="8" tap_mode="classic" trigger_index="8" type="combinatorial"/>
+          <node data_index="9" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|agnus:AGNUS1|vsyncpol" storage_index="9" tap_mode="classic" trigger_index="9" type="combinatorial"/>
+          <node data_index="11" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_mixer:video_mixer|hsync_i" storage_index="11" tap_mode="classic" trigger_index="11" type="combinatorial"/>
+          <node data_index="12" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_mixer:video_mixer|hsync_p" storage_index="12" tap_mode="classic" trigger_index="12" type="combinatorial"/>
+          <node data_index="13" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_mixer:video_mixer|vsync_i" storage_index="13" tap_mode="classic" trigger_index="13" type="combinatorial"/>
+          <node data_index="14" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_mixer:video_mixer|vsync_p" storage_index="14" tap_mode="classic" trigger_index="14" type="combinatorial"/>
+          <node data_index="15" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|iHsync" storage_index="15" tap_mode="classic" trigger_index="15" type="combinatorial"/>
+          <node data_index="17" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|iVsync" storage_index="17" tap_mode="classic" trigger_index="17" type="combinatorial"/>
+          <node data_index="16" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|iSelcsync" storage_index="16" tap_mode="classic" trigger_index="16" type="combinatorial"/>
+          <node data_index="18" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|oHsync" storage_index="18" tap_mode="classic" trigger_index="18" type="combinatorial"/>
+          <node data_index="19" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|oVsync" storage_index="19" tap_mode="classic" trigger_index="19" type="combinatorial"/>
+          <node data_index="0" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="VGA_HS" storage_index="0" tap_mode="classic" trigger_index="0" type="output pin"/>
+          <node data_index="1" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="VGA_VS" storage_index="1" tap_mode="classic" trigger_index="1" type="output pin"/>
         </unified_setup_data_view>
         <data_view>
-          <bus name="red_mixed_r" order="msb_to_lsb" type="register">
-            <net data_index="5" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[5]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="5" tap_mode="classic" trigger_index="5" type="register"/>
-            <net data_index="4" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[4]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="4" tap_mode="classic" trigger_index="4" type="register"/>
-            <net data_index="3" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[3]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="3" tap_mode="classic" trigger_index="3" type="register"/>
-            <net data_index="2" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[2]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="2" tap_mode="classic" trigger_index="2" type="register"/>
-            <net data_index="1" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[1]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="1" tap_mode="classic" trigger_index="1" type="register"/>
-            <net data_index="0" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[0]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="0" tap_mode="classic" trigger_index="0" type="register"/>
-          </bus>
-          <bus name="red_reg" order="msb_to_lsb" state="expand" type="register">
-            <net data_index="13" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[7]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="13" tap_mode="classic" trigger_index="13" type="register"/>
-            <net data_index="12" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[6]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="12" tap_mode="classic" trigger_index="12" type="register"/>
-            <net data_index="11" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[5]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="11" tap_mode="classic" trigger_index="11" type="register"/>
-            <net data_index="10" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[4]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="10" tap_mode="classic" trigger_index="10" type="register"/>
-            <net data_index="9" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[3]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="9" tap_mode="classic" trigger_index="9" type="register"/>
-            <net data_index="8" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[2]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="8" tap_mode="classic" trigger_index="8" type="register"/>
-            <net data_index="7" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[1]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="7" tap_mode="classic" trigger_index="7" type="register"/>
-            <net data_index="6" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[0]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="6" tap_mode="classic" trigger_index="6" type="register"/>
-          </bus>
-          <bus name="video_mixer:video_mixer|VGA_R" order="msb_to_lsb" state="expand" type="combinatorial">
-            <net data_index="23" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[5]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="23" tap_mode="classic" trigger_index="23" type="combinatorial"/>
-            <net data_index="22" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[4]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="22" tap_mode="classic" trigger_index="22" type="combinatorial"/>
-            <net data_index="21" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[3]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="21" tap_mode="classic" trigger_index="21" type="combinatorial"/>
-            <net data_index="20" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[2]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="20" tap_mode="classic" trigger_index="20" type="combinatorial"/>
-            <net data_index="19" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[1]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="19" tap_mode="classic" trigger_index="19" type="combinatorial"/>
-            <net data_index="18" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[0]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="18" tap_mode="classic" trigger_index="18" type="combinatorial"/>
-          </bus>
-          <net data_index="15" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="rtg_pixel" storage_index="15" tap_mode="classic" trigger_index="15" type="combinatorial"/>
-          <net data_index="14" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="rtg_clut_pixel" storage_index="14" tap_mode="classic" trigger_index="14" type="combinatorial"/>
-          <net data_index="16" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="rtg_pixel_d" storage_index="16" tap_mode="classic" trigger_index="16" type="register"/>
-          <net data_index="17" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="vga_pixel" storage_index="17" tap_mode="classic" trigger_index="17" type="combinatorial"/>
-          <net data_index="24" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|pixel" storage_index="24" tap_mode="classic" trigger_index="24" type="combinatorial"/>
+          <net data_index="2" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|_csync" storage_index="2" tap_mode="classic" trigger_index="2" type="combinatorial"/>
+          <net data_index="3" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|_hsync" storage_index="3" tap_mode="classic" trigger_index="3" type="combinatorial"/>
+          <net data_index="4" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="rising edge" name="minimig:minimig|_vsync" storage_index="4" tap_mode="classic" trigger_index="4" type="combinatorial"/>
+          <net data_index="10" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|selcsync" storage_index="10" tap_mode="classic" trigger_index="10" type="combinatorial"/>
+          <net data_index="5" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|agnus:AGNUS1|_csync" storage_index="5" tap_mode="classic" trigger_index="5" type="combinatorial"/>
+          <net data_index="6" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|agnus:AGNUS1|_hsync" storage_index="6" tap_mode="classic" trigger_index="6" type="combinatorial"/>
+          <net data_index="7" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|agnus:AGNUS1|_vsync" storage_index="7" tap_mode="classic" trigger_index="7" type="combinatorial"/>
+          <net data_index="8" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|agnus:AGNUS1|hsyncpol" storage_index="8" tap_mode="classic" trigger_index="8" type="combinatorial"/>
+          <net data_index="9" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|agnus:AGNUS1|vsyncpol" storage_index="9" tap_mode="classic" trigger_index="9" type="combinatorial"/>
+          <net data_index="11" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_mixer:video_mixer|hsync_i" storage_index="11" tap_mode="classic" trigger_index="11" type="combinatorial"/>
+          <net data_index="12" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_mixer:video_mixer|hsync_p" storage_index="12" tap_mode="classic" trigger_index="12" type="combinatorial"/>
+          <net data_index="13" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_mixer:video_mixer|vsync_i" storage_index="13" tap_mode="classic" trigger_index="13" type="combinatorial"/>
+          <net data_index="14" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_mixer:video_mixer|vsync_p" storage_index="14" tap_mode="classic" trigger_index="14" type="combinatorial"/>
+          <net data_index="15" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|iHsync" storage_index="15" tap_mode="classic" trigger_index="15" type="combinatorial"/>
+          <net data_index="17" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|iVsync" storage_index="17" tap_mode="classic" trigger_index="17" type="combinatorial"/>
+          <net data_index="16" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|iSelcsync" storage_index="16" tap_mode="classic" trigger_index="16" type="combinatorial"/>
+          <net data_index="18" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|oHsync" storage_index="18" tap_mode="classic" trigger_index="18" type="combinatorial"/>
+          <net data_index="19" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|oVsync" storage_index="19" tap_mode="classic" trigger_index="19" type="combinatorial"/>
+          <net data_index="0" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="VGA_HS" storage_index="0" tap_mode="classic" trigger_index="0" type="output pin"/>
+          <net data_index="1" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="VGA_VS" storage_index="1" tap_mode="classic" trigger_index="1" type="output pin"/>
         </data_view>
         <setup_view>
-          <bus name="red_mixed_r" order="msb_to_lsb" type="register">
-            <net data_index="5" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[5]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="5" tap_mode="classic" trigger_index="5" type="register"/>
-            <net data_index="4" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[4]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="4" tap_mode="classic" trigger_index="4" type="register"/>
-            <net data_index="3" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[3]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="3" tap_mode="classic" trigger_index="3" type="register"/>
-            <net data_index="2" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[2]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="2" tap_mode="classic" trigger_index="2" type="register"/>
-            <net data_index="1" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[1]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="1" tap_mode="classic" trigger_index="1" type="register"/>
-            <net data_index="0" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_mixed_r[0]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="0" tap_mode="classic" trigger_index="0" type="register"/>
-          </bus>
-          <bus name="red_reg" order="msb_to_lsb" state="expand" type="register">
-            <net data_index="13" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[7]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="13" tap_mode="classic" trigger_index="13" type="register"/>
-            <net data_index="12" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[6]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="12" tap_mode="classic" trigger_index="12" type="register"/>
-            <net data_index="11" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[5]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="11" tap_mode="classic" trigger_index="11" type="register"/>
-            <net data_index="10" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[4]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="10" tap_mode="classic" trigger_index="10" type="register"/>
-            <net data_index="9" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[3]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="9" tap_mode="classic" trigger_index="9" type="register"/>
-            <net data_index="8" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[2]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="8" tap_mode="classic" trigger_index="8" type="register"/>
-            <net data_index="7" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[1]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="7" tap_mode="classic" trigger_index="7" type="register"/>
-            <net data_index="6" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="red_reg[0]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="6" tap_mode="classic" trigger_index="6" type="register"/>
-          </bus>
-          <bus name="video_mixer:video_mixer|VGA_R" order="msb_to_lsb" state="expand" type="combinatorial">
-            <net data_index="23" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[5]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="23" tap_mode="classic" trigger_index="23" type="combinatorial"/>
-            <net data_index="22" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[4]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="22" tap_mode="classic" trigger_index="22" type="combinatorial"/>
-            <net data_index="21" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[3]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="21" tap_mode="classic" trigger_index="21" type="combinatorial"/>
-            <net data_index="20" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[2]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="20" tap_mode="classic" trigger_index="20" type="combinatorial"/>
-            <net data_index="19" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[1]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="19" tap_mode="classic" trigger_index="19" type="combinatorial"/>
-            <net data_index="18" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="dont_care" name="video_mixer:video_mixer|VGA_R[0]" pwr_level-0="dont_care" pwr_storage-0="dont_care" pwr_storage-1="dont_care" pwr_storage-2="dont_care" storage-0="dont_care" storage-1="dont_care" storage-2="dont_care" storage_index="18" tap_mode="classic" trigger_index="18" type="combinatorial"/>
-          </bus>
-          <net data_index="15" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="rtg_pixel" storage_index="15" tap_mode="classic" trigger_index="15" type="combinatorial"/>
-          <net data_index="14" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="rtg_clut_pixel" storage_index="14" tap_mode="classic" trigger_index="14" type="combinatorial"/>
-          <net data_index="16" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="rtg_pixel_d" storage_index="16" tap_mode="classic" trigger_index="16" type="register"/>
-          <net data_index="17" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="vga_pixel" storage_index="17" tap_mode="classic" trigger_index="17" type="combinatorial"/>
-          <net data_index="24" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|pixel" storage_index="24" tap_mode="classic" trigger_index="24" type="combinatorial"/>
+          <net data_index="2" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|_csync" storage_index="2" tap_mode="classic" trigger_index="2" type="combinatorial"/>
+          <net data_index="3" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|_hsync" storage_index="3" tap_mode="classic" trigger_index="3" type="combinatorial"/>
+          <net data_index="4" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" level-0="rising edge" name="minimig:minimig|_vsync" storage_index="4" tap_mode="classic" trigger_index="4" type="combinatorial"/>
+          <net data_index="10" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|selcsync" storage_index="10" tap_mode="classic" trigger_index="10" type="combinatorial"/>
+          <net data_index="5" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|agnus:AGNUS1|_csync" storage_index="5" tap_mode="classic" trigger_index="5" type="combinatorial"/>
+          <net data_index="6" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|agnus:AGNUS1|_hsync" storage_index="6" tap_mode="classic" trigger_index="6" type="combinatorial"/>
+          <net data_index="7" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|agnus:AGNUS1|_vsync" storage_index="7" tap_mode="classic" trigger_index="7" type="combinatorial"/>
+          <net data_index="8" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|agnus:AGNUS1|hsyncpol" storage_index="8" tap_mode="classic" trigger_index="8" type="combinatorial"/>
+          <net data_index="9" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="minimig:minimig|agnus:AGNUS1|vsyncpol" storage_index="9" tap_mode="classic" trigger_index="9" type="combinatorial"/>
+          <net data_index="11" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_mixer:video_mixer|hsync_i" storage_index="11" tap_mode="classic" trigger_index="11" type="combinatorial"/>
+          <net data_index="12" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_mixer:video_mixer|hsync_p" storage_index="12" tap_mode="classic" trigger_index="12" type="combinatorial"/>
+          <net data_index="13" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_mixer:video_mixer|vsync_i" storage_index="13" tap_mode="classic" trigger_index="13" type="combinatorial"/>
+          <net data_index="14" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_mixer:video_mixer|vsync_p" storage_index="14" tap_mode="classic" trigger_index="14" type="combinatorial"/>
+          <net data_index="15" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|iHsync" storage_index="15" tap_mode="classic" trigger_index="15" type="combinatorial"/>
+          <net data_index="17" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|iVsync" storage_index="17" tap_mode="classic" trigger_index="17" type="combinatorial"/>
+          <net data_index="16" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|iSelcsync" storage_index="16" tap_mode="classic" trigger_index="16" type="combinatorial"/>
+          <net data_index="18" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|oHsync" storage_index="18" tap_mode="classic" trigger_index="18" type="combinatorial"/>
+          <net data_index="19" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="video_vga_dither:dither|oVsync" storage_index="19" tap_mode="classic" trigger_index="19" type="combinatorial"/>
+          <net data_index="0" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="VGA_HS" storage_index="0" tap_mode="classic" trigger_index="0" type="output pin"/>
+          <net data_index="1" is_data_input="true" is_node_valid="true" is_storage_input="true" is_trigger_input="true" name="VGA_VS" storage_index="1" tap_mode="classic" trigger_index="1" type="output pin"/>
         </setup_view>
         <trigger_in_editor/>
         <trigger_out_editor/>
       </presentation>
-      <trigger CRC="2DB5447D" attribute_mem_mode="false" gap_record="true" global_temp="1" name="trigger: 2020/09/09 21:55:50  #1" position="pre" power_up_trigger_mode="false" record_data_gap="true" segment_size="1" storage_mode="off" storage_qualifier_disabled="no" storage_qualifier_port_is_pin="false" storage_qualifier_port_name="auto_stp_external_storage_qualifier" storage_qualifier_port_tap_mode="classic" trigger_type="circular">
+      <trigger CRC="7B7AFA89" attribute_mem_mode="false" gap_record="true" global_temp="1" name="trigger: 2020/09/16 22:00:07  #0" position="pre" power_up_trigger_mode="false" record_data_gap="true" segment_size="1" storage_mode="off" storage_qualifier_disabled="no" storage_qualifier_port_is_pin="true" storage_qualifier_port_name="auto_stp_external_storage_qualifier" storage_qualifier_port_tap_mode="classic" trigger_type="circular">
         <power_up_trigger position="pre" storage_qualifier_disabled="no"/>
         <events use_custom_flow_control="no">
-          <level enabled="yes" name="condition1" type="basic">
+          <level enabled="yes" name="condition1" type="basic">'minimig:minimig|_vsync' == rising edge
             <power_up enabled="yes">
             </power_up>
             <op_node/>
           </level>
         </events>
         <storage_qualifier_events>
-          <transitional>1111111111111111111111111
-            <pwr_up_transitional>1111111111111111111111111</pwr_up_transitional>
+          <transitional>11111111111111111111
+            <pwr_up_transitional>11111111111111111111</pwr_up_transitional>
           </transitional>
           <storage_qualifier_level type="basic">
             <power_up>
@@ -233,7 +189,7 @@
           </storage_qualifier_level>
         </storage_qualifier_events>
         <log>
-          <data global_temp="1" name="log: 2020/09/09 22:06:56  #0" power_up_mode="false" sample_depth="128" trigger_position="16">01010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010010101010101011001010101101010101010101000001010100101010101010101000101010010101010101010011010101101010101010101000001010100101010101010100000101010</data>
+          <data global_temp="1" name="log: 2020/09/16 22:00:07  #1" power_up_mode="false" sample_depth="127" trigger_position="16">0101001011001001001001010010110010010010010100101100100100100101001011001001001001010010110010010010010100101100100100100101001011001001001001010010110010010010010100101100100100100101001011001001001001010010110010010010010100101100100100100101001011001001001001010010110010010010010100101100100100100101001111001001001001011011110010010010110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110011100101101111100100111001011011101001001110000100101010010011100001001010100100111000010010101001001110000100101010010011100001001010100100111000010010101001001110000100101010010011100001001010100100111000010010101001001110000100101010010011100001001010100100111000010010101001001110000100101010010011100001001010100100111000010010101001001110000100101010010011100001001010100100111000010010101001001110000100101010010011100001001010100100111000010010101001001110000100101010010011100001001010100100111000010010101001001110000100101010010011100001001010100100111000010010101001001110000100101010010011100001001010100100111000010010101001001110000100101010010011100001001010100100111000010010101001001110000100101010010011100001001010100100111000010010101001001110000100101010010011100001001010100100111000010010101001001110000100101010010011100001001010100100111000010010101001001110000100101010010011100001001010100100111000010010101001001110000100101010010111100001001010101101111000010010111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111110110111100101101111101101111001011011111011011110010110111</data>
           <extradata>1111111111111111T111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111</extradata>
         </log>
       </trigger>
@@ -241,15 +197,4 @@
   </instance>
   <mnemonics/>
   <static_plugin_mnemonics/>
-  <global_info>
-    <single attribute="active instance" value="0"/>
-    <single attribute="config widget visible" value="1"/>
-    <single attribute="data log widget visible" value="1"/>
-    <single attribute="hierarchy widget visible" value="1"/>
-    <single attribute="instance widget visible" value="1"/>
-    <single attribute="jtag widget visible" value="1"/>
-    <multi attribute="frame size" size="2" value="1268,957"/>
-    <multi attribute="jtag widget size" size="2" value="390,133"/>
-    <multi attribute="column width" size="23" value="34,34,240,74,68,70,88,88,98,98,88,88,110,101,101,101,101,101,101,101,101,107,78"/>
-  </global_info>
 </session>

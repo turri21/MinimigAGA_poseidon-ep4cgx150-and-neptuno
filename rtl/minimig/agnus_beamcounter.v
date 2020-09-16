@@ -40,7 +40,9 @@ module agnus_beamcounter
 	output	reg [8:0] hpos,			// horizontal beam counter (140ns)
 	output	reg [10:0] vpos,		// vertical beam counter
 	output	reg _hsync,				// horizontal sync
+	output	wire hsyncpol,			// horizontal sync polarity
 	output	reg _vsync,				// vertical sync
+	output	wire vsyncpol,			// vertical sync polarity
 	output	_csync,					// composite sync
 	output	reg blank,				// video blanking
 	output	vbl,					// vertical blanking
@@ -156,6 +158,8 @@ wire csynctrue    = beamcon0_reg[ 2];
 wire vsynctrue    = beamcon0_reg[ 1];
 wire hsynctrue    = beamcon0_reg[ 0];
 
+assign hsyncpol = hsynctrue;
+assign vsyncpol = vsynctrue;
 
 
 // write ERSY bit of bplcon0 register (External ReSYnchronization - genlock)
@@ -383,18 +387,18 @@ always @(posedge clk)
 always @(posedge clk)
   if (clk7_en) begin
   	if (hpos==hsstrt)//start of sync pulse (front porch = 1.69us)
-  		_hsync <= hsynctrue;
+  		_hsync <= 1'b0;
   	else if (hpos==hsstop)//end of sync pulse (sync pulse = 4.65us)
-  		_hsync <= !hsynctrue;
+  		_hsync <= 1'b1;
   end
 
 //vertical sync and vertical blanking
 always @(posedge clk)
   if (clk7_en) begin
   	if ((vpos==vsstrt && hpos==hsstrt && !long_frame) || (vpos==vsstrt && hpos==hcenter && long_frame))
-  		_vsync <= vsynctrue;
+  		_vsync <= 1'b0;
   	else if ((vpos==vsstop && hpos==hcenter && !long_frame) || (vpos==vsstop+1 && hpos==hsstrt && long_frame))
-  		_vsync <= !vsynctrue;		
+  		_vsync <= 1'b1;
   end
 
 //apparently generating csync from vsync alligned with leading edge of hsync results in malfunction of the AD724 CVBS/S-Video encoder (no colour in interlaced mode)

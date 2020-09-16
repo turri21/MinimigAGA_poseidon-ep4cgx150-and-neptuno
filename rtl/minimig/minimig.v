@@ -229,7 +229,9 @@ module minimig
  // input  wire           host_ack,
 	//video
 	output	_hsync,				//horizontal sync
+	output	hsyncpol,
 	output	_vsync,				//vertical sync
+	output	vsyncpol,
 	output	_csync,				//composite sync (for _15khz mode)
 	output   selcsync,
 	output	[7:0] red,			//red
@@ -520,7 +522,9 @@ agnus AGNUS1
 	.dbr(dbr),
 	.dbwe(dbwe),
 	._hsync(_hsync_i),
+	.hsyncpol(hsyncpol),
 	._vsync(_vsync_i),
+	.vsyncpol(vsyncpol),
 	._csync(_csync_i),
 	.blank(blank),
 	.sol(sol),
