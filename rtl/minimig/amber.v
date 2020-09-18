@@ -81,6 +81,7 @@ module amber
   output reg  [  8-1:0] blue_out=0,     // blue component video out
   output reg            _hsync_out=0,   // horizontal synchronisation out
   output reg            _vsync_out=0,   // vertical synchronisation out
+  output reg				_csync_out=0,
   output wire            selcsync=0,
   output wire				osd_blank_out,
   output wire				osd_pixel_out
@@ -380,6 +381,7 @@ assign osd_pixel_out = dblscan ? sd_lbuf_o_d[27] : osd_pixel;
 always @ (posedge clk) begin
   _hsync_out <= #1 bm_hsync;
   _vsync_out <= #1 bm_vsync;
+  _csync_out <= #1 dblscan ? ~(~bm_hsync ^ ~bm_vsync) : _csync_in;
   red_out    <= #1 bm_r;
   green_out  <= #1 bm_g;
   blue_out   <= #1 bm_b;

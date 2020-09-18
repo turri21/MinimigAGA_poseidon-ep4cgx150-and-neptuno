@@ -29,11 +29,11 @@ module minimig_mist_top (
   output wire           UART_TX,    // UART Transmitter
   input wire            UART_RX,    // UART Receiver
   // VGA
-  output wire           VGA_HS,     // VGA H_SYNC
-  output wire           VGA_VS,     // VGA V_SYNC
-  output wire [  6-1:0] VGA_R,      // VGA Red[5:0]
-  output wire [  6-1:0] VGA_G,      // VGA Green[5:0]
-  output wire [  6-1:0] VGA_B,      // VGA Blue[5:0]
+  output reg            VGA_HS,     // VGA H_SYNC
+  output reg            VGA_VS,     // VGA V_SYNC
+  output reg  [  6-1:0] VGA_R,      // VGA Red[5:0]
+  output reg  [  6-1:0] VGA_G,      // VGA Green[5:0]
+  output reg  [  6-1:0] VGA_B,      // VGA Blue[5:0]
   // SDRAM
   inout  wire [ 16-1:0] SDRAM_DQ,   // SDRAM Data bus 16 Bits
   output wire [ 13-1:0] SDRAM_A,    // SDRAM Address bus 13 Bits
@@ -146,11 +146,13 @@ wire [  8-1:0] red;
 wire [  8-1:0] green;
 wire [  8-1:0] blue;
 
-wire [  6-1:0] mixer_red;
-wire [  6-1:0] mixer_green;
-wire [  6-1:0] mixer_blue;
+wire [  8-1:0] mixer_red;
+wire [  8-1:0] mixer_green;
+wire [  8-1:0] mixer_blue;
 wire           mixer_vs;
 wire           mixer_hs;
+wire				mixer_cs;
+wire				mixer_pixel;
 
 reg [  6-1:0] red_mixed_r;
 reg [  6-1:0] green_mixed_r;
@@ -230,18 +232,21 @@ always @ (posedge clk_114) begin
 //  red_mixed_r   <= #1 ypbpr ? mixer_red : dithered_red[7:2];
 //  green_mixed_r <= #1 ypbpr ? mixer_green : dithered_green[7:2];
 //  blue_mixed_r  <= #1 ypbpr ? mixer_blue : dithered_blue[7:2];
-  vs_mixed_r    <= #1 mixer_vs;
-  hs_mixed_r    <= #1 mixer_hs;
-  red_mixed_r   <= #1 mixer_red;
-  green_mixed_r <= #1 mixer_green;
-  blue_mixed_r  <= #1 mixer_blue;
+//  vs_mixed_r    <= #1 mixer_vs;
+//  hs_mixed_r    <= #1 mixer_hs;
+//  red_mixed_r   <= #1 mixer_red;
+//  green_mixed_r <= #1 mixer_green;
+//  blue_mixed_r  <= #1 mixer_blue;
 end
 
-assign VGA_VS           = vs_mixed_r ^ (vsyncpol & !(ypbpr | vga_selcsync));
-assign VGA_HS           = hs_mixed_r ^ (hsyncpol & !(ypbpr | vga_selcsync));
-assign VGA_R[5:0]       = red_mixed_r[5:0];
-assign VGA_G[5:0]       = green_mixed_r[5:0];
-assign VGA_B[5:0]       = blue_mixed_r[5:0];
+always @ (posedge clk_114) begin
+	VGA_VS <= dithered_vs ^ (vsyncpol & !(ypbpr | vga_selcsync));
+	VGA_HS <= dithered_hs ^ (hsyncpol & !(ypbpr | vga_selcsync));
+
+	VGA_R[5:0] <= dithered_red[7:2];
+	VGA_G[5:0] <= dithered_green[7:2];
+	VGA_B[5:0] <= dithered_blue[7:2];
+end
 
 wire   ypbpr            = core_config[1];
 
@@ -249,29 +254,29 @@ wire   ypbpr            = core_config[1];
 //// YPbPr video mixer ////
 // Final video mixer
 // Not all functions of mixer are used due to some signals are pre-mixed already
-video_mixer video_mixer
-(
-	.scandoubler_disable(0),
-	.ypbpr(ypbpr),
-	.ypbpr_full(1),
-
-//	.r_p      (VGA_R_INT         ),
-//	.g_p      (VGA_G_INT         ),
-//	.b_p      (VGA_B_INT         ),
-//	.hsync_p  (VGA_HS_INT        ),
-//	.vsync_p  (VGA_VS_INT        ),
-	.r_p      (dithered_red      ),
-	.g_p      (dithered_green    ),
-	.b_p      (dithered_blue     ),
-	.hsync_p  (dithered_hs       ),
-	.vsync_p  (dithered_vs       ),
-
-	.VGA_HS (mixer_hs   ),
-	.VGA_VS (mixer_vs   ),
-	.VGA_R  (mixer_red  ),
-	.VGA_G  (mixer_green),
-	.VGA_B  (mixer_blue )
-);
+//video_mixer video_mixer
+//(
+//	.scandoubler_disable(0),
+//	.ypbpr(ypbpr),
+//	.ypbpr_full(1),
+//
+////	.r_p      (VGA_R_INT         ),
+////	.g_p      (VGA_G_INT         ),
+////	.b_p      (VGA_B_INT         ),
+////	.hsync_p  (VGA_HS_INT        ),
+////	.vsync_p  (VGA_VS_INT        ),
+//	.r_p      (dithered_red      ),
+//	.g_p      (dithered_green    ),
+//	.b_p      (dithered_blue     ),
+//	.hsync_p  (dithered_hs       ),
+//	.vsync_p  (dithered_vs       ),
+//
+//	.VGA_HS (mixer_hs   ),
+//	.VGA_VS (mixer_vs   ),
+//	.VGA_R  (mixer_red  ),
+//	.VGA_G  (mixer_green),
+//	.VGA_B  (mixer_blue )
+//);
 
 
 //// amiga clocks ////
@@ -597,26 +602,6 @@ hybrid_pwm_sd sd(
 	.q_r(AUDIO_R)
 );
 
-assign vga_window = 1'b1;
-video_vga_dither #(.outbits(6), .flickerreduce("false")) dither
-(
-	.clk(clk_114),
-	.pixel(vga_pixel),
-	.vidEna(vga_window),
-	.iSelcsync(vga_selcsync),
-	.iCsync(VGA_CS_INT),
-	.iHsync(VGA_HS_INT),
-	.iVsync(VGA_VS_INT),
-	.iRed(VGA_R_INT),
-	.iGreen(VGA_G_INT),
-	.iBlue(VGA_B_INT),
-	.oHsync(dithered_hs),
-	.oVsync(dithered_vs),
-	.oRed(dithered_red),
-	.oGreen(dithered_green),
-	.oBlue(dithered_blue)
-	);
-	
 
 // RTG support...
 
@@ -758,6 +743,51 @@ assign VGA_HS_INT           = hs_reg;
 assign VGA_R_INT[7:0]       = osd_window ? {osd_r,red_reg[7:2]} : red_reg[7:0];
 assign VGA_G_INT[7:0]       = osd_window ? {osd_g,green_reg[7:2]} : green_reg[7:0];
 assign VGA_B_INT[7:0]       = osd_window ? {osd_b,blue_reg[7:2]} : blue_reg[7:0];
+
+
+assign vga_window = 1'b1;
+video_vga_dither #(.outbits(6), .flickerreduce("false")) dither
+(
+	.clk(clk_114),
+	.pixel(mixer_pixel),
+	.vidEna(vga_window),
+	.iSelcsync(vga_selcsync | ypbpr),
+	.iCsync(mixer_cs),
+	.iHsync(mixer_hs),
+	.iVsync(mixer_vs),
+	.iRed(mixer_red),
+	.iGreen(mixer_green),
+	.iBlue(mixer_blue),
+	.oHsync(dithered_hs),
+	.oVsync(dithered_vs),
+	.oRed(dithered_red),
+	.oGreen(dithered_green),
+	.oBlue(dithered_blue)
+	);
+
+
+RGBtoYPbPr videoconvert
+(
+	.clk(clk_114),
+	.ena(ypbpr),
+
+	.red_in(VGA_R_INT),
+	.green_in(VGA_G_INT),
+	.blue_in(VGA_B_INT),
+	
+	.hs_in(VGA_HS_INT),
+	.vs_in(VGA_VS_INT),
+	.cs_in(VGA_CS_INT),
+	.pixel_in(vga_pixel),
+	
+	.red_out(mixer_red),
+	.green_out(mixer_green),
+	.blue_out(mixer_blue),
+	.hs_out(mixer_hs),
+	.vs_out(mixer_vs),
+	.cs_out(mixer_cs),
+	.pixel_out(mixer_pixel)
+);
 
 	
 endmodule

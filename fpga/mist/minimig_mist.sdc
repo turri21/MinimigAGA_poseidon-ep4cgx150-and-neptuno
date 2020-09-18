@@ -41,6 +41,9 @@ set_input_delay -clock $clk_sdram -reference_pin [get_ports SDRAM_CLK] -min 3.2 
 set_output_delay -clock $clk_sdram -reference_pin [get_ports SDRAM_CLK] -max  1.5 $sdram_outputs
 set_output_delay -clock $clk_sdram -reference_pin [get_ports SDRAM_CLK] -min -0.8 $sdram_outputs
 
+set_output_delay -clock $clk_114 .5 [get_ports {VGA_R[*]}]
+set_output_delay -clock $clk_114 .5 [get_ports {VGA_G[*]}]
+set_output_delay -clock $clk_114 .5 [get_ports {VGA_B[*]}]
 
 # input delay on SPI pins
 set_input_delay -clock { spi_clk } .5 [get_ports SPI*]
@@ -55,7 +58,9 @@ set_false_path -from * -to [get_ports {SDRAM_CLK}]
 set_false_path -from * -to [get_ports {LED}]
 set_false_path -from * -to [get_ports {UART_TX}]
 set_false_path -from [get_ports {UART_RX}] -to *
-set_false_path -from * -to [get_ports {VGA_*}]
+#set_false_path -from * -to [get_ports {VGA_*}]
+set_false_path -from * -to [get_ports {VGA_VS}]
+set_false_path -from * -to [get_ports {VGA_HS}]
 set_false_path -from * -to [get_ports {AUDIO_L}]
 set_false_path -from * -to [get_ports {AUDIO_R}]
 
@@ -70,12 +75,12 @@ set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -hold 3
 
 set_multicycle_path -from [get_clocks $clk_sdram] -to [get_clocks $clk_114] -setup 2
 
-set_multicycle_path -to {red_mixed_r[*]} -setup -end 3
-set_multicycle_path -to {green_mixed_r[*]} -setup -end 3
-set_multicycle_path -to {blue_mixed_r[*]} -setup -end 3
-set_multicycle_path -to {red_mixed_r[*]} -hold -end 2
-set_multicycle_path -to {green_mixed_r[*]} -hold -end 2
-set_multicycle_path -to {blue_mixed_r[*]} -hold -end 2
+#set_multicycle_path -to {red_mixed_r[*]} -setup -end 3
+#set_multicycle_path -to {green_mixed_r[*]} -setup -end 3
+#set_multicycle_path -to {blue_mixed_r[*]} -setup -end 3
+#set_multicycle_path -to {red_mixed_r[*]} -hold -end 2
+#set_multicycle_path -to {green_mixed_r[*]} -hold -end 2
+#set_multicycle_path -to {blue_mixed_r[*]} -hold -end 2
 
 # Neither in nor out of the C2P requires single-cycle speed
 set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|rdptr[*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -setup -end 2

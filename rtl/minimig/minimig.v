@@ -445,7 +445,6 @@ wire           sys_reset;    //reset output from minimig_syscontrol.v
 
 assign reset = sys_reset | ~_cpu_reset_in; // both tg68k and minimig_syscontrol hold the reset signal for some clicks
 
-assign _csync = _csync_i;
 assign vblank_out = vbl_int;
 
 //--------------------------------------------------------------------------------------
@@ -762,6 +761,7 @@ amber AMBER1
 	.green_out(green),
 	._hsync_out(_hsync),
 	._vsync_out(_vsync),
+	._csync_out(_csync),
 	.selcsync(selcsync),
 	.osd_blank_out(osd_blank_out),
 	.osd_pixel_out(osd_pixel_out)
