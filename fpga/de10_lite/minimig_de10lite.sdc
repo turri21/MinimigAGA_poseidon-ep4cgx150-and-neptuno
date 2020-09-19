@@ -38,6 +38,13 @@ derive_clock_uncertainty
 set_input_delay -clock clk_sdram -max 6.0 $sdram_inputs
 set_input_delay -clock clk_sdram -min 4.0 $sdram_inputs
 
+set_input_delay -clock $clk_114 .5 [get_ports {ARDUINO_IO[*]}]
+set_input_delay -clock $clk_114 .5 [get_ports {GPIO[*]}]
+set_input_delay -clock $clk_114 .5 [get_ports {KEY[*]}]
+
+set_input_delay -clock $clk_114 .5 [get_ports {altera_reserved_tdi}]
+set_input_delay -clock $clk_114 .5 [get_ports {altera_reserved_tms}]
+
 #output delay
 #set_output_delay -clock $clk_sdram -max  1.5 [get_ports DRAM_CLK]
 #set_output_delay -clock $clk_sdram -min -0.8 [get_ports DRAM_CLK]
@@ -46,6 +53,15 @@ set_output_delay -clock clk_sdram -max  1.5 $sdram_dqoutputs
 set_output_delay -clock clk_sdram -min -0.8 $sdram_outputs
 set_output_delay -clock clk_sdram -min -0.8 $sdram_dqoutputs
 
+set_output_delay -clock $clk_114 .5 [get_ports {ARDUINO_IO[*]}]
+set_output_delay -clock $clk_114 .5 [get_ports {GPIO[*]}]
+set_output_delay -clock $clk_114 .5 [get_ports {VGA_R[*]}]
+set_output_delay -clock $clk_114 .5 [get_ports {VGA_G[*]}]
+set_output_delay -clock $clk_114 .5 [get_ports {VGA_B[*]}]
+set_output_delay -clock $clk_114 .5 [get_ports {VGA_*S}]
+set_output_delay -clock $clk_114 .5 [get_ports {LEDR[*]}]
+
+set_output_delay -clock $clk_114 .5 [get_ports {altera_reserved_tdo}]
 
 # false paths
 

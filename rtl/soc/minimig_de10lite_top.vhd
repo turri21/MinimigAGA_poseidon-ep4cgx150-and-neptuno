@@ -104,6 +104,11 @@ architecture RTL of DE10liteToplevel is
 	signal osd_window : std_logic;
 	signal osd_pixel : std_logic;
 	
+	signal VGA_HS_i : STD_LOGIC;
+	signal VGA_VS_i : STD_LOGIC;
+	signal VGA_R_i : UNSIGNED(3 DOWNTO 0);
+	signal VGA_G_i : UNSIGNED(3 DOWNTO 0);
+	signal VGA_B_i : UNSIGNED(3 DOWNTO 0);
 	
 -- RS232 serial
 	signal rs232_rxd : std_logic;
@@ -324,13 +329,23 @@ mydither : entity work.video_vga_dither
 		iRed => unsigned(vga_red),
 		iGreen => unsigned(vga_green),
 		iBlue => unsigned(vga_blue),
-		oHsync=>VGA_HS,
-		oVsync=>VGA_VS,
-		oRed(7 downto 4) => VGA_R,
-		oGreen(7 downto 4) => VGA_G,
-		oBlue(7 downto 4) => VGA_B
+		oHsync=>VGA_HS_i,
+		oVsync=>VGA_VS_i,
+		oRed(7 downto 4) => VGA_R_i,
+		oGreen(7 downto 4) => VGA_G_i,
+		oBlue(7 downto 4) => VGA_B_i
 	);
 
+process(sysclk)
+begin
+	if rising_edge(sysclk) then
+		VGA_R<=VGA_R_i;
+		VGA_G<=VGA_G_i;
+		VGA_B<=VGA_B_i;
+		VGA_HS<=VGA_HS_i;
+		VGA_VS<=VGA_VS_i;
+	end if;
+end process;
 
 audiosd : COMPONENT hybrid_pwm_sd
 	PORT map

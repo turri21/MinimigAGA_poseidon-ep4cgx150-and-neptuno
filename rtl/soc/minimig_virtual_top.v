@@ -236,6 +236,8 @@ wire vblank_out;
 reg rtg_vblank;
 wire rtg_blank;
 reg rtg_blank_d;
+reg rtg_blank_d2;
+reg rtg_blank_d3;
 reg [6:0] rtg_vbcounter;	// Vvbco counter
 wire [6:0] rtg_vbend; // Size of VBlank area
 
@@ -264,12 +266,16 @@ reg [2:0] vga_strobe_ctr;
 wire vga_strobe;
 assign vga_strobe = vga_strobe_ctr==3'b000 ? 1'b1 : 1'b0;
 
+assign rtg_blank = rtg_vblank | hblank_out;
+
 always @(posedge CLK_114) begin
 	rtg_pixel_d<=rtg_pixel;
 	vga_strobe_ctr<=_15khz ? {vga_strobe_ctr[2:1],1'b0}+3'b010 : vga_strobe_ctr+3'b001;
 
 	// Delayed copies of signals
 	rtg_blank_d<=rtg_blank;
+	rtg_blank_d2<=rtg_blank_d;
+	rtg_blank_d3<=rtg_blank_d2;
 	rtg_clut_in_sel_d<=rtg_clut_in_sel;
 
 	// Alternate colour index at twice the fetch clock.
@@ -301,12 +307,10 @@ begin
 	end
 end
 
-assign rtg_blank = rtg_vblank | hblank_out;
-
 assign rtg_clut_idx = rtg_clut_in_sel_d ? rtg_dat[7:0] : rtg_dat[15:8];
-assign rtg_r=!rtg_blank ? {rtg_dat[14:10],rtg_dat[14:12]} : 16'b0 ;
-assign rtg_g=!rtg_blank ? {rtg_dat[9:5],rtg_dat[9:7]} : 16'b0 ;
-assign rtg_b=!rtg_blank ? {rtg_dat[4:0],rtg_dat[4:2]} : 16'b0 ;
+assign rtg_r={rtg_dat[14:10],rtg_dat[14:12]};
+assign rtg_g={rtg_dat[9:5],rtg_dat[9:7]};
+assign rtg_b={rtg_dat[4:0],rtg_dat[4:2]};
 
 wire [24:4] rtg_baseaddr;
 wire [24:0] rtg_addr;
@@ -340,9 +344,9 @@ VideoStream myvs
 
 
 always @ (posedge CLK_114) begin
-  red_reg   <= #1 rtg_ena && !rtg_blank ? rtg_clut ? rtg_clut_r : rtg_r : red;
-  green_reg <= #1 rtg_ena && !rtg_blank ? rtg_clut ? rtg_clut_g : rtg_g : green;
-  blue_reg  <= #1 rtg_ena && !rtg_blank ? rtg_clut ? rtg_clut_b : rtg_b : blue;
+  red_reg   <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_r : rtg_r : red;
+  green_reg <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_g : rtg_g : green;
+  blue_reg  <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_b : rtg_b : blue;
 end
 
 
