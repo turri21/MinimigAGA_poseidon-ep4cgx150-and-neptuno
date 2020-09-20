@@ -386,7 +386,8 @@ wire [15:0] aud_sample;
 wire aud_ramreq;
 wire [15:0] aud_fromram;
 wire aud_fill;
-wire aud_ena;
+wire aud_ena_host;
+wire aud_ena_cpu;
 wire aud_clear;
 
 wire [22:0] aud_ramaddr;
@@ -423,8 +424,8 @@ end
 VideoStream myaudiostream
 (
 	.clk(CLK_114),
-	.reset_n(!aud_clear),
-	.enable(aud_ena),
+	.reset_n(aud_ena_host | aud_ena_cpu), // !aud_clear),
+	.enable(aud_ena_host | aud_ena_cpu),
 	.baseaddr(25'b0),
 	// SDRAM interface
 	.a(aud_addr),
@@ -513,6 +514,8 @@ TG68K tg68k (
 	.rtg_clut_r(rtg_clut_r),
 	.rtg_clut_g(rtg_clut_g),
 	.rtg_clut_b(rtg_clut_b),
+	.audio_buf(aud_addr[15]),
+	.audio_ena(aud_ena_cpu),
 	// Amiga to host signals
 	.host_req(amigahost_req),
 	.host_ack(amigahost_ack),
@@ -809,7 +812,7 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.menu_button(MENU_BUTTON),
 		.scandoubler(_15khz),
 		
-		.audio_ena(aud_ena),
+		.audio_ena(aud_ena_host),
 		.audio_clear(aud_clear),
 		.audio_buf(aud_addr[15]),
 		.vbl_int(vblank_out),

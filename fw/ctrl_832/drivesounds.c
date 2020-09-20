@@ -304,9 +304,21 @@ int drivesounds_fill()
 		switch(dse->type)
 		{
 			case DRIVESOUND_MOTORSTART:
-				drivesounds.sounds[DRIVESOUND_MOTORSTART].chain=DRIVESOUND_MOTORLOOP;
 				drivesounds.sounds[DRIVESOUND_MOTORLOOP].chain=DRIVESOUND_MOTORLOOP;
-				drivesounds.sounds[DRIVESOUND_MOTORSTART].active=1;
+				if(drivesounds.sounds[DRIVESOUND_MOTORSTOP].active)
+				{
+					drivesounds.sounds[DRIVESOUND_MOTORSTOP].active=0;
+					drivesounds.sounds[DRIVESOUND_MOTORLOOP].active=1;
+				}
+				else if(drivesounds.sounds[DRIVESOUND_MOTORLOOP].active)
+				{
+					drivesounds.sounds[DRIVESOUND_MOTORLOOP].chain=DRIVESOUND_MOTORLOOP;
+				}
+				else
+				{
+					drivesounds.sounds[DRIVESOUND_MOTORSTART].chain=DRIVESOUND_MOTORLOOP;
+					drivesounds.sounds[DRIVESOUND_MOTORSTART].active=1;
+				}
 				break;
 			case DRIVESOUND_MOTORSTOP:
 				drivesounds.sounds[DRIVESOUND_MOTORLOOP].chain=DRIVESOUND_MOTORSTOP;

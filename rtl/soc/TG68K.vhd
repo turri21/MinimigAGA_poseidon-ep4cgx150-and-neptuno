@@ -79,6 +79,9 @@ port(
 	rtg_clut_r : out std_logic_vector(7 downto 0);
 	rtg_clut_g : out std_logic_vector(7 downto 0);
 	rtg_clut_b : out std_logic_vector(7 downto 0);
+	-- Audio interface
+	audio_buf : in std_logic;
+	audio_ena : out std_logic;
 	-- Host interface
 	host_req : out std_logic;
 	host_ack : in std_logic :='0';
@@ -154,6 +157,7 @@ signal sel_32_d         : std_logic;
 signal sel_undecoded    : std_logic;
 signal sel_akiko        : std_logic;
 signal sel_akiko_d      : std_logic;
+signal sel_audio        : std_logic;
 signal sel_ram_d			: std_logic;
 
 -- Akiko registers
@@ -163,6 +167,7 @@ signal akiko_wr : std_logic;
 signal akiko_req : std_logic;
 signal akiko_ack : std_logic;
 signal host_req_r : std_logic;
+signal audio_int : std_logic;
 
 SIGNAL NMI_addr         : std_logic_vector(31 downto 0);
 SIGNAL sel_nmi_vector   : std_logic;
@@ -219,11 +224,12 @@ sel_eth<='0';
 	sel_z2ram       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 21) = "001") OR (cpuaddr(23 downto 21) = "010") OR (cpuaddr(23 downto 21) = "011") OR (cpuaddr(23 downto 21) = "100")) AND z2ram_ena='1' ELSE '0';
 	--sel_eth         <= '1' WHEN (cpuaddr(31 downto 24) = eth_base) AND eth_cfgd='1' ELSE '0';
 	sel_chipram     <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 21)="000") AND turbochip_ena='1' AND turbochip_d='1' ELSE '0'; --$000000 - $1FFFFF
-	sel_kick        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 19)="11111") OR (cpuaddr(23 downto 19)="11100")) AND state/="11" ELSE '0'; -- $F8xxxx, $E0xxxx
+	sel_kick        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 19)="11111") OR (cpuaddr(23 downto 19)="11100")) AND state/="11" ELSE '0'; -- $F8xxxx, $E0xxxx, read only
 	sel_kickram     <= '1' WHEN sel_kick='1' AND turbochip_ena='1' AND turbokick_d='1' ELSE '0';
 	sel_slow        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 20)=X"C") OR (cpuaddr(23 downto 19)=X"D"&'0')) ELSE '0'; -- $C00000 - $D7FFFF
 	sel_slowram     <= '1' WHEN sel_slow='1' AND turbochip_ena='1' AND turbokick_d='1' ELSE '0';
-	sel_cart        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 20)="1010") ELSE '0'; -- $A00000 - $A7FFFF
+	sel_cart        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 20)="1010") ELSE '0'; -- $A00000 - $A7FFFF (actually matches up to $AFFFFF)
+	sel_audio       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 19)="10110") ELSE '0'; -- $B00000 - $B7FFFF
 	sel_undecoded   <= '1' when sel_32_d='1' and sel_z3ram='0' else '0';
 	sel_ram         <= '1' WHEN state/="01" AND sel_nmi_vector='0' AND (
          sel_z2ram='1'
@@ -231,6 +237,7 @@ sel_eth<='0';
       OR sel_chipram='1'
       OR sel_slowram='1'
       OR sel_kickram='1'
+		or sel_audio='1'
 		or sel_undecoded='1'
     ) ELSE '0';
 
@@ -362,7 +369,10 @@ port map
 	rtg_clut_idx => rtg_clut_idx,
 	rtg_clut_r => rtg_clut_r,
 	rtg_clut_g => rtg_clut_g,
-	rtg_clut_b => rtg_clut_b
+	rtg_clut_b => rtg_clut_b,
+	audio_buf => audio_buf,
+	audio_ena => audio_ena,
+	audio_int => audio_int
 );
 
 

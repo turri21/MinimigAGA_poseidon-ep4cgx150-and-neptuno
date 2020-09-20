@@ -25,7 +25,11 @@ port (
 	rtg_clut_idx : in std_logic_vector(7 downto 0);
 	rtg_clut_r : out std_logic_vector(7 downto 0);
 	rtg_clut_g : out std_logic_vector(7 downto 0);
-	rtg_clut_b : out std_logic_vector(7 downto 0)
+	rtg_clut_b : out std_logic_vector(7 downto 0);
+	-- Audio signals
+	audio_buf : in std_logic;
+	audio_ena : out std_logic;
+	audio_int : out std_logic
 );
 end entity;
 
@@ -50,6 +54,12 @@ signal clut_high : std_logic_vector(7 downto 0);
 type clutarray is array(0 to 255) of std_logic_vector(31 downto 0);
 signal clut : clutarray;
 signal clut_rgb : std_logic_vector(31 downto 0);
+
+signal ahi_sel : std_logic;
+signal ahi_q : std_logic_vector(15 downto 0);
+signal audio_intena : std_logic;
+signal audio_buf_d : std_logic;
+
 begin
 
 -- ID Register
@@ -79,9 +89,45 @@ port map
 -- Host interface
 -- Defer any requests not handled by the Cornerturn or RTG to the host CPU
 
-host_sel <= not (rtg_sel or clut_sel or ct_sel);
+host_sel <= not (rtg_sel or clut_sel or ahi_sel or ct_sel);
 host_req <= req and host_sel;
 
+-- Audio registers
+
+ahi_sel <= '1' when addr(10 downto 8)="010"; -- Audio registers at 0xb802xx
+
+process(clk)
+begin
+	if rising_edge(clk) then
+		if reset_n='0' then
+			audio_intena<='0';
+			audio_int<='0';
+		else
+
+			-- Trigger an interrupt when the buffer flips
+			audio_buf_d <= audio_buf;
+			if audio_buf_d /= audio_buf then
+				audio_int<=audio_intena;
+			end if;	
+		
+			if ahi_sel='1' and req='1'	then
+				if wr='1' then	-- Write cycle
+					case addr(4 downto 1) is
+						when X"0" =>
+							audio_ena <= d(0);
+							audio_int <= '0'; -- Clear interrupt on write
+							audio_intena <= d(1);
+						when others =>
+							null;
+					end case;
+				else	-- Read cycle
+					ahi_q(15 downto 1)<=(others=>'0');
+					ahi_q(0)<=audio_buf;
+				end if;
+			end if;
+		end if;	
+	end if;
+end process;
 
 -- RTG registers and CLUT
 
@@ -132,9 +178,11 @@ end process;
 
 -- CPU read cycles
 
-q <= id_q when id_sel='1'
-	else ct_q when ct_sel='1'
+q <=
+	ct_q when ct_sel='1'
 	else host_q when host_sel='1'
+	else ahi_q when ahi_sel='1'
+	else id_q when id_sel='1'
 		-- No reading from RTG registers
 	else X"ffff";
 
