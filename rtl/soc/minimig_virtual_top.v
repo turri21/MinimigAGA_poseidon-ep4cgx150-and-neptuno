@@ -275,7 +275,6 @@ always @(posedge CLK_114) begin
 	// Delayed copies of signals
 	rtg_blank_d<=rtg_blank;
 	rtg_blank_d2<=rtg_blank_d;
-	rtg_blank_d3<=rtg_blank_d2;
 	rtg_clut_in_sel_d<=rtg_clut_in_sel;
 
 	// Alternate colour index at twice the fetch clock.

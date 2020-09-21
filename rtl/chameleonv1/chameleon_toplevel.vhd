@@ -171,6 +171,13 @@ architecture rtl of chameleon_toplevel is
 	signal HSync : std_logic;
 	signal VSync : std_logic;
 	
+	signal red_dithered :unsigned(7 downto 0);
+	signal grn_dithered :unsigned(7 downto 0);
+	signal blu_dithered :unsigned(7 downto 0);
+	signal hsync_n_dithered : std_logic;
+	signal vsync_n_dithered : std_logic;
+
+	
 	COMPONENT amiga_clk_altera
 	PORT
 	(
@@ -425,7 +432,7 @@ PORT map
 		LED_DISK => led_red,
 		LED_POWER => led_green,
 		RESET_N => reset_n,
-		MENU_BUTTON => runstop and (not power_button) and usart_cts,
+		MENU_BUTTON => (not power_button) and usart_cts,
 		CTRL_TX => rs232_txd,
 		CTRL_RX => rs232_rxd,
 		AMIGA_TX => midi_txd,
@@ -504,15 +511,24 @@ vga_window<='1';
 			iRed => unsigned(vga_red),
 			iGreen => unsigned(vga_green),
 			iBlue => unsigned(vga_blue),
-			oHsync=>HSync,
-			oVsync=>VSync,
-			oRed => red,
-			oGreen => grn,
-			oBlue => blu
+			oHsync=>hsync_n_dithered,
+			oVsync=>vsync_n_dithered,
+			oRed => red_dithered,
+			oGreen => grn_dithered,
+			oBlue => blu_dithered
 		);
 
-nHSync <= not HSync;
-nVSync <= not VSync;
+
+process(clk_114)
+begin
+	if rising_edge(clk_114) then
+		red<=red_dithered(7 downto 3);
+		grn<=grn_dithered(7 downto 3);
+		blu<=blu_dithered(7 downto 3);
+		nHSync<=not hsync_n_dithered;
+		nVSync<=not vsync_n_dithered;
+	end if;
+end process;
 
 audio_sd : COMPONENT hybrid_pwm_sd
 	PORT map

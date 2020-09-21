@@ -16,6 +16,7 @@ set clk_28    "virtual_top|amiga_clk|amiga_clk_i|altpll_component|auto_generated
 
 # generated clocks
 create_generated_clock -name clk_sdram -source [get_pins {virtual_top|amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[0]}] [get_ports {sd_clk}]
+create_generated_clock -name clk_spi -source [get_pins $clk_114] -divide_by 4 [get_nets {minimig_virtual_top:virtual_top|cfide:mycfide|sck}]
 
 
 # name SDRAM ports
@@ -64,11 +65,24 @@ set_output_delay -clock clk_sdram -max  1.5 $sdram_dqoutputs
 set_output_delay -clock clk_sdram -min -0.8 $sdram_outputs
 set_output_delay -clock clk_sdram -min -0.8 $sdram_dqoutputs
 
+set_input_delay -clock $clk_114 0.5 [get_ports {dotclock_n ioef_n phi2_n romlh_n spi_miso usart_cts}]
+set_output_delay -clock $clk_114 0.5 [get_ports {mux_d[*]}]
+
 
 # false paths
 
 set_false_path -from [get_clocks {virtual_top|amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[1]}] -to [get_clocks {pll_in_clk}]
 set_false_path -from {gen_reset:myReset|nreset*} -to {reset_28}
+set_false_path -from [get_clocks {virtual_top|amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[1]}] -to [get_clocks {clk_spi}]
+set_false_path -from [get_clocks {virtual_top|amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[2]}] -to [get_clocks {clk_spi}]
+set_false_path -from [get_clocks {clk_spi}] -to [get_clocks {virtual_top|amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[1]}]
+set_false_path -from {virtual_top|amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[0]} -to {sd_clk}
+
+set_false_path -to {sigma*}
+set_false_path -to {red[*]}
+set_false_path -to {grn[*]}
+set_false_path -to {blu[*]}
+set_false_path -to {n*Sync}
 
 # multicycle paths
 
@@ -100,3 +114,4 @@ set_multicycle_path -from {minimig_virtual_top:virtual_top|VideoStream:myaudiost
 
 
 set_multicycle_path -from {chameleon_io:myIO|mux_reg[*]} -to {mux[*]} -setup -end 2
+

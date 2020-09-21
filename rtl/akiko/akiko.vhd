@@ -94,7 +94,7 @@ host_req <= req and host_sel;
 
 -- Audio registers
 
-ahi_sel <= '1' when addr(10 downto 8)="010"; -- Audio registers at 0xb802xx
+ahi_sel <= '1' when addr(10 downto 8)="010" else '0'; -- Audio registers at 0xb802xx
 
 process(clk)
 begin

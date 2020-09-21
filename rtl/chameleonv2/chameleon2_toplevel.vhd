@@ -164,6 +164,11 @@ architecture rtl of chameleon2_toplevel is
 	signal vga_csync : std_logic;
 	signal vga_selcsync : std_logic;
 	
+	signal red_dithered :unsigned(7 downto 0);
+	signal grn_dithered :unsigned(7 downto 0);
+	signal blu_dithered :unsigned(7 downto 0);
+	signal hsync_n_dithered : std_logic;
+	signal vsync_n_dithered : std_logic;
 	
 -- RS232 serial
 	signal rs232_rxd : std_logic:='1';
@@ -564,12 +569,23 @@ PORT map
 			iRed => unsigned(vga_r),
 			iGreen => unsigned(vga_g),
 			iBlue => unsigned(vga_b),
-			oHsync=>hsync_n,
-			oVsync=>vsync_n,
-			oRed => red,
-			oGreen => grn,
-			oBlue => blu
+			oHsync=>hsync_n_dithered,
+			oVsync=>vsync_n_dithered,
+			oRed(7 downto 0) => red_dithered,
+			oGreen(7 downto 0) => grn_dithered,
+			oBlue(7 downto 0) => blu_dithered
 		);
+		
+process(clk_114)
+begin
+	if rising_edge(clk_114) then
+		red<=red_dithered(7 downto 3);
+		grn<=grn_dithered(7 downto 3);
+		blu<=blu_dithered(7 downto 3);
+		hsync_n<=hsync_n_dithered;
+		vsync_n<=vsync_n_dithered;
+	end if;
+end process;
 
 sdaudio: component hybrid_pwm_sd
 	port map

@@ -75,6 +75,7 @@ begin
 			address_low<="000";
 --			inptr<=unsigned(baseaddr(9 downto 1));
 			first_fill<='1';
+			samplebuf(to_integer(inptr))<=(others=>'0');
 		elsif fill='1' then
 			samplebuf(to_integer(inptr))<=d;
 --			inptr<=inptr+1;

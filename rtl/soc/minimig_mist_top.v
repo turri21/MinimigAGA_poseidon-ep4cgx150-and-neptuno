@@ -132,10 +132,6 @@ wire           _ram_oe;       // sram output enable
 wire           _15khz;        // scandoubler disable
 wire           joy_emu_en;    // joystick emulation enable
 wire           sdo;           // SPI data output
-wire [ 16-1:0] ldata;         // left DAC data
-wire [ 16-1:0] rdata;         // right DAC data
-wire           audio_left;
-wire           audio_right;
 
 wire				hsyncpol;
 wire				vsyncpol;
@@ -145,26 +141,6 @@ wire           hs;
 wire [  8-1:0] red;
 wire [  8-1:0] green;
 wire [  8-1:0] blue;
-
-wire [  8-1:0] mixer_red;
-wire [  8-1:0] mixer_green;
-wire [  8-1:0] mixer_blue;
-wire           mixer_vs;
-wire           mixer_hs;
-wire				mixer_cs;
-wire				mixer_pixel;
-
-reg [  6-1:0] red_mixed_r;
-reg [  6-1:0] green_mixed_r;
-reg [  6-1:0] blue_mixed_r;
-reg           vs_mixed_r;
-reg           hs_mixed_r;
-
-wire [  8-1:0] dithered_red;
-wire [  8-1:0] dithered_green;
-wire [  8-1:0] dithered_blue;
-wire           dithered_vs;
-wire           dithered_hs;
 
 reg            vs_reg;
 reg            hs_reg;
@@ -225,20 +201,6 @@ assign joy_emu_en       = 1'b1;
 
 assign LED              = ~led;
 
-// VGA data
-always @ (posedge clk_114) begin
-//  vs_mixed_r    <= #1 ypbpr ? mixer_vs : dithered_vs;
-//  hs_mixed_r    <= #1 ypbpr ? mixer_hs : dithered_hs;
-//  red_mixed_r   <= #1 ypbpr ? mixer_red : dithered_red[7:2];
-//  green_mixed_r <= #1 ypbpr ? mixer_green : dithered_green[7:2];
-//  blue_mixed_r  <= #1 ypbpr ? mixer_blue : dithered_blue[7:2];
-//  vs_mixed_r    <= #1 mixer_vs;
-//  hs_mixed_r    <= #1 mixer_hs;
-//  red_mixed_r   <= #1 mixer_red;
-//  green_mixed_r <= #1 mixer_green;
-//  blue_mixed_r  <= #1 mixer_blue;
-end
-
 always @ (posedge clk_114) begin
 	VGA_VS <= dithered_vs ^ (vsyncpol & !(ypbpr | vga_selcsync));
 	VGA_HS <= dithered_hs ^ (hsyncpol & !(ypbpr | vga_selcsync));
@@ -249,34 +211,6 @@ always @ (posedge clk_114) begin
 end
 
 wire   ypbpr            = core_config[1];
-
-
-//// YPbPr video mixer ////
-// Final video mixer
-// Not all functions of mixer are used due to some signals are pre-mixed already
-//video_mixer video_mixer
-//(
-//	.scandoubler_disable(0),
-//	.ypbpr(ypbpr),
-//	.ypbpr_full(1),
-//
-////	.r_p      (VGA_R_INT         ),
-////	.g_p      (VGA_G_INT         ),
-////	.b_p      (VGA_B_INT         ),
-////	.hsync_p  (VGA_HS_INT        ),
-////	.vsync_p  (VGA_VS_INT        ),
-//	.r_p      (dithered_red      ),
-//	.g_p      (dithered_green    ),
-//	.b_p      (dithered_blue     ),
-//	.hsync_p  (dithered_hs       ),
-//	.vsync_p  (dithered_vs       ),
-//
-//	.VGA_HS (mixer_hs   ),
-//	.VGA_VS (mixer_vs   ),
-//	.VGA_R  (mixer_red  ),
-//	.VGA_G  (mixer_green),
-//	.VGA_B  (mixer_blue )
-//);
 
 
 //// amiga clocks ////
@@ -388,6 +322,8 @@ TG68K tg68k (
 	.rtg_clut_r(rtg_clut_r),
 	.rtg_clut_g(rtg_clut_g),
 	.rtg_clut_b(rtg_clut_b),
+	.audio_ena(aud_ena_cpu),
+	.audio_buf(aud_addr[15])
 );
 
 `endif
@@ -436,6 +372,10 @@ sdram_ctrl sdram (
   .rtgce        (rtg_ramreq       ),
   .rtgfill      (rtg_fill         ),
   .rtgRd        (rtg_fromram      ), 
+  .audAddr      (aud_ramaddr      ),
+  .audce        (aud_ramreq       ),
+  .audfill      (aud_fill         ),
+  .audRd        (aud_fromram      ),
   .reset_out    (reset_out        ),
   .enaRDreg     (                 ),
   .enaWRreg     (tg68_ena28       ),
@@ -562,8 +502,8 @@ minimig minimig (
   //audio
   .left         (                 ),  // audio bitstream left
   .right        (                 ),  // audio bitstream right
-  .ldata        (ldata            ),  // left DAC data
-  .rdata        (rdata            ),  // right DAC data
+  .ldata        (aud_amiga_left ),  // left DAC data
+  .rdata        (aud_amiga_right),  // right DAC data
   //user i/o
   .cpu_config   (cpu_config       ), // CPU config
   .memcfg       (memcfg           ), // memory config
@@ -586,23 +526,6 @@ minimig minimig (
 );
 
 
-wire [15:0] lunsigned;
-assign lunsigned[15]=!ldata[15];
-assign lunsigned[14:0]=ldata[14:0];
-
-wire [15:0] runsigned;
-assign runsigned[15]=!rdata[15];
-assign runsigned[14:0]=rdata[14:0];
-
-hybrid_pwm_sd sd(
-	.clk(clk_114),
-	.d_l(lunsigned),
-	.q_l(AUDIO_L),
-	.d_r(runsigned),
-	.q_r(AUDIO_R)
-);
-
-
 // RTG support...
 
 wire rtg_ena;	// RTG screen on/off
@@ -618,6 +541,7 @@ wire vblank_out;
 reg rtg_vblank;
 wire rtg_blank;
 reg rtg_blank_d;
+reg rtg_blank_d2;
 reg [6:0] rtg_vbcounter;	// Vvbco counter
 wire [6:0] rtg_vbend; // Size of VBlank area
 
@@ -652,6 +576,7 @@ always @(posedge clk_114) begin
 
 	// Delayed copies of signals
 	rtg_blank_d<=rtg_blank;
+	rtg_blank_d2<=rtg_blank_d;
 	rtg_clut_in_sel_d<=rtg_clut_in_sel;
 
 	// Alternate colour index at twice the fetch clock.
@@ -671,9 +596,9 @@ end
 always @(posedge clk_28)
 begin
 	// Handle vblank manually, since the OS makes it awkward to use the chipset for this.
-  cs_reg    <= #1 cs;
-  vs_reg    <= #1 vs;
-  hs_reg    <= #1 hs;
+	cs_reg    <= #1 cs;
+	vs_reg    <= #1 vs;
+	hs_reg    <= #1 hs;
 	if(vblank_out) begin
 		rtg_vblank<=1'b1;
 		rtg_vbcounter<=5'b0;
@@ -687,9 +612,9 @@ end
 assign rtg_blank = rtg_vblank | hblank_out;
 
 assign rtg_clut_idx = rtg_clut_in_sel_d ? rtg_dat[7:0] : rtg_dat[15:8];
-assign rtg_r=!rtg_blank ? {rtg_dat[14:10],rtg_dat[14:12]} : 16'b0 ;
-assign rtg_g=!rtg_blank ? {rtg_dat[9:5],rtg_dat[9:7]} : 16'b0 ;
-assign rtg_b=!rtg_blank ? {rtg_dat[4:0],rtg_dat[4:2]} : 16'b0 ;
+assign rtg_r={rtg_dat[14:10],rtg_dat[14:12]};
+assign rtg_g={rtg_dat[9:5],rtg_dat[9:7]} ;
+assign rtg_b={rtg_dat[4:0],rtg_dat[4:2]};
 
 wire [24:4] rtg_baseaddr;
 wire [24:0] rtg_addr;
@@ -722,11 +647,16 @@ VideoStream myvs
 );
 
 
+// Select between RTG hi-colour, RTG CLUT and native video
+
 always @ (posedge clk_114) begin
-  red_reg   <= #1 rtg_ena && !rtg_blank ? rtg_clut ? rtg_clut_r : rtg_r : red;
-  green_reg <= #1 rtg_ena && !rtg_blank ? rtg_clut ? rtg_clut_g : rtg_g : green;
-  blue_reg  <= #1 rtg_ena && !rtg_blank ? rtg_clut ? rtg_clut_b : rtg_b : blue;
+  red_reg   <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_r : rtg_r : red;
+  green_reg <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_g : rtg_g : green;
+  blue_reg  <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_b : rtg_b : blue;
 end
+
+
+// Overlaying of OSD graphics
 
 
 wire osd_window;
@@ -745,26 +675,15 @@ assign VGA_G_INT[7:0]       = osd_window ? {osd_g,green_reg[7:2]} : green_reg[7:
 assign VGA_B_INT[7:0]       = osd_window ? {osd_b,blue_reg[7:2]} : blue_reg[7:0];
 
 
-assign vga_window = 1'b1;
-video_vga_dither #(.outbits(6), .flickerreduce("false")) dither
-(
-	.clk(clk_114),
-	.pixel(mixer_pixel),
-	.vidEna(vga_window),
-	.iSelcsync(vga_selcsync | ypbpr),
-	.iCsync(mixer_cs),
-	.iHsync(mixer_hs),
-	.iVsync(mixer_vs),
-	.iRed(mixer_red),
-	.iGreen(mixer_green),
-	.iBlue(mixer_blue),
-	.oHsync(dithered_hs),
-	.oVsync(dithered_vs),
-	.oRed(dithered_red),
-	.oGreen(dithered_green),
-	.oBlue(dithered_blue)
-	);
+// Conversion to YPbPr
 
+wire [  8-1:0] mixer_red;
+wire [  8-1:0] mixer_green;
+wire [  8-1:0] mixer_blue;
+wire           mixer_vs;
+wire           mixer_hs;
+wire				mixer_cs;
+wire				mixer_pixel;
 
 RGBtoYPbPr videoconvert
 (
@@ -789,6 +708,135 @@ RGBtoYPbPr videoconvert
 	.pixel_out(mixer_pixel)
 );
 
-	
+
+// Video dithering
+
+wire [  8-1:0] dithered_red;
+wire [  8-1:0] dithered_green;
+wire [  8-1:0] dithered_blue;
+wire           dithered_vs;
+wire           dithered_hs;
+
+assign vga_window = 1'b1;
+video_vga_dither #(.outbits(6), .flickerreduce("false")) dither
+(
+	.clk(clk_114),
+	.pixel(mixer_pixel),
+	.vidEna(vga_window),
+	.iSelcsync(vga_selcsync | ypbpr),
+	.iCsync(mixer_cs),
+	.iHsync(mixer_hs),
+	.iVsync(mixer_vs),
+	.iRed(mixer_red),
+	.iGreen(mixer_green),
+	.iBlue(mixer_blue),
+	.oHsync(dithered_hs),
+	.oVsync(dithered_vs),
+	.oRed(dithered_red),
+	.oGreen(dithered_green),
+	.oBlue(dithered_blue)
+	);
+
+
+// Auxiliary audio
+
+wire [15:0] aud_amiga_left;
+wire [15:0] aud_amiga_right;    // sigma-delta DAC output right
+reg [15:0] aud_aux_left;
+reg [15:0] aud_aux_right;    // sigma-delta DAC output right
+
+reg aud_tick;
+reg aud_tick_d;
+reg aud_next;
+
+wire [24:0] aud_addr;
+wire [15:0] aud_sample;
+
+wire aud_ramreq;
+wire [15:0] aud_fromram;
+wire aud_fill;
+wire aud_ena_cpu;
+wire aud_clear;
+
+wire [22:0] aud_ramaddr;
+assign aud_ramaddr[15:0]=aud_addr;
+assign aud_ramaddr[22:16]=7'b0110000;  // 0x300000 in SDRAM, 0x680000 to host, 0xb00000 to Amiga
+
+reg [9:0] aud_ctr;
+always @(posedge clk_28) begin
+	aud_ctr<=aud_ctr+1;
+	if (aud_ctr==10'd642) begin
+		aud_tick<=1'b1;
+		aud_ctr<=10'b0;
+	end
+	else
+		aud_tick<=1'b0;
+end
+
+//  tick:   0 0 1 1 1 1 0 0
+//  tick_d: 0 0 0 1 1 1 1 0
+// tick^tick_d  1 0 0 0 1 0 
+always @(posedge clk_114) begin
+	aud_tick_d<=aud_tick;
+	aud_next<=aud_tick ^ aud_tick_d;
+	if (aud_tick_d==1)
+		aud_aux_left<={aud_sample[7:0],aud_sample[15:8]};
+	else
+		aud_aux_right<={aud_sample[7:0],aud_sample[15:8]};
+end	
+
+// We can use the same type of FIFO as we use for video.
+VideoStream myaudiostream
+(
+	.clk(clk_114),
+	.reset_n(aud_ena_cpu), // !aud_clear),
+	.enable(aud_ena_cpu),
+	.baseaddr(25'b0),
+	// SDRAM interface
+	.a(aud_addr),
+	.req(aud_ramreq),
+	.d(aud_fromram),
+	.fill(aud_fill),
+	// Display interface
+	.rdreq(aud_next),
+	.q(aud_sample)
+);
+
+
+// Audio mixing
+
+wire [15:0] ldata;
+wire [15:0] rdata;
+
+AudioMix myaudiomix
+(
+	.clk(clk_28),
+	.reset_n(reset_out),
+	.audio_in_l1(aud_amiga_left),
+	.audio_in_l2(aud_aux_left),
+	.audio_in_r1(aud_amiga_right),
+	.audio_in_r2(aud_aux_right),
+	.audio_l(ldata),
+	.audio_r(rdata)
+);
+
+// Audio DAC
+
+wire [15:0] lunsigned;
+assign lunsigned[15]=!ldata[15];
+assign lunsigned[14:0]=ldata[14:0];
+
+wire [15:0] runsigned;
+assign runsigned[15]=!rdata[15];
+assign runsigned[14:0]=rdata[14:0];
+
+hybrid_pwm_sd sd(
+	.clk(clk_114),
+	.d_l(lunsigned),
+	.q_l(AUDIO_L),
+	.d_r(runsigned),
+	.q_r(AUDIO_R)
+);
+
 endmodule
 

@@ -1301,7 +1301,9 @@ SetHardware:
         move.w  (CardData_HSStop,a0),(hsstop,a1)
         move.w  (CardData_HBStop,a0),(hbstop,a1)
 
-        move.w  (CardData_VTotal,a0),(vtotal,a1)
+        move.w  (CardData_VTotal,a0),d0
+        subq    #1,d0
+        move.w  d0,(vtotal,a1)
         move.w  #0,(vbstrt,a1)
         move.w  (CardData_VSStart,a0),(vsstrt,a1)
         move.w  (CardData_VSStop,a0),(vsstop,a1)

@@ -27,7 +27,7 @@ volatile int GetInterrupts()
 
 void EnableInterrupts()
 {
-	HW_INTERRUPT(REG_INTERRUPT_CTRL)=0;
+	HW_INTERRUPT(REG_INTERRUPT_CTRL)=1;
 }
 
 
