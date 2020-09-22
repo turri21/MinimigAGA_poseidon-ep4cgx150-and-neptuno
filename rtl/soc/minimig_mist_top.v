@@ -232,46 +232,6 @@ amiga_clk amiga_clk (
 
 
 //// TG68K main CPU ////
-`ifdef MINIMIG_MIST_NEWCPU
-TG68K_SplitClock tg68k (
-  .clk          (clk_114          ),
-  .clk28        (clk_28           ),
-  .reset        (tg68_rst         ),
-  .IPL          (tg68_IPL         ),
-  .dtack        (tg68_dtack       ),
-//  .vpa          (1'b1             ),
-//  .ein          (1'b1             ),
-  .addr         (tg68_adr         ),
-  .data_read    (tg68_dat_in      ),
-  .data_write   (tg68_dat_out     ),
-  .as           (tg68_as          ),
-  .uds          (tg68_uds         ),
-  .lds          (tg68_lds         ),
-  .rw           (tg68_rw          ),
-  .e            (                 ),
-  .vma          (                 ),
-  .wrd          (                 ),
-  .ena7RDreg    (tg68_ena7RD      ),
-  .ena7WRreg    (tg68_ena7WR      ),
-  .enaWRreg     (tg68_enaWR       ),
-  .fromram      (tg68_cout        ),
-  .toram      (tg68_cin        ),
-  .ramready     (tg68_cpuena      ),
-  .cache_valid(cache_valid),
-  .cacheable(tg68_cacheable),
-  .cpu          (cpu_config[1:0]  ),
-  .turbochipram (memcfg[5]&memcfg[4]&turbochipram/*1'b0*//*turbochipram*/     ),
-  .fastramcfg   ({memcfg[5]&memcfg[4],memcfg[5:4]}),
-  .ramaddr      (tg68_cad         ),
-  .cpustate     (tg68_cpustate    ),
-  .nResetOut    (tg68_nrst_out    ),
-  .skipFetch    (                 ),
-  .ramlds       (tg68_clds        ),
-  .ramuds       (tg68_cuds        ),
-  .VBR_out      (tg68_VBR_out     )
-);
-
-`else
 
 TG68K tg68k (
   .clk          (clk_114          ),
@@ -326,9 +286,6 @@ TG68K tg68k (
 	.audio_ena(aud_ena_cpu),
 	.audio_buf(aud_addr[15])
 );
-
-`endif
-
 
 //sdram sdram (
 sdram_ctrl sdram (
