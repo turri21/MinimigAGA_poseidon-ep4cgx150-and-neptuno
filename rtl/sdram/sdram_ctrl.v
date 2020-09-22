@@ -107,7 +107,7 @@ localparam [2:0]
   WAITLONGWORD=1,
   WRITE1 = 2,
   WRITE2 = 3,
-  WRITE3 = 4;
+  FINISH = 4;
 
 localparam [2:0]
   REFRESH = 0,
@@ -168,6 +168,7 @@ wire          cequal;
 wire [ 2-1:0] cpuStated;
 wire [16-1:0] cpuRDd;
 wire          cpuLongword;
+wire          cpuCSn;
 wire [64-1:0] dcache;
 wire [25-1:0] dcache_addr;
 wire          dcache_fill;
@@ -208,6 +209,7 @@ reg  [16-1:0] writebufferWR2_reg;
 reg  [ 2-1:0] writebuffer_dqm2;
 wire          writebuffer_cache_ack;
 reg           writebuffer_hold;
+reg           writebuffer_canfinish;
 reg  [ 3-1:0] writebuffer_state;
 wire [25-1:1] cpuAddr_mangled;
 
@@ -220,7 +222,7 @@ wire [25-1:1] cpuAddr_mangled;
 assign cpuAddr_mangled = cpuAddr;
 
 assign cpuLongword = cpustate[6];
-
+assign cpuCSn      = cpustate[2];
 
 ////////////////////////////////////////
 // reset
@@ -542,7 +544,7 @@ cpu_cache_new cpu_cache (
   .cache_en         (1'b1),                         // cache enable
   .cpu_cache_ctrl   (cpu_cache_ctrl),               // CPU cache control
   .cache_inhibit    (cache_inhibit),                // cache inhibit
-  .cpu_cs           (!cpustate[2]),                 // cpu activity
+  .cpu_cs           (!cpuCSn),                      // cpu activity
 //  .cpu_32bit        (cpustate[6]),                  // 32bit access
   .cpu_32bit        (1'b0),                         // 32bit access
   .cpu_adr          ({cpuAddr_mangled, 1'b0}),      // cpu address
@@ -571,7 +573,7 @@ TwoWayCache mytwc (
   .cache_rst        (cache_rst),
   .ready            (),
   .cpu_addr         ({7'b0000000, cpuAddr_mangled, 1'b0}),
-  .cpu_req          (!cpustate[2]),
+  .cpu_req          (!cpuCSn),
   .cpu_ack          (ccachehit),
   .cpu_wr_ack       (writebuffer_cache_ack),
   .cpu_rw           (!cpustate[1] || !cpustate[0]),
@@ -603,11 +605,12 @@ always @ (posedge sysclk) begin
     case(writebuffer_state)
       WAITING : begin
 			// CPU write cycle, no cycle already pending
-			if(cpustate[2:0] == 3'b011) begin
+			if(!cpuCSn && cpustate[1:0] == 2'b11) begin
 				writebufferAddr <= #1 cpuAddr_mangled[24:1];
 				writebufferWR   <= #1 cpuWR;
 				writebuffer_dqm <= #1 {cpuU, cpuL};
 				writebuffer_dqm2 <= #1 2'b11;
+				writebuffer_canfinish <= #1 1'b0;
 				if(cpuLongword==1'b1 && cpuAddr[3:1]!=3'b111) begin
 					// If we're looking at a longword write, acknowledge the first word
 					// and wait for the second half...
@@ -621,40 +624,46 @@ always @ (posedge sysclk) begin
 					writebuffer_req <= #1 1'b1;
 					if(writebuffer_cache_ack) begin	// Wait for read cache to note the write
 						writebuffer_ena   <= #1 1'b1;
-						writebuffer_state <= #1 WRITE2;
+						writebuffer_state <= #1 WRITE1;
 					end
 				end
 			end
 		end
 		WAITLONGWORD : begin
-			if(cpustate[2:0] == 3'b011 && !writebuffer_ena) begin
+			if(!cpuCSn && cpustate[1:0] == 2'b11 && !writebuffer_ena) begin
 				writebufferWR2   <= #1 cpuWR;
 				writebuffer_dqm2 <= #1 {cpuU, cpuL};
 				writebuffer_req <= #1 1'b1;
 				if(writebuffer_cache_ack) begin 	// Wait for read cache to note the write
 					writebuffer_ena   <= #1 1'b1;
-					writebuffer_state <= #1 WRITE2;
+					writebuffer_state <= #1 WRITE1;
 				end
 			end
 		end
-      WRITE2 : begin
+      WRITE1 : begin
+        // note when the cpu unpaused, otherwise it's possible to re-start
+        // the writebuffer cycle in the same request
+        if(cpuCSn) writebuffer_canfinish <= #1 1'b1;
         if(writebuffer_hold) begin
           // The SDRAM controller has picked up the request
           writebuffer_req   <= #1 1'b0;
-          writebuffer_state <= #1 WRITE3;
+          writebuffer_state <= #1 WRITE2;
         end
       end
-      WRITE3 : begin
+      WRITE2 : begin
+        if(cpuCSn) writebuffer_canfinish <= #1 1'b1;
         if(!writebuffer_hold) begin
           // Wait for write cycle to finish, so it's safe to update the signals
-          writebuffer_state <= #1 WAITING;
+          writebuffer_state <= #1 (cpuCSn || writebuffer_canfinish) ? WAITING : FINISH;
         end
       end
+      FINISH: if (cpuCSn) writebuffer_state <= #1 WAITING;
+
       default : begin
         writebuffer_state <= #1 WAITING;
       end
     endcase
-    if(cpustate[2]) begin
+    if(cpuCSn) begin
       // the CPU has unpaused, so clear the ack signal
       writebuffer_ena <= #1 1'b0;
     end
