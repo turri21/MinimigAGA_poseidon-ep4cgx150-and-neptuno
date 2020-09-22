@@ -201,17 +201,18 @@ assign joy_emu_en       = 1'b1;
 
 assign LED              = ~led;
 
+wire   ypbpr            = core_config[1];
+wire   no_csync         = core_config[2];
+wire   force_csync      = ypbpr | (!no_csync & vga_selcsync);
+
 always @ (posedge clk_114) begin
-	VGA_VS <= dithered_vs ^ (vsyncpol & !(ypbpr | vga_selcsync));
-	VGA_HS <= dithered_hs ^ (hsyncpol & !(ypbpr | vga_selcsync));
+	VGA_VS <= dithered_vs ^ (vsyncpol & !force_csync);
+	VGA_HS <= dithered_hs ^ (hsyncpol & !force_csync);
 
 	VGA_R[5:0] <= dithered_red[7:2];
 	VGA_G[5:0] <= dithered_green[7:2];
 	VGA_B[5:0] <= dithered_blue[7:2];
 end
-
-wire   ypbpr            = core_config[1];
-
 
 //// amiga clocks ////
 amiga_clk amiga_clk (
@@ -723,7 +724,7 @@ video_vga_dither #(.outbits(6), .flickerreduce("false")) dither
 	.clk(clk_114),
 	.pixel(mixer_pixel),
 	.vidEna(vga_window),
-	.iSelcsync(vga_selcsync | ypbpr),
+	.iSelcsync(force_csync),
 	.iCsync(mixer_cs),
 	.iHsync(mixer_hs),
 	.iVsync(mixer_vs),
