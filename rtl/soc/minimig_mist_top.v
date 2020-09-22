@@ -110,7 +110,7 @@ wire           turbochipram;
 wire           turbokick;
 wire           cache_inhibit;
 wire [ 32-1:0] tg68_cad;
-wire [  6-1:0] tg68_cpustate;
+wire [  7-1:0] tg68_cpustate;
 wire           tg68_nrst_out;
 //wire           tg68_cdma;
 wire           tg68_clds;
