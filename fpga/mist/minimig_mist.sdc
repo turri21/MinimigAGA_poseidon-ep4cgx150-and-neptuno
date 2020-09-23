@@ -84,17 +84,17 @@ set_multicycle_path -from [get_clocks $clk_sdram] -to [get_clocks $clk_114] -set
 
 # Neither in nor out of the C2P requires single-cycle speed
 set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|rdptr[*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -setup -end 2
-set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|rdptr[*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold -end 2
+set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|rdptr[*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold -end 1
 set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|buf[*][*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -setup -end 2
-set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|buf[*][*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold -end 2
+set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|buf[*][*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold -end 1
 
 # Likewise RTG and audio address have 8 cycles of downtime between bursts
 set_multicycle_path -from {VideoStream:myvs|address_high[*]} -to {sdram_ctrl:sdram|*} -setup -end 2
-set_multicycle_path -from {VideoStream:myvs|address_high[*]} -to {sdram_ctrl:sdram|*} -hold -end 2
+set_multicycle_path -from {VideoStream:myvs|address_high[*]} -to {sdram_ctrl:sdram|*} -hold -end 1
 set_multicycle_path -from {VideoStream:myvs|outptr[*]} -to {sdram_ctrl:sdram|*} -setup -end 2
-set_multicycle_path -from {VideoStream:myvs|outptr[*]} -to {sdram_ctrl:sdram|*} -hold -end 2
+set_multicycle_path -from {VideoStream:myvs|outptr[*]} -to {sdram_ctrl:sdram|*} -hold -end 1
 set_multicycle_path -from {VideoStream:myaudiostream|*} -to {sdram_ctrl:sdram|*} -setup -end 2
-set_multicycle_path -from {VideoStream:myaudiostream|*} -to {sdram_ctrl:sdram|*} -hold -end 2
+set_multicycle_path -from {VideoStream:myaudiostream|*} -to {sdram_ctrl:sdram|*} -hold -end 1
 
 # JTAG
 set ports [get_ports -nowarn {altera_reserved_tck}]
