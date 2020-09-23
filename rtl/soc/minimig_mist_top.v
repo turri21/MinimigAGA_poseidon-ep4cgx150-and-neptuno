@@ -110,7 +110,7 @@ wire           turbochipram;
 wire           turbokick;
 wire           cache_inhibit;
 wire [ 32-1:0] tg68_cad;
-wire [  6-1:0] tg68_cpustate;
+wire [  7-1:0] tg68_cpustate;
 wire           tg68_nrst_out;
 //wire           tg68_cdma;
 wire           tg68_clds;
@@ -201,17 +201,18 @@ assign joy_emu_en       = 1'b1;
 
 assign LED              = ~led;
 
+wire   ypbpr            = core_config[1];
+wire   no_csync         = core_config[2];
+wire   force_csync      = ypbpr | (!no_csync & vga_selcsync);
+
 always @ (posedge clk_114) begin
-	VGA_VS <= dithered_vs ^ (vsyncpol & !(ypbpr | vga_selcsync));
-	VGA_HS <= dithered_hs ^ (hsyncpol & !(ypbpr | vga_selcsync));
+	VGA_VS <= dithered_vs ^ (vsyncpol & !force_csync);
+	VGA_HS <= dithered_hs ^ (hsyncpol & !force_csync);
 
 	VGA_R[5:0] <= dithered_red[7:2];
 	VGA_G[5:0] <= dithered_green[7:2];
 	VGA_B[5:0] <= dithered_blue[7:2];
 end
-
-wire   ypbpr            = core_config[1];
-
 
 //// amiga clocks ////
 amiga_clk amiga_clk (
@@ -231,46 +232,6 @@ amiga_clk amiga_clk (
 
 
 //// TG68K main CPU ////
-`ifdef MINIMIG_MIST_NEWCPU
-TG68K_SplitClock tg68k (
-  .clk          (clk_114          ),
-  .clk28        (clk_28           ),
-  .reset        (tg68_rst         ),
-  .IPL          (tg68_IPL         ),
-  .dtack        (tg68_dtack       ),
-//  .vpa          (1'b1             ),
-//  .ein          (1'b1             ),
-  .addr         (tg68_adr         ),
-  .data_read    (tg68_dat_in      ),
-  .data_write   (tg68_dat_out     ),
-  .as           (tg68_as          ),
-  .uds          (tg68_uds         ),
-  .lds          (tg68_lds         ),
-  .rw           (tg68_rw          ),
-  .e            (                 ),
-  .vma          (                 ),
-  .wrd          (                 ),
-  .ena7RDreg    (tg68_ena7RD      ),
-  .ena7WRreg    (tg68_ena7WR      ),
-  .enaWRreg     (tg68_enaWR       ),
-  .fromram      (tg68_cout        ),
-  .toram      (tg68_cin        ),
-  .ramready     (tg68_cpuena      ),
-  .cache_valid(cache_valid),
-  .cacheable(tg68_cacheable),
-  .cpu          (cpu_config[1:0]  ),
-  .turbochipram (memcfg[5]&memcfg[4]&turbochipram/*1'b0*//*turbochipram*/     ),
-  .fastramcfg   ({memcfg[5]&memcfg[4],memcfg[5:4]}),
-  .ramaddr      (tg68_cad         ),
-  .cpustate     (tg68_cpustate    ),
-  .nResetOut    (tg68_nrst_out    ),
-  .skipFetch    (                 ),
-  .ramlds       (tg68_clds        ),
-  .ramuds       (tg68_cuds        ),
-  .VBR_out      (tg68_VBR_out     )
-);
-
-`else
 
 TG68K tg68k (
   .clk          (clk_114          ),
@@ -325,9 +286,6 @@ TG68K tg68k (
 	.audio_ena(aud_ena_cpu),
 	.audio_buf(aud_addr[15])
 );
-
-`endif
-
 
 //sdram sdram (
 sdram_ctrl sdram (
@@ -723,7 +681,7 @@ video_vga_dither #(.outbits(6), .flickerreduce("false")) dither
 	.clk(clk_114),
 	.pixel(mixer_pixel),
 	.vidEna(vga_window),
-	.iSelcsync(vga_selcsync | ypbpr),
+	.iSelcsync(force_csync),
 	.iCsync(mixer_cs),
 	.iHsync(mixer_hs),
 	.iVsync(mixer_vs),

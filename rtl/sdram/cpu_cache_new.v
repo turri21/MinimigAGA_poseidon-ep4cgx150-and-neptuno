@@ -305,6 +305,7 @@ always @ (posedge clk) begin
         cpu_sm_iram1_we <= #1 itag1_match && itag1_valid /*&& !cc_fr*/;
         cpu_sm_dram0_we <= #1 dtag0_match && dtag0_valid /*&& !cc_fr*/;
         cpu_sm_dram1_we <= #1 dtag1_match && dtag1_valid /*&& !cc_fr*/;
+        wb_en <= #1 1'b1;
         cpu_sm_state <= #1 CPU_SM_WB;
       end
       CPU_SM_WB : begin
