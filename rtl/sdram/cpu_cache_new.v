@@ -35,7 +35,7 @@ module cpu_cache_new (
   input  wire           sdr_read_ack,   // sdram read acknowledge to cache
   // snoop
   input  wire           snoop_act,      // snoop act (write only - just update existing data in cache)
-  input  wire [ 25-1:0] snoop_adr,      // chip address                      
+  input  wire [ 25-1:0] snoop_adr,      // chip address
   input  wire [ 16-1:0] snoop_dat_w     // snoop write data
 );
 
@@ -492,7 +492,7 @@ always @ (posedge clk) begin
     // when CPU lowers its request signal, lower ack too
     if (!cpu_cs && !longword) cpu_ack <= #1 1'b0;
 
-	end
+  end
 end
 
 
