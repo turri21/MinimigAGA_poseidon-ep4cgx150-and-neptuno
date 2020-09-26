@@ -839,11 +839,8 @@ reg wb_reservertg;
 reg wb_slot1ok;
 reg wb_slot2ok;
 reg rtg_slot2ok;
-reg writebuffer_atn;
 
 always @(posedge sysclk) begin
-
-	writebuffer_atn<=writebuffer_req;
 
 	cpu_reservertg <= rtgce && cpuAddr_mangled[24:23]==rtgAddr[24:23] ? 1'b1 : 1'b0;
 	cpu_slot1ok <= (slot2_type == IDLE || slot2_bank != cpuAddr_mangled[24:23]) ? 1'b1 : 1'b0;
@@ -930,7 +927,7 @@ always @ (posedge sysclk) begin
 					//sdaddr              <= #1 13'b0001000100010; // BURST=4 LATENCY=2
 					//sdaddr              <= #1 13'b0001000110010; // BURST=4 LATENCY=3
 					//sdaddr              <= #1 13'b0001000110000; // noBURST LATENCY=3
-					sdaddr              <= #1 13'b0000000110011; // BURST=4 LATENCY=3, write bursts
+					sdaddr              <= #1 13'b0000000110011; // BURST=8 LATENCY=3, write bursts
 				end
 				default : begin
 					// NOP
@@ -1000,7 +997,7 @@ always @ (posedge sysclk) begin
 				end
 				// the Amiga CPU gets next bite of the cherry, unless the OSD CPU has been cycle-starved
 				// request from write buffer
-				else if(writebuffer_atn && !zatn && wb_slot1ok && !wb_reservertg) begin
+				else if(writebuffer_req && !zatn && wb_slot1ok && !wb_reservertg) begin
 //				&& (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23])
 //					&& (!rtgce || writebufferAddr[24:23]!=rtgAddr[24:23])) begin
 					// We only yield to the OSD CPU if it's both cycle-starved and ready to go.
@@ -1162,7 +1159,7 @@ always @ (posedge sysclk) begin
 						cas_sd_cas        <= #1 1'b0;
 						cas_sd_cs         <= #1 4'b1110;
 					end
-					else if(writebuffer_atn && wb_slot2ok) begin
+					else if(writebuffer_req && wb_slot2ok) begin
 			 // reserve bank 0 for slot 1
 //          else if(writebuffer_req && |writebufferAddr[24:23] // reserve bank 0 for slot 1
 //					&& (slot1_type == IDLE || slot1_bank != writebufferAddr[24:23])) begin

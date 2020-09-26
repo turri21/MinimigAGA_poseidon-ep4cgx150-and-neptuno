@@ -49,6 +49,7 @@ reg  [ 4-1:0] cpu_sm_state;
 reg  [ 4-1:0] sdr_sm_state;
 // state signals
 reg           fill;
+reg           cpu_acked;
 reg  [14-1:0] cpu_sm_tag_adr;
 reg  [10-1:0] cpu_sm_adr;
 reg           cpu_sm_itag_we;
@@ -346,6 +347,7 @@ always @ (posedge clk) begin
           // on miss fetch data from SDRAM
           sdr_read_req <= #1 1'b1;
           cpu_sm_state <= #1 CPU_SM_FILL1;
+          cpu_acked <= #1 1'b0;
         end
       end
       CPU_SM_WAIT : begin
@@ -406,6 +408,7 @@ always @ (posedge clk) begin
         end
       end
       CPU_SM_FILL2 : begin
+        if (!cpu_cs) cpu_acked <= #1 1'b1;
         // cache line fill 2nd word
         fill <= #1 1'b1;
         cpu_sm_adr[2:0] <= #1 cpu_sm_adr[2:0] + 2'b01;
@@ -417,6 +420,7 @@ always @ (posedge clk) begin
         cpu_sm_state <= #1 CPU_SM_FILL3;
       end
       CPU_SM_FILL3 : begin
+        if (!cpu_cs) cpu_acked <= #1 1'b1;
         // cache line fill 3rd word
         fill <= #1 1'b1;
         cpu_sm_adr[2:0] <= #1 cpu_sm_adr[2:0] + 2'b01;
@@ -428,6 +432,7 @@ always @ (posedge clk) begin
         cpu_sm_state <= #1 CPU_SM_FILL4;
       end
       CPU_SM_FILL4 : begin
+        if (!cpu_cs) cpu_acked <= #1 1'b1;
         // cache line fill 4th word
         fill <= #1 1'b1;
         cpu_sm_adr[2:0] <= #1 cpu_sm_adr[2:0] + 2'b01;
@@ -439,6 +444,7 @@ always @ (posedge clk) begin
         cpu_sm_state <= #1 CPU_SM_FILL5;
       end
       CPU_SM_FILL5 : begin
+        if (!cpu_cs) cpu_acked <= #1 1'b1;
         // cache line fill 4th word
         fill <= #1 1'b1;
         cpu_sm_adr[2:0] <= #1 cpu_sm_adr[2:0] + 2'b01;
@@ -450,6 +456,7 @@ always @ (posedge clk) begin
         cpu_sm_state <= #1 CPU_SM_FILL6;
       end
       CPU_SM_FILL6 : begin
+        if (!cpu_cs) cpu_acked <= #1 1'b1;
         // cache line fill 4th word
         fill <= #1 1'b1;
         cpu_sm_adr[2:0] <= #1 cpu_sm_adr[2:0] + 2'b01;
@@ -461,6 +468,7 @@ always @ (posedge clk) begin
         cpu_sm_state <= #1 CPU_SM_FILL7;
       end
       CPU_SM_FILL7 : begin
+        if (!cpu_cs) cpu_acked <= #1 1'b1;
         // cache line fill 4th word
         fill <= #1 1'b1;
         cpu_sm_adr[2:0] <= #1 cpu_sm_adr[2:0] + 2'b01;
@@ -472,6 +480,7 @@ always @ (posedge clk) begin
         cpu_sm_state <= #1 CPU_SM_FILL8;
       end
       CPU_SM_FILL8 : begin
+        if (!cpu_cs) cpu_acked <= #1 1'b1;
         // cache line fill 4th word
         fill <= #1 1'b1;
         cpu_sm_adr[2:0] <= #1 cpu_sm_adr[2:0] + 2'b01;
@@ -483,7 +492,7 @@ always @ (posedge clk) begin
         cpu_sm_state <= #1 CPU_SM_FILLW;
       end
       CPU_SM_FILLW : begin
-        if (!cpu_ack) begin
+        if (!cpu_cs | cpu_acked) begin
           cpu_sm_state <= #1 CPU_SM_IDLE;
         end
       end
