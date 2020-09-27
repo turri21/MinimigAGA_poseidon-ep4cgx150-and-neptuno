@@ -50,7 +50,7 @@ set_input_delay -clock { spi_clk } .5 [get_ports SPI*]
 set_input_delay -clock { spi_clk } .5 [get_ports CONF_DATA0]
 
 # output delay on SPI pins
-set_output_delay -clock { spi_clk } .5 [get_ports SPI*]
+set_output_delay -clock { spi_clk } .5 [get_ports SPI_DO]
 
 
 # false paths
