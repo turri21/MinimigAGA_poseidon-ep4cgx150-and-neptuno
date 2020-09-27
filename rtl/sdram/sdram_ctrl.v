@@ -545,8 +545,6 @@ cpu_cache_new cpu_cache (
 	.cpu_cache_ctrl   (cpu_cache_ctrl),               // CPU cache control
 	.cache_inhibit    (cache_inhibit),                // cache inhibit
 	.cpu_cs           (!cpuCSn),                      // cpu activity
-//	.cpu_32bit        (cpustate[6]),                  // 32bit access
-	.cpu_32bit        (1'b0),                         // 32bit access
 	.cpu_adr          ({cpuAddr_mangled, 1'b0}),      // cpu address
 	.cpu_bs           ({!cpuU, !cpuL}),               // cpu byte selects
 	.cpu_we           (&cpustate[1:0]),               // cpu write
