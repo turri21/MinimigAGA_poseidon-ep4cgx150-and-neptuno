@@ -69,6 +69,7 @@ wire           pll_in_clk;
 wire           clk_114;
 wire           clk_28;
 wire           clk_sdram;
+wire           clk_vid;
 wire           pll_locked;
 wire           clk7_en;
 wire           clk7n_en;
@@ -485,6 +486,12 @@ minimig minimig (
 
 
 // RTG support...
+vidclkcntrl vidclkcntrl (
+	.clkselect ( rtg_ena ),
+	.inclk0x   ( clk_28  ),
+	.inclk1x   ( clk_114 ),
+	.outclk    ( clk_vid )
+);
 
 wire rtg_ena;	// RTG screen on/off
 wire rtg_clut;	// Are we in high-colour or 8-bit CLUT mode?
@@ -522,15 +529,10 @@ wire rtg_clut_pixel;
 assign rtg_clut_pixel = rtg_clut_in_sel & !rtg_clut_in_sel_d; // Detect rising edge;
 reg rtg_pixel_d;
 // Export a VGA pixel strobe for the dither module.
-assign vga_pixel=rtg_ena ? (rtg_pixel_d | (rtg_clut_pixel & rtg_clut)) : vga_strobe;
-
-reg [2:0] vga_strobe_ctr;
-wire vga_strobe;
-assign vga_strobe = vga_strobe_ctr==3'b000 ? 1'b1 : 1'b0;
+assign vga_pixel=rtg_ena ? (rtg_pixel_d | (rtg_clut_pixel & rtg_clut)) : 1'b1;
 
 always @(posedge clk_114) begin
 	rtg_pixel_d<=rtg_pixel;
-	vga_strobe_ctr<=_15khz ? {vga_strobe_ctr[2:1],1'b0}+3'b010 : vga_strobe_ctr+3'b001;
 
 	// Delayed copies of signals
 	rtg_blank_d<=rtg_blank;
@@ -546,7 +548,7 @@ always @(posedge clk_114) begin
 		rtg_pixelctr<=3'b0;
 		rtg_clut_in_sel<=1'b0;
 	end else begin
-		rtg_pixelctr<=rtg_pixelctr+1;
+		rtg_pixelctr<=rtg_pixelctr+1'd1;
 	end
 end
 
@@ -563,7 +565,7 @@ begin
 	end else if(rtg_vbcounter==rtg_vbend) begin
 		rtg_vblank<=1'b0;
 	end else if(hs & !hs_reg) begin
-		rtg_vbcounter<=rtg_vbcounter+1;
+		rtg_vbcounter<=rtg_vbcounter+1'd1;
 	end
 end
 
@@ -607,7 +609,7 @@ VideoStream myvs
 
 // Select between RTG hi-colour, RTG CLUT and native video
 
-always @ (posedge clk_114) begin
+always @ (posedge clk_vid) begin
   red_reg   <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_r : rtg_r : red;
   green_reg <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_g : rtg_g : green;
   blue_reg  <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_b : rtg_b : blue;
@@ -645,7 +647,7 @@ wire				mixer_pixel;
 
 RGBtoYPbPr videoconvert
 (
-	.clk(clk_114),
+	.clk(clk_vid),
 	.ena(ypbpr),
 
 	.red_in(VGA_R_INT),
@@ -678,7 +680,7 @@ wire           dithered_hs;
 assign vga_window = 1'b1;
 video_vga_dither #(.outbits(6), .flickerreduce("false")) dither
 (
-	.clk(clk_114),
+	.clk(clk_vid),
 	.pixel(mixer_pixel),
 	.vidEna(vga_window),
 	.iSelcsync(force_csync),
@@ -717,12 +719,12 @@ wire aud_ena_cpu;
 wire aud_clear;
 
 wire [22:0] aud_ramaddr;
-assign aud_ramaddr[15:0]=aud_addr;
+assign aud_ramaddr[15:0]=aud_addr[15:0];
 assign aud_ramaddr[22:16]=7'b0110000;  // 0x300000 in SDRAM, 0x680000 to host, 0xb00000 to Amiga
 
 reg [9:0] aud_ctr;
 always @(posedge clk_28) begin
-	aud_ctr<=aud_ctr+1;
+	aud_ctr<=aud_ctr+1'd1;
 	if (aud_ctr==10'd642) begin
 		aud_tick<=1'b1;
 		aud_ctr<=10'b0;
