@@ -260,7 +260,9 @@ module minimig
   output  vblank_out,
   output  osd_blank_out,	// Let the toplevel dither module handle drawing the OSD.
   output  osd_pixel_out,
-  output  rtg_ena
+  output  rtg_ena,
+  output reg ntsc = NTSC  //PAL/NTSC video mode selection
+
 );
 
 //--------------------------------------------------------------------------------------
@@ -425,8 +427,6 @@ wire	[7:0] bank;				//memory bank select
 
 wire	keyboard_disabled;		//disables Amiga keyboard while OSD is active
 //wire	disk_led;				//floppy disk activity LED
-
-reg		ntsc = NTSC;			//PAL/NTSC video mode selection
 
 wire  [5:0] mou_emu;
 

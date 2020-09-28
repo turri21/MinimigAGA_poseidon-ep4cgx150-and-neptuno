@@ -134,8 +134,9 @@ wire           _15khz;        // scandoubler disable
 wire           joy_emu_en;    // joystick emulation enable
 wire           sdo;           // SPI data output
 
-wire				hsyncpol;
-wire				vsyncpol;
+wire           ntsc;
+wire           hsyncpol;
+wire           vsyncpol;
 wire           cs;
 wire           vs;
 wire           hs;
@@ -145,7 +146,7 @@ wire [  8-1:0] blue;
 
 reg            vs_reg;
 reg            hs_reg;
-reg				cs_reg;
+reg            cs_reg;
 reg  [  8-1:0] red_reg;
 reg  [  8-1:0] green_reg;
 reg  [  8-1:0] blue_reg;
@@ -218,6 +219,7 @@ end
 //// amiga clocks ////
 amiga_clk amiga_clk (
   .rst          (pll_rst          ), // async reset input
+  .ntsc         (ntsc             ), // pal/ntsc clock select
   .clk_in       (pll_in_clk       ), // input clock     ( 27.000000MHz)
   .clk_114      (clk_114          ), // output clock c0 (114.750000MHz)
   .clk_sdram    (clk_sdram        ), // output clock c2 (114.750000MHz, -146.25 deg)
@@ -481,7 +483,8 @@ minimig minimig (
 	.vblank_out   (vblank_out       ),
 	.osd_blank_out(osd_window       ),  // Let the toplevel dither module handle drawing the OSD.
 	.osd_pixel_out(osd_pixel        ),
-	.rtg_ena      (rtg_ena          )
+	.rtg_ena      (rtg_ena          ),
+  .ntsc         (ntsc             )
 );
 
 

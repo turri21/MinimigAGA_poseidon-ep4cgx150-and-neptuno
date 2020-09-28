@@ -27,6 +27,7 @@ set sdram_inputs  [get_ports {SDRAM_DQ[*]}]
 
 # clock groups
 set_clock_groups -exclusive -group [get_clocks {amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[*]}] -group [get_clocks {spi_clk}]
+set_clock_groups -exclusive -group [get_clocks {amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[*]}] -group [get_clocks {pll_in_clk}]
 
 
 # clock uncertainty
