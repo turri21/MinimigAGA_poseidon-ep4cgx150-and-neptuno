@@ -366,7 +366,7 @@ begin
 		zINIT:
 		begin
 			zinitcache<=1'b1;	// need to mark the entire cache as invalid before starting.
-			zinitctr<=32'h00000001;
+			zinitctr<='h00000001;
 			ztag_w = 32'h00000000;
 			ztag_wren<=1'b1;
 			zstate<=zFLUSH2;
@@ -375,7 +375,7 @@ begin
 		zFLUSH2:
 		begin
 			zinitcache<=1'b1;
-			zinitctr<=zinitctr+1;
+			zinitctr<=zinitctr+1'd1;
 			ztag_wren<=1'b1;
 			if(zinitctr==0)
 			begin
@@ -471,7 +471,7 @@ begin
 		end
 		ph11 : begin
 			if(slot1_type==HOST) begin
-				zreadword<=zreadword+1;
+				zreadword<=zreadword+1'd1;
 				zdata_w[31:16]<=sdata_reg;
 			end
 		end
@@ -485,7 +485,7 @@ begin
 
 		ph13 : begin
 			if(slot1_type==HOST) begin
-				zreadword<=zreadword+1;
+				zreadword<=zreadword+1'd1;
 				zdata_w[31:16]<=sdata_reg;
 			end
 		end
@@ -499,7 +499,7 @@ begin
 
 		ph15 : begin
 			if(slot1_type==HOST) begin
-				zreadword<=zreadword+1;
+				zreadword<=zreadword+1'd1;
 				zdata_w[31:16]<=sdata_reg;
 			end
 		end
