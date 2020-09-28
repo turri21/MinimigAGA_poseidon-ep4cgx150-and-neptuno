@@ -98,7 +98,7 @@ wire [14-1:0] cpu_adr_tag;
 reg  [64-1:0] cpu_cacheline;
 reg  [25-1:3] cpu_cacheline_adr;
 wire          cpu_cacheline_valid;
-wire          cpu_cacheline_match;
+reg           cpu_cacheline_match;
 reg           cpu_cacheline_half;
 reg   [2-1:0] cpu_cacheline_cnt;
 // idram0
@@ -263,7 +263,7 @@ always @(*) begin
   endcase
 end
 
-assign cpu_cacheline_match = cpu_adr[24:3] == cpu_cacheline_adr;
+always @ (posedge clk) cpu_cacheline_match <= cpu_adr[24:3] == cpu_cacheline_adr;
 assign cpu_cacheline_valid = cpu_cacheline_match && (cpu_sm_state == CPU_SM_IDLE) && (cpu_ir || cpu_dr) && !cache_inhibit;
 assign cpu_ack = cpu_cache_ack || cpu_cacheline_valid;
 
