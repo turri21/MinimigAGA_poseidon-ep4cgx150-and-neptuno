@@ -216,7 +216,7 @@ void BootCustomInit()
 	unsigned char *upload=(unsigned char *)(0x780000^0x580000);
 	unsigned char *src=bootcustominit_bin;
 	int i=bootcustominit_bin_len;
-	while(--i)
+	while(i--) /* --i - Off by one error! */
 		*upload++=*src++;
 }
 
