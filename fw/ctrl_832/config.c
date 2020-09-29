@@ -413,15 +413,19 @@ int ApplyConfiguration(char reloadkickstart, char applydrives)
 			strcpy(config.kickstart.name, "KICK    ");
 			result=UploadKickstart(config.kickstart.name);
 		}
-		/* Attempt to upload an extended ROM */
-		if (UploadExtROM(config.extrom.name))
+		if(result)
 		{
-			result=1;
-		}
-		else
-		{
-			strcpy(config.extrom.name, "EXTENDED");
-			result=UploadExtROM(config.kickstart.name);
+			/* Attempt to upload an extended ROM */
+			if (UploadExtROM(config.extrom.name))
+			{
+				result=1;
+			}
+			else
+			{
+				strcpy(config.extrom.name, "EXTENDED");
+				result=UploadExtROM(config.extrom.name);
+			}
+			ClearError(ERROR_FILESYSTEM); /* We don't need to report a missing ExtROM yet */
 		}
     }
 	return(result);

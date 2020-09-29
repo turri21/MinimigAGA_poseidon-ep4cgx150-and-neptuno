@@ -277,10 +277,10 @@ process(sysclk, shift)
 begin
   	IF rising_edge(sysclk) THEN
 --		support_state <= idle;
-		uart_ld <= '0';
 		IOcpuena <= '0';
 		CASE support_state IS
-			WHEN idle => 
+			WHEN idle =>
+				uart_ld <= '0';
 				IF rs232_select='1' AND req='1' and wr='1' THEN
 					IF txbusy='0' THEN
 						uart_ld <= '1';
@@ -295,6 +295,9 @@ begin
 				END IF;
 					
 			WHEN io_aktion =>
+				if shift(9)='1' then
+					uart_ld <= '0';
+				end if;
 				if req='0' then
 					support_state <= idle;
 				else
