@@ -4,6 +4,7 @@
 
 module amiga_clk (
   input  wire           rst,        // asynhronous reset input
+  input  wire           ntsc,       // pal/ntsc clock select
   input  wire           clk_in,     // input clock        ( 27.000000MHz)
   output wire           clk_114,    // SDRAM ctrl   clock (114.750000MHz)
   output wire           clk_sdram,  // SDRAM output clock (114.750000MHz, -146.25 deg)
@@ -83,6 +84,126 @@ amiga_clk_xilinx amiga_clk_i (
   .c2       (clk_sdram),
   .locked   (locked   )
 );
+`endif
+
+`ifdef MINIMIG_ALTERA_PLL_RECONFIG
+wire       pll_reconfig_busy;
+wire       pll_areset;
+wire       pll_configupdate;
+wire       pll_scanclk;
+wire       pll_scanclkena;
+wire       pll_scandata;
+wire       pll_scandataout;
+wire       pll_scandone;
+reg        pll_reconfig_reset;
+wire [7:0] pll_rom_address;
+wire       pll_rom_q;
+reg        pll_write_from_rom;
+wire       pll_write_rom_ena;
+reg        pll_reconfig;
+wire       q_reconfig_ntsc;
+wire       q_reconfig_pal;
+
+amigaclk_reconfig_pal amigaclk_reconfig_pal_i
+(
+	.address(pll_rom_address),
+	.clock(clk_in),
+	.rden(pll_write_rom_ena),
+	.q(q_reconfig_pal)
+);
+
+amigaclk_reconfig_ntsc amigaclk_reconfig_ntsc_i
+(
+	.address(pll_rom_address),
+	.clock(clk_in),
+	.rden(pll_write_rom_ena),
+	.q(q_reconfig_ntsc)
+);
+
+assign pll_rom_q = ntsc ? q_reconfig_ntsc : q_reconfig_pal;
+
+amigaclk_pll_reconfig amigaclk_pll_reconfig_i
+(
+	.busy(pll_reconfig_busy),
+	.clock(clk_in),
+	.counter_param(0),
+	.counter_type(0),
+	.data_in(0),
+	.pll_areset(pll_areset),
+	.pll_areset_in(0),
+	.pll_configupdate(pll_configupdate),
+	.pll_scanclk(pll_scanclk),
+	.pll_scanclkena(pll_scanclkena),
+	.pll_scandata(pll_scandata),
+	.pll_scandataout(pll_scandataout),
+	.pll_scandone(pll_scandone),
+	.read_param(0),
+	.reconfig(pll_reconfig),
+	.reset(pll_reconfig_reset),
+	.reset_rom_address(0),
+	.rom_address_out(pll_rom_address),
+	.rom_data_in(pll_rom_q),
+	.write_from_rom(pll_write_from_rom),
+	.write_param(0),
+	.write_rom_ena(pll_write_rom_ena)
+);
+
+amiga_clk_altera amiga_clk_i
+(
+	.inclk0       (clk_in),
+	.c0           (clk_sdram),
+	.c1           (clk_114  ),
+	.c2           (clk_28   ),
+	.areset       (pll_areset),
+	.scanclk      (pll_scanclk),
+	.scandata     (pll_scandata),
+	.scanclkena   (pll_scanclkena),
+	.configupdate (pll_configupdate),
+	.scandataout  (pll_scandataout),
+	.scandone     (pll_scandone),
+	.locked       (locked)
+);
+
+always @(posedge clk_in) begin
+	reg ntsc_d, ntsc_d2, ntsc_d3;
+	reg [1:0] pll_reconfig_state = 0;
+	reg [9:0] pll_reconfig_timeout;
+
+	ntsc_d <= ntsc;
+	ntsc_d2 <= ntsc_d;
+	pll_write_from_rom <= 0;
+	pll_reconfig <= 0;
+	pll_reconfig_reset <= 0;
+	case (pll_reconfig_state)
+	2'b00:
+	begin
+		ntsc_d3 <= ntsc_d2;
+		if (ntsc_d2 ^ ntsc_d3) begin
+			pll_write_from_rom <= 1;
+			pll_reconfig_state <= 2'b01;
+		end
+	end
+	2'b01: pll_reconfig_state <= 2'b10;
+	2'b10:
+		if (~pll_reconfig_busy) begin
+			pll_reconfig <= 1;
+			pll_reconfig_state <= 2'b11;
+			pll_reconfig_timeout <= 10'd1000;
+		end
+	2'b11:
+	begin
+		pll_reconfig_timeout <= pll_reconfig_timeout - 1'd1;
+		if (pll_reconfig_timeout == 10'd1) begin
+			// pll_reconfig stuck in busy state
+			pll_reconfig_reset <= 1;
+			pll_reconfig_state <= 2'b00;
+		end
+		if (~pll_reconfig & ~pll_reconfig_busy) pll_reconfig_state <= 2'b00;
+	end
+	default: ;
+	endcase
+end
+
 `endif
 
 `endif

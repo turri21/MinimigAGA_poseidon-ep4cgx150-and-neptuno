@@ -202,21 +202,25 @@ sel_eth<='0';
   wrd <= wr;
   addr <= cpuaddr;
 
-  datatg68_c <=
-       X"ffff"                              when sel_undecoded='1'
-	 else fromram                              WHEN sel_ram_d='1' AND sel_nmi_vector='0'
-  --ELSE frometh                              WHEN sel_eth='1'
-	 else akiko_q when sel_akiko_d='1'
-    ELSE autoconfig_data&r_data(11 downto 0)  WHEN sel_autoconfig_d='1'
-    else r_data;
+	datatg68 <= fromram WHEN sel_ram_d='1' ELSE datatg68_c;
 
 	-- Register incoming data
 	process(clk) begin
 		if rising_edge(clk) then
-			datatg68<=datatg68_c;
+			if sel_undecoded = '1' then
+				datatg68_c <= X"FFFF";
+			elsif sel_akiko_d = '1' then
+				datatg68_c <= akiko_q;
+			elsif sel_autoconfig_d = '1' then
+				datatg68_c <= autoconfig_data&r_data(11 downto 0);
+			elsif sel_eth='1' then
+				datatg68_c <= frometh;
+			else
+				datatg68_c <= r_data;
+			end if;
 		end if;
 	end process;
-	
+
 	sel_akiko <= '1' when cpuaddr(31 downto 16)=X"00B8" else '0';
 	sel_32 <= '1' when cpu(1)='1' and cpuaddr(31 downto 24)/=X"00" and cpuaddr(31 downto 24)/=X"ff" else '0'; -- Decode 32-bit space, but exclude interrupt vectors
 	sel_autoconfig  <= '1' WHEN fastramcfg(2 downto 0)/="000" AND cpuaddr(23 downto 19)="11101" AND autoconfig_out/="00" ELSE '0'; --$E80000 - $EFFFFF
@@ -237,8 +241,7 @@ sel_eth<='0';
       OR sel_chipram='1'
       OR sel_slowram='1'
       OR sel_kickram='1'
-		or sel_audio='1'
-		or sel_undecoded='1'
+      OR sel_audio='1'
     ) ELSE '0';
 
   -- when this is true, we set bit 23 to zero, to map the memory ranges within $A0-$FF to
@@ -247,9 +250,9 @@ sel_eth<='0';
 
   cache_inhibit <= '1' WHEN sel_chipram='1' OR sel_kickram='1' ELSE '0';
 
-  ramcs <= (NOT sel_ram) or slower(0);-- OR (state(0) AND NOT state(1));
+  ramcs <= (NOT sel_ram) or slower(0) or clkena;-- OR (state(0) AND NOT state(1));
 --  cpuDMA <= sel_ram;
-  cpustate <= longword&clkena&slower(1 downto 0)&ramcs&state(1)&(state(0) and not sel_undecoded); -- Prevent writes to undecoded areas
+  cpustate <= longword&clkena&slower(1 downto 0)&ramcs&state(1 downto 0);
   ramlds <= lds_in;
   ramuds <= uds_in;
 
@@ -529,9 +532,9 @@ PROCESS (clk) BEGIN
 END PROCESS;
 
 clkena <= '1' WHEN (clkena_in='1' AND
-						(state="01" OR (ena7RDreg='1' AND clkena_e='1')
-							OR ramready='1' or akiko_ack='1'))
-								ELSE '0';
+                   (state="01" OR (ena7RDreg='1' AND clkena_e='1') OR
+                    ramready='1' OR sel_undecoded='1' OR akiko_ack='1'))
+              ELSE '0';
 
 PROCESS (clk) BEGIN
   IF rising_edge(clk) THEN

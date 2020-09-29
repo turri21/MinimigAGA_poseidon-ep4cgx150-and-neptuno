@@ -27,6 +27,7 @@ set sdram_inputs  [get_ports {SDRAM_DQ[*]}]
 
 # clock groups
 set_clock_groups -exclusive -group [get_clocks {amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[*]}] -group [get_clocks {spi_clk}]
+set_clock_groups -exclusive -group [get_clocks {amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[*]}] -group [get_clocks {pll_in_clk}]
 
 
 # clock uncertainty
@@ -50,7 +51,7 @@ set_input_delay -clock { spi_clk } .5 [get_ports SPI*]
 set_input_delay -clock { spi_clk } .5 [get_ports CONF_DATA0]
 
 # output delay on SPI pins
-set_output_delay -clock { spi_clk } .5 [get_ports SPI*]
+set_output_delay -clock { spi_clk } .5 [get_ports SPI_DO]
 
 
 # false paths
