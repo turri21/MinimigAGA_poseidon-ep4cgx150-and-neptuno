@@ -58,7 +58,7 @@
 // mist
 `ifdef MINIMIG_MIST
 `define MINIMIG_TOPLEVEL_DITHER
-`define MINIMIG_ALTERA
+`define MINIMIG_ALTERA_PLL_RECONFIG
 `define MINIMIG_CYCLONE3
 `define MINIMIG_VIDEO_FILTER
 `define MINIMIG_PARALLEL_AUDIO  // Use own sigma-delta for audio
