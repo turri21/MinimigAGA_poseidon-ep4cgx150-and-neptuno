@@ -376,42 +376,37 @@ assign osd_pixel_out = dblscan ? sd_lbuf_o_d[27] : osd_pixel;
 
 
 `ifdef MINIMIG_TOPLEVEL_DITHER
-
-//// output registers ////
-always @ (posedge clk) begin
-  _hsync_out <= #1 bm_hsync;
-  _vsync_out <= #1 bm_vsync;
-  _csync_out <= #1 dblscan ? ~(~bm_hsync ^ ~bm_vsync) : _csync_in;
-  red_out    <= #1 bm_r;
-  green_out  <= #1 bm_g;
-  blue_out   <= #1 bm_b;
-end
-
-`else
+`define MINIMIG_TOPLEVEL_OSD
+`endif
 
 //// osd ////
 wire [  8-1:0] osd_r;
 wire [  8-1:0] osd_g;
 wire [  8-1:0] osd_b;
 
+`ifdef MINIMIG_TOPLEVEL_OSD
+
+assign osd_r = bm_r;
+assign osd_g = bm_g;
+assign osd_b = bm_b;
+
+`else
+
 assign osd_r = (bm_osd_blank ? (bm_osd_pixel ? OSD_R : {2'b00, bm_r[7:2]}) : bm_r);
 assign osd_g = (bm_osd_blank ? (bm_osd_pixel ? OSD_G : {2'b00, bm_g[7:2]}) : bm_g);
 assign osd_b = (bm_osd_blank ? (bm_osd_pixel ? OSD_B : {2'b10, bm_b[7:2]}) : bm_b);
 
+`endif
 
 //// output registers ////
 always @ (posedge clk) begin
   _hsync_out <= #1 bm_hsync;
   _vsync_out <= #1 bm_vsync;
-//  red_out    <= #1 bm_r;
-//  green_out  <= #1 bm_g;
-//  blue_out   <= #1 bm_b;
+  _csync_out <= #1 dblscan ? ~(~bm_hsync ^ ~bm_vsync) : _csync_in;
   red_out    <= #1 osd_r;
   green_out  <= #1 osd_g;
   blue_out   <= #1 osd_b;
 end
-
-`endif
 
 endmodule
 

@@ -9,6 +9,7 @@ entity video_vga_dither is
 	);
 	port (
 		clk : in std_logic;
+		ena : in std_logic := '1';
 --		invertSync : in std_logic :='0';
 		vidEna : in std_logic :='1';
 		pixel : in std_logic;
@@ -33,6 +34,9 @@ architecture rtl of video_vga_dither is
 	signal red : unsigned(7 downto 0);
 	signal green : unsigned(7 downto 0);
 	signal blue : unsigned(7 downto 0);
+	signal hsync : std_logic;
+	signal vsync : std_logic;
+	signal csync : std_logic;
 	signal rdither : unsigned(7 downto 0);
 	signal gdither : unsigned(7 downto 0);
 	signal bdither : unsigned(7 downto 0);
@@ -48,8 +52,8 @@ architecture rtl of video_vga_dither is
 	constant vidmax : unsigned(7 downto 0) := "11111111";
 begin
 
-	oHsync<=iCsync when iSelcsync='1' else iHsync;
-	oVsync<='1' when iSelcsync='1' else iVsync;
+	oHsync<=csync when iSelcsync='1' else hsync;
+	oVsync<='1' when iSelcsync='1' else vsync;
 
 	oRed <= red when vid_ena_d='1' else (others=>'0');
 	oGreen <= green when vid_ena_d='1' else (others=>'0');
@@ -116,19 +120,19 @@ end generate;
 			vid_ena_d2<=vidEna; -- Delay by the same amount as the video itself.
 			vid_ena_d<=vid_ena_d2; -- Delay by the same amount as the video itself.
 		
-			if iRed(7 downto (8-outbits))=vidmax(7 downto (8-outbits)) then
+			if ena = '0' or iRed(7 downto (8-outbits))=vidmax(7 downto (8-outbits)) then
 				red <= iRed;
 			else
 				red <= iRed + rdither;
 			end if;
 			
-			if iGreen(7 downto (8-outbits))=vidmax(7 downto (8-outbits)) then
+			if ena = '0' or iGreen(7 downto (8-outbits))=vidmax(7 downto (8-outbits)) then
 				green <= iGreen;
 			else
 				green <= iGreen + gdither;
 			end if;
 
-			if iBlue(7 downto (8-outbits))=vidmax(7 downto (8-outbits)) then
+			if ena = '0' or iBlue(7 downto (8-outbits))=vidmax(7 downto (8-outbits)) then
 				blue <= iBlue;
 			else
 				blue <= iBlue+ bdither;
@@ -154,6 +158,11 @@ end generate;
 			end if;
 			prevvbl<=iVsync;
 
+			csync <= iCsync;
+			hsync <= iHsync;
+			vsync <= iVsync;
+
 		end if;
+
 	end process;
 end architecture;
