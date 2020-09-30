@@ -65,17 +65,12 @@ char UploadKickstart(char *name)
 	strcpy(&filename[8], "ROM"); // add extension
 
 	BootPrint("Checking for Amiga Forever key file:");
-	if(FileOpen(&file,"ROM     KEY")) {
-		keysize=file.size;
-		if(file.size<sizeof(romkey)) {
-			int c=0;
-			while(c<keysize) {
-				FileRead(&file, &romkey[c]);
-				c+=512;
-				FileNextSector(&file);
-			}
+	if(RAOpen(&romfile,"ROM     KEY")) {
+		keysize=romfile.size;
+		if(romfile.size<sizeof(romkey)) {
+			RARead(&romfile, &romkey[0],romfile.size);
 		} else {
-			SetError(ERROR_ROM,"ROM Key file wrong size",file.size,0);
+			SetError(ERROR_ROM,"ROM Key file wrong size",romfile.size,0);
 		}
 	}
 
@@ -416,11 +411,7 @@ int ApplyConfiguration(char reloadkickstart, char applydrives)
 		if(result)
 		{
 			/* Attempt to upload an extended ROM */
-			if (UploadExtROM(config.extrom.name))
-			{
-				result=1;
-			}
-			else
+			if(!UploadExtROM(config.extrom.name))
 			{
 				strcpy(config.extrom.name, "EXTENDED");
 				result=UploadExtROM(config.extrom.name);
