@@ -327,8 +327,10 @@ always @ (posedge clk) begin
       CPU_SM_WRITE : begin
         if (!cpu_cacheline_match)
           cpu_cacheline_adr <= #1 {2'b11, 20'hfffff}; //invalidate
-        else
-          cpu_cacheline[16*cpu_adr[2:1] +: 16] <= cpu_dat_w; //update
+        else begin
+          if (cpu_bs[0]) cpu_cacheline[16*cpu_adr[2:1] +: 8] <= #1 cpu_dat_w[7:0]; //update low byte
+          if (cpu_bs[1]) cpu_cacheline[(16*cpu_adr[2:1]+8) +: 8] <= #1 cpu_dat_w[15:8]; //update hi byte
+        end
         // on hit update cache, on miss no update neccessary; tags don't get updated on writes
         cpu_sm_bs <= #1 cpu_bs;
         cpu_sm_mem_dat_w <= #1 cpu_dat_w;
