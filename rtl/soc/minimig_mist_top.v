@@ -207,15 +207,6 @@ wire   ypbpr            = core_config[1];
 wire   no_csync         = core_config[2];
 wire   force_csync      = ypbpr | (!no_csync & vga_selcsync);
 
-always @ (posedge clk_114) begin
-	VGA_VS <= dithered_vs ^ (vsyncpol & !force_csync);
-	VGA_HS <= dithered_hs ^ (hsyncpol & !force_csync);
-
-	VGA_R[5:0] <= dithered_red[7:2];
-	VGA_G[5:0] <= dithered_green[7:2];
-	VGA_B[5:0] <= dithered_blue[7:2];
-end
-
 //// amiga clocks ////
 amiga_clk amiga_clk (
   .rst          (pll_rst          ), // async reset input
@@ -684,6 +675,7 @@ assign vga_window = 1'b1;
 video_vga_dither #(.outbits(6), .flickerreduce("false")) dither
 (
 	.clk(clk_vid),
+	.ena(rtg_ena),
 	.pixel(mixer_pixel),
 	.vidEna(vga_window),
 	.iSelcsync(force_csync),
@@ -700,6 +692,14 @@ video_vga_dither #(.outbits(6), .flickerreduce("false")) dither
 	.oBlue(dithered_blue)
 	);
 
+always @(posedge clk_vid) begin
+	VGA_VS <= dithered_vs ^ (vsyncpol & !force_csync);
+	VGA_HS <= dithered_hs ^ (hsyncpol & !force_csync);
+
+	VGA_R[5:0] <= dithered_red[7:2];
+	VGA_G[5:0] <= dithered_green[7:2];
+	VGA_B[5:0] <= dithered_blue[7:2];
+end
 
 // Auxiliary audio
 

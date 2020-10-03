@@ -158,7 +158,6 @@ reg  [25-1:2] zmAddr;
 reg           zce;
 reg           zena;
 reg  [32-1:0] hostRDd;
-reg           cena;
 wire [64-1:0] ccache;
 wire [25-1:0] ccache_addr;
 wire          ccache_fill;
@@ -191,6 +190,7 @@ reg  [ 3-1:0] slot1_type = IDLE;
 reg  [ 3-1:0] slot2_type = IDLE;
 reg  [ 2-1:0] slot1_bank;
 reg  [ 2-1:0] slot2_bank;
+reg           cache_32bitwrite;
 wire          cache_req;
 wire          readcache_fill;
 reg           cache_fill_1;
@@ -198,6 +198,8 @@ reg           cache_fill_2;
 reg  [16-1:0] chip48_1;
 reg  [16-1:0] chip48_2;
 reg  [16-1:0] chip48_3;
+wire          longword_en;
+reg           longword_wait;
 reg           writebuffer_req;
 reg           writebuffer_ena;
 reg  [25-1:1] writebufferAddr;
@@ -547,10 +549,13 @@ cpu_cache_new cpu_cache (
 	.cpu_cs           (!cpuCSn),                      // cpu activity
 	.cpu_adr          ({cpuAddr_mangled, 1'b0}),      // cpu address
 	.cpu_bs           ({!cpuU, !cpuL}),               // cpu byte selects
+	.cpu_bs_hi        (~writebuffer_dqm),             // cpu byte selects (1st word of a longword write)
+	.cpu_32bit        (cache_32bitwrite),             // cpu 32 bit write
+	.cpu_32bitwait    (longword_wait),                // cpu wait for 2nd word
 	.cpu_we           (&cpustate[1:0]),               // cpu write
 	.cpu_ir           (!(|cpustate[1:0])),            // cpu instruction read
 	.cpu_dr           (cpustate[1] && !cpustate[0]),  // cpu data read
-	.cpu_dat_w        (cpuWR),                        // cpu write data
+	.cpu_dat_w        ({writebufferWR,cpuWR}),        // cpu write data
 	.cpu_dat_r        (cpuRD),                        // cpu read data
 	.cpu_ack          (ccachehit),                    // cpu acknowledge
 	.wb_en            (writebuffer_cache_ack),        // writebuffer enable
@@ -591,6 +596,7 @@ TwoWayCache mytwc (
 
 `endif
 
+assign longword_en = cpuLongword && cpuAddr[3:1]!=3'b111 && cpustate[1:0]==2'b11;
 
 //// writebuffer ////
 // write buffer, enables CPU to continue while a write is in progress
@@ -599,9 +605,12 @@ always @ (posedge sysclk) begin
 		writebuffer_req   <= #1 1'b0;
 		writebuffer_ena   <= #1 1'b0;
 		writebuffer_state <= #1 WAITING;
+		cache_32bitwrite  <= #1 1'b0;
+		longword_wait     <= #1 1'b0;
 	end else begin
 		case(writebuffer_state)
 		WAITING : begin
+			longword_wait <= #1 longword_en;
 			// CPU write cycle, no cycle already pending
 			if(!cpuCSn && cpustate[1:0] == 2'b11) begin
 				writebufferAddr <= #1 cpuAddr_mangled[24:1];
@@ -609,14 +618,14 @@ always @ (posedge sysclk) begin
 				writebuffer_dqm <= #1 {cpuU, cpuL};
 				writebuffer_dqm2 <= #1 2'b11;
 				writebuffer_canfinish <= #1 1'b0;
-				if(cpuLongword==1'b1 && cpuAddr[3:1]!=3'b111) begin
+				if(longword_en) begin
 					// If we're looking at a longword write, acknowledge the first word
 					// and wait for the second half...
 					// (Exclude longword writes that cross a burst boundary)
-					if(writebuffer_cache_ack) begin	// Wait for read cache to note the write
-						writebuffer_ena   <= #1 1'b1;
-						writebuffer_state <= #1 WAITLONGWORD;
-					end
+					cache_32bitwrite  <= #1 1'b1;
+					writebuffer_ena   <= #1 1'b1;
+					writebuffer_state <= #1 WAITLONGWORD;
+					longword_wait     <= #1 1'b0;
 				end else begin
 					// Not a longword write
 					writebuffer_req <= #1 1'b1;
@@ -642,6 +651,7 @@ always @ (posedge sysclk) begin
 			// note when the cpu unpaused, otherwise it's possible to re-start
 			// the writebuffer cycle in the same request
 			if(cpuCSn) writebuffer_canfinish <= #1 1'b1;
+			cache_32bitwrite <= #1 1'b0;
 			if(writebuffer_hold) begin
 				// The SDRAM controller has picked up the request
 				writebuffer_req   <= #1 1'b0;
@@ -669,7 +679,7 @@ always @ (posedge sysclk) begin
 	end
 end
 
-assign cpuena = cena || ccachehit || writebuffer_ena;
+assign cpuena = ccachehit || writebuffer_ena || (longword_wait && !cpuCSn);
 assign readcache_fill = (cache_fill_1 && slot1_type == CPU_READCACHE) || (cache_fill_2 && slot2_type == CPU_READCACHE);
 
 
@@ -889,9 +899,6 @@ always @ (posedge sysclk) begin
 	dqm                         <= #1 2'b00;
 	cache_fill_1                <= #1 1'b0;
 	cache_fill_2                <= #1 1'b0;
-	if(cpustate[5]) begin
-		cena <= 1'b0;
-	end
 	if(!init_done) begin
 		if(sdram_state == ph1) begin
 			case(initstate)

@@ -202,24 +202,20 @@ sel_eth<='0';
   wrd <= wr;
   addr <= cpuaddr;
 
-	datatg68 <= fromram WHEN sel_ram_d='1' ELSE datatg68_c;
+  datatg68_c <=
+       X"ffff"                                   WHEN sel_undecoded='1'
+       ELSE fromram                              WHEN sel_ram_d='1' AND sel_nmi_vector='0'
+       ELSE frometh                              WHEN sel_eth='1'
+       ELSE akiko_q                              WHEN sel_akiko_d='1'
+       ELSE autoconfig_data&r_data(11 downto 0)  WHEN sel_autoconfig_d='1'
+       ELSE r_data;
 
-	-- Register incoming data
-	process(clk) begin
-		if rising_edge(clk) then
-			if sel_undecoded = '1' then
-				datatg68_c <= X"FFFF";
-			elsif sel_akiko_d = '1' then
-				datatg68_c <= akiko_q;
-			elsif sel_autoconfig_d = '1' then
-				datatg68_c <= autoconfig_data&r_data(11 downto 0);
-			elsif sel_eth='1' then
-				datatg68_c <= frometh;
-			else
-				datatg68_c <= r_data;
-			end if;
-		end if;
-	end process;
+  -- Register incoming data
+  process(clk) begin
+    if rising_edge(clk) then
+      datatg68<=datatg68_c;
+    end if;
+  end process;
 
 	sel_akiko <= '1' when cpuaddr(31 downto 16)=X"00B8" else '0';
 	sel_32 <= '1' when cpu(1)='1' and cpuaddr(31 downto 24)/=X"00" and cpuaddr(31 downto 24)/=X"ff" else '0'; -- Decode 32-bit space, but exclude interrupt vectors
@@ -250,7 +246,7 @@ sel_eth<='0';
 
   cache_inhibit <= '1' WHEN sel_chipram='1' OR sel_kickram='1' ELSE '0';
 
-  ramcs <= (NOT sel_ram) or slower(0) or clkena;-- OR (state(0) AND NOT state(1));
+  ramcs <= (NOT sel_ram) or slower(0);-- OR (state(0) AND NOT state(1));
 --  cpuDMA <= sel_ram;
   cpustate <= longword&clkena&slower(1 downto 0)&ramcs&state(1 downto 0);
   ramlds <= lds_in;
