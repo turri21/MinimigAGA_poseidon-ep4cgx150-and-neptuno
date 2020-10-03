@@ -53,9 +53,8 @@ reg  [ 4-1:0] sdr_sm_state;
 reg           fill;
 reg           cpu_acked;
 reg           cpu_cache_ack;
-reg  [14-1:0] cpu_sm_tag_adr;
-reg  [10-1:0] cpu_sm_adr;
-wire [10-1:0] cpu_sm_adr_next = { cpu_sm_adr[9:3], cpu_sm_adr[2:0] + 2'b01 };
+reg  [11-1:0] cpu_sm_adr;
+wire [11-1:0] cpu_sm_adr_next = { cpu_sm_adr[10:3], cpu_sm_adr[2:0] + 2'b01 };
 reg           cpu_sm_itag_we;
 reg           cpu_sm_dtag_we;
 reg           cpu_sm_iram0_we;
@@ -96,7 +95,7 @@ wire [ 3-1:0] cpu_adr_blk_ptr_next = {cpu_adr_blk_ptr[2], cpu_adr_blk_ptr[1:0] +
 wire [ 3-1:0] cpu_adr_blk_ptr_prev = {cpu_adr_blk_ptr[2], cpu_adr_blk_ptr[1:0] - 1'd1};
 wire [25-1:0] cpu_adr_prev = {cpu_adr[24:4], cpu_adr[3:1] - 1'd1, cpu_adr[0]};
 wire [ 3-1:0] cpu_adr_blk;
-wire [ 7-1:0] cpu_adr_idx;
+wire [ 8-1:0] cpu_adr_idx;
 wire [14-1:0] cpu_adr_tag;
 // cache line cache
 reg  [64-1:0] cpu_cacheline;
@@ -107,45 +106,45 @@ reg           cpu_cacheline_match;
 reg           cpu_cacheline_half;
 reg   [2-1:0] cpu_cacheline_cnt;
 // idram0
-wire [10-1:0] idram0_cpu_adr;
+wire [11-1:0] idram0_cpu_adr;
 wire [ 2-1:0] idram0_cpu_bs;
 wire          idram0_cpu_we;
 wire [16-1:0] idram0_cpu_dat_w;
 wire [16-1:0] idram0_cpu_dat_r;
-wire [10-1:0] idram0_sdr_adr;
+wire [11-1:0] idram0_sdr_adr;
 wire [ 2-1:0] idram0_sdr_bs;
 wire          idram0_sdr_we;
 wire [16-1:0] idram0_sdr_dat_w;
 wire [16-1:0] idram0_sdr_dat_r;
 // idram1
-wire [10-1:0] idram1_cpu_adr;
+wire [11-1:0] idram1_cpu_adr;
 wire [ 2-1:0] idram1_cpu_bs;
 wire          idram1_cpu_we;
 wire [16-1:0] idram1_cpu_dat_w;
 wire [16-1:0] idram1_cpu_dat_r;
-wire [10-1:0] idram1_sdr_adr;
+wire [11-1:0] idram1_sdr_adr;
 wire [ 2-1:0] idram1_sdr_bs;
 wire          idram1_sdr_we;
 wire [16-1:0] idram1_sdr_dat_w;
 wire [16-1:0] idram1_sdr_dat_r;
 // ddram0
-wire [10-1:0] ddram0_cpu_adr;
+wire [11-1:0] ddram0_cpu_adr;
 wire [ 2-1:0] ddram0_cpu_bs;
 wire          ddram0_cpu_we;
 wire [16-1:0] ddram0_cpu_dat_w;
 wire [16-1:0] ddram0_cpu_dat_r;
-wire [10-1:0] ddram0_sdr_adr;
+wire [11-1:0] ddram0_sdr_adr;
 wire [ 2-1:0] ddram0_sdr_bs;
 wire          ddram0_sdr_we;
 wire [16-1:0] ddram0_sdr_dat_w;
 wire [16-1:0] ddram0_sdr_dat_r;
 // ddram1
-wire [10-1:0] ddram1_cpu_adr;
+wire [11-1:0] ddram1_cpu_adr;
 wire [ 2-1:0] ddram1_cpu_bs;
 wire          ddram1_cpu_we;
 wire [16-1:0] ddram1_cpu_dat_w;
 wire [16-1:0] ddram1_cpu_dat_r;
-wire [10-1:0] ddram1_sdr_adr;
+wire [11-1:0] ddram1_sdr_adr;
 wire [ 2-1:0] ddram1_sdr_bs;
 wire          ddram1_sdr_we;
 wire [16-1:0] ddram1_sdr_dat_w;
@@ -255,9 +254,9 @@ always @ (posedge clk) begin
 end 
 
 // slice up cpu address
-assign cpu_adr_blk = cpu_adr[3:1];    // cache block address (inside cache row), 2 bits for 4x16 rows
-assign cpu_adr_idx = cpu_adr[10:4];   // cache row address, 8 bits
-assign cpu_adr_tag = cpu_adr[24:11];  // tag, 13 bits
+assign cpu_adr_blk = cpu_adr[3:1];    // cache block address (inside cache row), 3 bits for 8x16 rows
+assign cpu_adr_idx = cpu_adr[11:4];   // cache row address, 8 bits
+assign cpu_adr_tag = cpu_adr[24:12];  // tag, 13 bits
 
 always @(*) begin
   case (cpu_adr_blk[1:0])
@@ -414,7 +413,7 @@ always @ (posedge clk) begin
       end
       CPU_SM_FILL1 : begin
         fill <= #1 1'b1;
-        cpu_sm_adr <= #1 cpu_adr[10:1];
+        cpu_sm_adr <= #1 {cpu_adr_idx, cpu_adr_blk};
         if (!sdr_read_ack) begin
           sdr_read_req <= #1 1'b1;
         end else begin
@@ -448,7 +447,6 @@ always @ (posedge clk) begin
             cpu_sm_itag_we <= #1  cpu_ir;
             cpu_sm_dtag_we <= #1 !cpu_ir;
             // cache line fill 1st word
-            cpu_sm_tag_adr <= #1 cpu_adr_tag;
             cpu_sm_id   <= #1 cpu_ir;
             cpu_sm_ilru <= #1 itag_lru;
             cpu_sm_dlru <= #1 dtag_lru;
@@ -757,9 +755,9 @@ assign idram0_sdr_we    = sdr_sm_iram0_we;
 assign idram0_sdr_dat_w = sdr_sm_mem_dat_w;
 
 `ifdef SOC_SIM
-dpram_inf_be_1024x16
+dpram_inf_be_2048x16
 `else
-dpram_be_1024x16
+dpram_be_2048x16
 `endif
 idram0 (
   .clock      (clk              ),
@@ -786,9 +784,9 @@ assign idram1_sdr_we    = sdr_sm_iram1_we;
 assign idram1_sdr_dat_w = sdr_sm_mem_dat_w;
 
 `ifdef SOC_SIM
-dpram_inf_be_1024x16
+dpram_inf_be_2048x16
 `else
-dpram_be_1024x16
+dpram_be_2048x16
 `endif
 idram1 (
   .clock      (clk              ),
@@ -855,9 +853,9 @@ assign ddram0_sdr_we    = sdr_sm_dram0_we;
 assign ddram0_sdr_dat_w = sdr_sm_mem_dat_w;
 
 `ifdef SOC_SIM
-dpram_inf_be_1024x16
+dpram_inf_be_2048x16
 `else
-dpram_be_1024x16
+dpram_be_2048x16
 `endif
 ddram0 (
   .clock      (clk              ),
@@ -884,9 +882,9 @@ assign ddram1_sdr_we    = sdr_sm_dram1_we;
 assign ddram1_sdr_dat_w = sdr_sm_mem_dat_w;
 
 `ifdef SOC_SIM
-dpram_inf_be_1024x16
+dpram_inf_be_2048x16
 `else
-dpram_be_1024x16
+dpram_be_2048x16
 `endif
 ddram1 (
   .clock      (clk              ),
