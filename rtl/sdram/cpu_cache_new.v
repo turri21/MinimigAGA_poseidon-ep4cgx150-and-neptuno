@@ -102,6 +102,7 @@ wire [14-1:0] cpu_adr_tag;
 reg  [64-1:0] cpu_cacheline;
 reg  [25-1:3] cpu_cacheline_adr;
 wire          cpu_cacheline_valid;
+reg           cpu_cacheline_dirty;
 reg           cpu_cacheline_match;
 reg           cpu_cacheline_half;
 reg   [2-1:0] cpu_cacheline_cnt;
@@ -268,7 +269,7 @@ always @(*) begin
   endcase
 end
 
-always @ (posedge clk) cpu_cacheline_match <= cpu_adr[24:3] == cpu_cacheline_adr;
+always @ (posedge clk) cpu_cacheline_match <= cpu_adr[24:3] == cpu_cacheline_adr && !cpu_cacheline_dirty;
 assign cpu_cacheline_valid = cpu_cacheline_match && (cpu_sm_state == CPU_SM_IDLE) && (cpu_ir || cpu_dr) && !cache_inhibit;
 assign cpu_ack = cpu_cache_ack || cpu_cacheline_valid;
 
@@ -288,7 +289,7 @@ always @ (posedge clk) begin
     cpu_sm_dram1_we   <= #1 1'b0;
     cpu_sm_bs         <= #1 2'b11;
     cpu_adr_blk_ptr   <= #1 3'b000;
-    cpu_cacheline_adr <= #1 {2'b11, 20'hfffff};
+    cpu_cacheline_dirty <= #1 1'b1;
   end else begin
     // default values
     fill              <= #1 1'b0;
@@ -330,8 +331,8 @@ always @ (posedge clk) begin
         end
       end
       CPU_SM_WRITE_HIWORD : begin
-        if (cpu_adr_prev[24:3] != cpu_cacheline_adr)
-          cpu_cacheline_adr <= #1 {2'b11, 20'hfffff}; //invalidate
+        if (cpu_adr_prev[24:3] != cpu_cacheline_adr && !cpu_cacheline_dirty)
+          cpu_cacheline_dirty <= #1 1'b1; //invalidate
         else begin
           if (cpu_bs_hi[0]) cpu_cacheline[16*cpu_adr_prev[2:1] +: 8] <= #1 cpu_dat_w[23:16]; //update low byte
           if (cpu_bs_hi[1]) cpu_cacheline[16*cpu_adr_prev[2:1] + 8 +: 8] <= #1 cpu_dat_w[31:24]; //update hi byte
@@ -348,7 +349,7 @@ always @ (posedge clk) begin
       end
       CPU_SM_WRITE : begin
         if (!cpu_cacheline_match)
-          cpu_cacheline_adr <= #1 {2'b11, 20'hfffff}; //invalidate
+          cpu_cacheline_dirty <= #1 1'b1; //invalidate
         else begin
           if (cpu_bs[0]) cpu_cacheline[16*cpu_adr[2:1] +: 8] <= #1 cpu_dat_w[7:0]; //update low byte
           if (cpu_bs[1]) cpu_cacheline[(16*cpu_adr[2:1]+8) +: 8] <= #1 cpu_dat_w[15:8]; //update hi byte
@@ -372,6 +373,7 @@ always @ (posedge clk) begin
         cpu_cacheline_cnt <= #1 cpu_cacheline_cnt + 1'b1;
         if(cpu_cacheline_cnt == 2'b01) begin
           cpu_cacheline_adr <= #1 cpu_adr[24:3];
+          cpu_cacheline_dirty <= #1 1'b0;
           cpu_cache_ack <= #1 1'b1; //early ack
         end
         if(cpu_cacheline_cnt == 2'b11)
@@ -423,10 +425,11 @@ always @ (posedge clk) begin
           cpu_cacheline_half <= cpu_adr[3];
           if (cache_inhibit) begin
             // don't update cache if caching is inhibited
-            cpu_cacheline_adr <= #1 {2'b11, 20'hfffff}; //invalidate
+            cpu_cacheline_dirty <= #1 1'b1; //invalidate
             cpu_sm_state <= #1 CPU_SM_FILLW;
           end else begin      
             cpu_cacheline_adr <= #1 cpu_adr[24:3];
+            cpu_cacheline_dirty <= #1 1'b0;
 
             // update tag ram
             if (cpu_ir) begin
