@@ -57,7 +57,7 @@
 
 // mist
 `ifdef MINIMIG_MIST
-`define MINIMIG_TOPLEVEL_DITHER
+`define MINIMIG_TOPLEVEL_OSD // mix the OSD to the video in the toplevel
 `define MINIMIG_ALTERA_PLL_RECONFIG
 `define MINIMIG_CYCLONE3
 `define MINIMIG_VIDEO_FILTER
