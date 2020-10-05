@@ -47,7 +47,7 @@ module cpu_cache_new (
 // cache init
 reg           cache_init_done;
 // state
-reg  [ 4-1:0] cpu_sm_state;
+reg  [ 5-1:0] cpu_sm_state;
 reg  [ 4-1:0] sdr_sm_state;
 // state signals
 reg           fill;
@@ -102,7 +102,7 @@ reg  [64-1:0] cpu_cacheline;
 reg  [25-1:3] cpu_cacheline_adr;
 wire          cpu_cacheline_valid;
 reg           cpu_cacheline_dirty;
-reg           cpu_cacheline_match;
+wire          cpu_cacheline_match;
 reg           cpu_cacheline_half;
 reg   [2-1:0] cpu_cacheline_cnt;
 // idram0
@@ -196,23 +196,24 @@ wire          sdr_dtag1_valid;
 //// params ////
 
 // cpu-side state machine
-localparam [3:0]
-  CPU_SM_INIT  = 4'd0,
-  CPU_SM_IDLE  = 4'd1,
-  CPU_SM_WRITE = 4'd2,
-  CPU_SM_WRITE_HIWORD  = 4'd3,
-  CPU_SM_WB    = 4'd4,
-  CPU_SM_READ  = 4'd5,
-  CPU_SM_WAIT  = 4'd6,
-  CPU_SM_FILL1 = 4'd7,
-  CPU_SM_FILL2 = 4'd8,
-  CPU_SM_FILL3 = 4'd9,
-  CPU_SM_FILL4 = 4'd10,
-  CPU_SM_FILL5 = 4'd11,
-  CPU_SM_FILL6 = 4'd12,
-  CPU_SM_FILL7 = 4'd13,
-  CPU_SM_FILL8 = 4'd14,
-  CPU_SM_FILLW = 4'd15;
+localparam [4:0]
+  CPU_SM_INIT  = 5'd0,
+  CPU_SM_IDLE  = 5'd1,
+  CPU_SM_WRITE_HIWORD  = 5'd2,
+  CPU_SM_WRITE = 5'd3,
+  CPU_SM_WB    = 5'd4,
+  CPU_SM_READ  = 5'd5,
+  CPU_SM_WAIT  = 5'd6,
+  CPU_SM_SDWAI = 5'd7,
+  CPU_SM_FILL1 = 5'd8,
+  CPU_SM_FILL2 = 5'd9,
+  CPU_SM_FILL3 = 5'd10,
+  CPU_SM_FILL4 = 5'd11,
+  CPU_SM_FILL5 = 5'd12,
+  CPU_SM_FILL6 = 5'd13,
+  CPU_SM_FILL7 = 5'd14,
+  CPU_SM_FILL8 = 5'd15,
+  CPU_SM_FILLW = 5'd16;
  
 // sdram-side state machine
 localparam [3:0]
@@ -268,7 +269,7 @@ always @(*) begin
   endcase
 end
 
-always @ (posedge clk) cpu_cacheline_match <= cpu_adr[24:3] == cpu_cacheline_adr && !cpu_cacheline_dirty;
+assign cpu_cacheline_match = cpu_adr[24:3] == cpu_cacheline_adr && !cpu_cacheline_dirty;
 assign cpu_cacheline_valid = cpu_cacheline_match && (cpu_sm_state == CPU_SM_IDLE) && (cpu_ir || cpu_dr) && !cache_inhibit;
 assign cpu_ack = cpu_cache_ack || cpu_cacheline_valid;
 
@@ -370,7 +371,7 @@ always @ (posedge clk) begin
       end
       CPU_SM_READ : begin
         cpu_cacheline_cnt <= #1 cpu_cacheline_cnt + 1'b1;
-        if(cpu_cacheline_cnt == 2'b01) begin
+        if(cpu_cacheline_cnt == 2'b10) begin
           cpu_cacheline_adr <= #1 cpu_adr[24:3];
           cpu_cacheline_dirty <= #1 1'b0;
           cpu_cache_ack <= #1 1'b1; //early ack
@@ -402,14 +403,26 @@ always @ (posedge clk) begin
           cpu_cacheline[16*cpu_adr_blk_ptr_prev[1:0] +: 16] <= #1 ddram1_cpu_dat_r;
         end else begin
           // on miss fetch data from SDRAM
-          sdr_read_req <= #1 1'b1;
-          cpu_sm_state <= #1 CPU_SM_FILL1;
           cpu_acked <= #1 1'b0;
+          if (!sdr_read_ack) begin
+            sdr_read_req <= #1 1'b1;
+            cpu_sm_state <= #1 CPU_SM_FILL1;
+          end else begin
+            // wait if the previous request is still going
+            // (when the cache is inhibited, we don't wait until the burst is finished)
+            cpu_sm_state <= #1 CPU_SM_SDWAI;
+          end
         end
       end
       CPU_SM_WAIT : begin
         cpu_adr_blk_ptr <= #1 cpu_adr_blk;
         if (!cpu_cs) cpu_sm_state <= #1 CPU_SM_IDLE;
+      end
+      CPU_SM_SDWAI : begin
+        if (!sdr_read_ack) begin
+          sdr_read_req <= #1 1'b1;
+          cpu_sm_state <= #1 CPU_SM_FILL1;
+        end
       end
       CPU_SM_FILL1 : begin
         fill <= #1 1'b1;
