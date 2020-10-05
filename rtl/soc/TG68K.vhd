@@ -188,39 +188,37 @@ sel_eth<='0';
         sel_nmi_vector <= '1';
 	  END IF;
 
-		sel_z3ram<='0';
-		if cpuaddr(31 downto 24)=z3ram_base AND z3ram_ena='1' then
-			sel_z3ram <= '1';
-		end if;
-
 		sel_autoconfig_d<=sel_autoconfig;
 		sel_akiko_d<=sel_akiko;
 		sel_32_d<=sel_32;
     END IF;
   END PROCESS;
 
-  wrd <= wr;
-  addr <= cpuaddr;
+	wrd <= wr;
+	addr <= cpuaddr;
+	datatg68 <= fromram WHEN sel_ram_d='1' ELSE datatg68_c;
 
-  datatg68_c <=
-       X"ffff"                                   WHEN sel_undecoded='1'
-       ELSE fromram                              WHEN sel_ram_d='1' AND sel_nmi_vector='0'
-       ELSE frometh                              WHEN sel_eth='1'
-       ELSE akiko_q                              WHEN sel_akiko_d='1'
-       ELSE autoconfig_data&r_data(11 downto 0)  WHEN sel_autoconfig_d='1'
-       ELSE r_data;
-
-  -- Register incoming data
-  process(clk) begin
-    if rising_edge(clk) then
-      datatg68<=datatg68_c;
-    end if;
-  end process;
+	-- Register incoming data
+	process(clk) begin
+		if rising_edge(clk) then
+			if sel_undecoded = '1' then
+				datatg68_c <= X"FFFF";
+			elsif sel_akiko_d = '1' then
+				datatg68_c <= akiko_q;
+			elsif sel_autoconfig_d = '1' then
+				datatg68_c <= autoconfig_data&r_data(11 downto 0);
+			elsif sel_eth='1' then
+				datatg68_c <= frometh;
+			else
+				datatg68_c <= r_data;
+			end if;
+		end if;
+	end process;
 
 	sel_akiko <= '1' when cpuaddr(31 downto 16)=X"00B8" else '0';
 	sel_32 <= '1' when cpu(1)='1' and cpuaddr(31 downto 24)/=X"00" and cpuaddr(31 downto 24)/=X"ff" else '0'; -- Decode 32-bit space, but exclude interrupt vectors
 	sel_autoconfig  <= '1' WHEN fastramcfg(2 downto 0)/="000" AND cpuaddr(23 downto 19)="11101" AND autoconfig_out/="00" ELSE '0'; --$E80000 - $EFFFFF
-	--  sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 24)=z3ram_base) AND z3ram_ena='1' ELSE '0';
+	sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 24)=z3ram_base) AND z3ram_ena='1' ELSE '0';
 	sel_z2ram       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 21) = "001") OR (cpuaddr(23 downto 21) = "010") OR (cpuaddr(23 downto 21) = "011") OR (cpuaddr(23 downto 21) = "100")) AND z2ram_ena='1' ELSE '0';
 	--sel_eth         <= '1' WHEN (cpuaddr(31 downto 24) = eth_base) AND eth_cfgd='1' ELSE '0';
 	sel_chipram     <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 21)="000") AND turbochip_ena='1' AND turbochip_d='1' ELSE '0'; --$000000 - $1FFFFF
@@ -471,7 +469,7 @@ process(clk,reset,nResetOut) begin
       z3ram_base<=X"01";
       --eth_cfgd <='0';
       --eth_base<=X"02";
-    ELSIF clkena_in='1' THEN
+    ELSE
       IF sel_autoconfig='1' AND state="11"AND uds_in='0' AND clkena='1' THEN
         CASE cpuaddr(6 downto 1) IS
           WHEN "100100" => -- Register 0x48 - config
@@ -527,7 +525,7 @@ PROCESS (clk) BEGIN
   END IF;
 END PROCESS;
 
-clkena <= '1' WHEN (clkena_in='1' AND
+clkena <= '1' WHEN (slower(0) = '0' AND
                    (state="01" OR (ena7RDreg='1' AND clkena_e='1') OR
                     ramready='1' OR sel_undecoded='1' OR akiko_ack='1'))
               ELSE '0';
@@ -569,7 +567,7 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
         uds_s <= '1';
         lds_s <= '1';
           CASE S_state IS
-            WHEN "00" => IF state/="01" AND sel_ram='0' and sel_akiko='0' THEN
+            WHEN "00" => IF state/="01" AND sel_ram='0' and sel_akiko='0' and slower(0) = '0' THEN
                      uds_s <= uds_in;
                      lds_s <= lds_in;
                     S_state <= "01";
@@ -611,7 +609,7 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
         CASE S_state IS
           WHEN "00" =>
                  cpuIPL <= IPL;
-                 IF sel_ram='0' and sel_akiko='0' THEN
+                 IF sel_ram='0' and sel_akiko='0'  and slower(0) = '0' THEN
                    IF state/="01" THEN
                     as_e <= '0';
                    END IF;
