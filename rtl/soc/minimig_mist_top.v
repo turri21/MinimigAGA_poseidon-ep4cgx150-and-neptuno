@@ -9,9 +9,6 @@
 // board type define
 `define MINIMIG_MIST
 
-// new cpu define
-//`define MINIMIG_MIST_NEWCPU
-
 // simulation define
 //`define SOC_SIM
 
@@ -113,7 +110,6 @@ wire           cache_inhibit;
 wire [ 32-1:0] tg68_cad;
 wire [  7-1:0] tg68_cpustate;
 wire           tg68_nrst_out;
-//wire           tg68_cdma;
 wire           tg68_clds;
 wire           tg68_cuds;
 wire [  4-1:0] tg68_CACR_out;
@@ -151,9 +147,9 @@ reg  [  8-1:0] red_reg;
 reg  [  8-1:0] green_reg;
 reg  [  8-1:0] blue_reg;
 
-wire vga_window;
-wire vga_selcsync;
-wire vga_pixel;
+wire           vga_window;
+wire           vga_selcsync;
+wire           vga_pixel;
 
 // sdram
 wire           reset_out;
@@ -164,10 +160,10 @@ wire [  2-1:0] sdram_ba;
 // mist
 wire           user_io_sdo;
 wire           minimig_sdo;
-wire [  16-1:0] joya;
-wire [  16-1:0] joyb;
-wire [  16-1:0] joyc;
-wire [  16-1:0] joyd;
+wire [ 16-1:0] joya;
+wire [ 16-1:0] joyb;
+wire [ 16-1:0] joyc;
+wire [ 16-1:0] joyd;
 wire [  8-1:0] kbd_mouse_data;
 wire           kbd_mouse_strobe;
 wire           kms_level;
@@ -176,7 +172,13 @@ wire [  2-1:0] kbd_mouse_type;
 wire [  3-1:0] mouse0_buttons;
 wire [  3-1:0] mouse1_buttons;
 wire [  4-1:0] core_config;
+wire [  8-1:0] core_status;
 wire [ 64-1:0] rtc;
+wire           ypbpr;
+wire           no_csync;
+wire           force_csync;
+wire     [1:0] clock_override;
+wire           clock_ntsc;
 
 ////////////////////////////////////////
 // toplevel assignments               //
@@ -203,14 +205,16 @@ assign joy_emu_en       = 1'b1;
 
 assign LED              = ~led;
 
-wire   ypbpr            = core_config[1];
-wire   no_csync         = core_config[2];
-wire   force_csync      = ypbpr | (!no_csync & vga_selcsync);
+assign ypbpr            = core_config[1];
+assign no_csync         = core_config[2];
+assign force_csync      = ypbpr | (!no_csync & vga_selcsync);
+assign clock_override   = core_status[2:1];
+assign clock_ntsc       = |clock_override ? clock_override[1] : ntsc;
 
 //// amiga clocks ////
 amiga_clk amiga_clk (
   .rst          (pll_rst          ), // async reset input
-  .ntsc         (ntsc             ), // pal/ntsc clock select
+  .ntsc         (clock_ntsc       ), // pal/ntsc clock select
   .clk_in       (pll_in_clk       ), // input clock     ( 27.000000MHz)
   .clk_114      (clk_114          ), // output clock c0 (114.750000MHz)
   .clk_sdram    (clk_sdram        ), // output clock c2 (114.750000MHz, -146.25 deg)
@@ -262,7 +266,6 @@ TG68K tg68k (
   .cpustate     (tg68_cpustate    ),
   .nResetOut    (tg68_nrst_out    ),
   .skipFetch    (                 ),
-//  .cpuDMA       (tg68_cdma        ),
   .ramlds       (tg68_clds        ),
   .ramuds       (tg68_cuds        ),
   .CACR_out     (tg68_CACR_out    ),
@@ -296,17 +299,13 @@ sdram_ctrl sdram (
   .sd_cas       (SDRAM_nCAS       ),
   .sysclk       (clk_114          ),
   .reset_in     (sdctl_rst        ),
-//  .hostWR       (16'h0            ),
-//  .hostAddr     (24'h0            ),
-//  .hostState    ({1'b0, 2'b01}    ),
-//  .hostL        (1'b1             ),
-//  .hostU        (1'b1             ),
+	.hostce       (1'b0             ),
+	.hostwe       (1'b0             ),
   .cpuWR        (tg68_dat_out     ),
   .cpuAddr      (tg68_cad[24:1]   ),
   .cpuU         (tg68_cuds        ),
   .cpuL         (tg68_clds        ),
   .cpustate     (tg68_cpustate    ),
-//  .cpu_dma      (tg68_cdma        ),
   .chipWR       (ram_data         ),
   .chipAddr     ({1'b0, ram_address[22:1]}),
   .chipU        (_ram_bhe         ),
@@ -362,7 +361,8 @@ user_io user_io(
      .KBD_MOUSE_STROBE(kbd_mouse_strobe),
      .KMS_LEVEL(kms_level),
      .CORE_TYPE(8'ha5),    // minimig core id (a1 - old minimig id, a5 - new aga minimig id)
-     .CONF(core_config)
+     .CONF(core_config),
+     .STATUS(core_status)
   );
   
   

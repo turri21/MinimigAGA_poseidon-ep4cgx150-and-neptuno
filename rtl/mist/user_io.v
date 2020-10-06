@@ -23,6 +23,7 @@ module user_io(
 	output [1:0] BUTTONS,
 	output [1:0] SWITCHES,
 	output [3:0] CONF,
+	output [7:0] STATUS,
 
 	output [63:0] RTC
 );
@@ -32,6 +33,7 @@ reg [7:0]     cmd;
 reg [2:0] 	  bit_cnt;    // counts bits 0-7 0-7 ...
 reg [9:0]     byte_cnt;   // counts bytes
 reg [7:0] 	  but_sw;
+reg [7:0]     status;
 
 reg           kbd_mouse_strobe;
 reg           kbd_mouse_strobe_level;
@@ -64,6 +66,7 @@ assign MOUSE1_BUTTONS = mouse1_buttons; // state of the two mouse buttons for se
 assign BUTTONS  = but_sw[1:0];
 assign SWITCHES = but_sw[3:2];
 assign CONF     = but_sw[7:4];
+assign STATUS   = status;
 
 // SPI bit and byte counters
 always@(posedge SPI_CLK or posedge SPI_SS_IO) begin
@@ -188,6 +191,7 @@ always @(posedge clk_sys) begin
 					kbd_mouse_strobe_level <= ~kbd_mouse_strobe_level;
 				end
 				8'h22: if (abyte_cnt < 9) rtc[(abyte_cnt-1)<<3 +:8] <= spi_byte_in;
+				8'h15: status <= spi_byte_in;
 			endcase
 		end
 	end
