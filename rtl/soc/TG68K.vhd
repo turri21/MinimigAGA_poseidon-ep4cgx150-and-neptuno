@@ -188,11 +188,6 @@ sel_eth<='0';
         sel_nmi_vector <= '1';
 	  END IF;
 
-		sel_z3ram<='0';
-		if cpuaddr(31 downto 24)=z3ram_base AND z3ram_ena='1' then
-			sel_z3ram <= '1';
-		end if;
-
 		sel_autoconfig_d<=sel_autoconfig;
 		sel_akiko_d<=sel_akiko;
 		sel_32_d<=sel_32;
@@ -200,7 +195,11 @@ sel_eth<='0';
   END PROCESS;
 
   wrd <= wr;
-  addr <= cpuaddr;
+	process(clk) begin
+		if rising_edge(clk) then
+			addr <= cpuaddr;
+		end if;
+	end process;
 
 	datatg68 <= fromram WHEN sel_ram_d='1' ELSE datatg68_c;
 
@@ -224,7 +223,7 @@ sel_eth<='0';
 	sel_akiko <= '1' when cpuaddr(31 downto 16)=X"00B8" else '0';
 	sel_32 <= '1' when cpu(1)='1' and cpuaddr(31 downto 24)/=X"00" and cpuaddr(31 downto 24)/=X"ff" else '0'; -- Decode 32-bit space, but exclude interrupt vectors
 	sel_autoconfig  <= '1' WHEN fastramcfg(2 downto 0)/="000" AND cpuaddr(23 downto 19)="11101" AND autoconfig_out/="00" ELSE '0'; --$E80000 - $EFFFFF
-	--  sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 24)=z3ram_base) AND z3ram_ena='1' ELSE '0';
+	sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 24)=z3ram_base) AND z3ram_ena='1' ELSE '0';
 	sel_z2ram       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 21) = "001") OR (cpuaddr(23 downto 21) = "010") OR (cpuaddr(23 downto 21) = "011") OR (cpuaddr(23 downto 21) = "100")) AND z2ram_ena='1' ELSE '0';
 	--sel_eth         <= '1' WHEN (cpuaddr(31 downto 24) = eth_base) AND eth_cfgd='1' ELSE '0';
 	sel_chipram     <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 21)="000") AND turbochip_ena='1' AND turbochip_d='1' ELSE '0'; --$000000 - $1FFFFF
@@ -566,6 +565,12 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
       rw_s <= '1';
       uds_s <= '1';
       lds_s <= '1';
+
+      as_e <= '1';
+      rw_e <= '1';
+      uds_e <= '1';
+      lds_e <= '1';
+      clkena_e <= '0';
     ELSIF rising_edge(clk) THEN
       IF ena7WRreg='1' THEN
         as_s <= '1';
@@ -574,8 +579,9 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
         lds_s <= '1';
           CASE S_state IS
             WHEN "00" => IF state/="01" AND sel_ram='0' and sel_akiko='0' THEN
-                     uds_s <= uds_in;
-                     lds_s <= lds_in;
+                    uds_s <= uds_in;
+                    lds_s <= lds_in;
+                    as_e <= '0';
                     S_state <= "01";
                    END IF;
             WHEN "01" => as_s <= '0';
@@ -594,19 +600,12 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
                      lds_s <= lds_in;
                    END IF;
             WHEN "11" =>
-                   S_state <= "00";
+                   IF clkena = '1' THEN
+                     S_state <= "00";
+                   END IF;
             WHEN OTHERS => null;
           END CASE;
-      END IF;
-    END IF;
-    IF reset='0' THEN
-      as_e <= '1';
-      rw_e <= '1';
-      uds_e <= '1';
-      lds_e <= '1';
-      clkena_e <= '0';
-    ELSIF rising_edge(clk) THEN
-      IF ena7RDreg='1' THEN
+      ELSIF ena7RDreg='1' THEN
         as_e <= '1';
         rw_e <= '1';
         uds_e <= '1';
@@ -616,9 +615,6 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
           WHEN "00" =>
                  cpuIPL <= IPL;
                  IF sel_ram='0' and sel_akiko='0' THEN
-                   IF state/="01" THEN
-                    as_e <= '0';
-                   END IF;
                    rw_e <= wr;
                    IF wr='1' THEN
                      uds_e <= uds_in;
@@ -633,8 +629,13 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
           WHEN "10" => rw_e <= wr;
                  cpuIPL <= IPL;
                  waitm <= dtack;
-          WHEN OTHERS => --null;
-                   clkena_e <= '1';
+          WHEN "11" =>
+                 clkena_e <= '1';
+                 IF clkena = '1' THEN
+                   S_state <= "00";
+                   clkena_e <= '0';
+                 END IF;
+          WHEN OTHERS => null;
         END CASE;
       END IF;
     END IF;

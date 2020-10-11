@@ -76,6 +76,9 @@ set_multicycle_path -from clk_sdram -to [get_clocks $clk_114] -setup 2
 set_multicycle_path -from {virtual_top|tg68k|pf68K_Kernel_inst|*} -setup 4
 set_multicycle_path -from {virtual_top|tg68k|pf68K_Kernel_inst|*} -hold 3
 
+set_multicycle_path -from {virtual_top|tg68k|addr[*]} -setup 3
+set_multicycle_path -from {virtual_top|tg68k|addr[*]} -hold 2
+
 set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -setup 4
 set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -hold 3
 
