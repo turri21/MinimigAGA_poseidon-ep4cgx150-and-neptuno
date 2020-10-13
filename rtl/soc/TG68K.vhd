@@ -140,7 +140,7 @@ SIGNAL datatg68         : std_logic_vector(15 downto 0);
 SIGNAL ramcs            : std_logic;
 
 SIGNAL z2ram_ena        : std_logic;
-SIGNAL z3ram_base       : std_logic_vector(7 downto 0);
+SIGNAL z3ram_base       : std_logic_vector(7 downto 0) := x"40";
 SIGNAL z3ram_ena        : std_logic;
 SIGNAL eth_base         : std_logic_vector(7 downto 0);
 SIGNAL eth_cfgd         : std_logic;
@@ -471,7 +471,7 @@ process(clk,reset,nResetOut) begin
       turbochip_ena <= '0';  -- disable turbo_chipram until we know kickstart's running...
       z2ram_ena <='0';
       z3ram_ena <='0';
-      z3ram_base<=X"01";
+      --z3ram_base<=X"01";
       --eth_cfgd <='0';
       --eth_base<=X"02";
     ELSIF clkena_in='1' THEN
@@ -487,7 +487,8 @@ process(clk,reset,nResetOut) begin
           WHEN "100010" => -- Register 0x44, assign base address to ZIII RAM.
                       -- We ought to take 16 bits here, but for now we take liberties and use a single byte.
             IF autoconfig_out="10" THEN
-              z3ram_base<=data_write(15 downto 8);
+              --z3ram_base is fixed to 0x40 to achieve better timings
+              --z3ram_base<=data_write(15 downto 8);
               z3ram_ena <='1';
 --              autoconfig_out<= eth_en & eth_en;
 --            ELSIF autoconfig_out="11" THEN
