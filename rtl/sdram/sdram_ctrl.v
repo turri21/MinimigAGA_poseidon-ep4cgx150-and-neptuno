@@ -38,7 +38,7 @@ module sdram_ctrl(
   output reg            sd_ras,
   output reg            sd_cas,
   output reg  [  2-1:0] dqm,
-  inout  wire [ 16-1:0] sdata,
+  inout  reg  [ 16-1:0] sdata,
   // host
   input  wire [ 32-1:0] hostWR,
   input  wire [ 24-1:2] hostAddr,
@@ -150,9 +150,7 @@ reg  [ 2-1:0] slot2_dqm;
 reg  [ 2-1:0] slot2_dqm2;
 reg           init_done;
 wire [16-1:0] datain;
-reg  [16-1:0] datawr;
 reg  [25-1:0] casaddr;
-reg           sdwrite;
 reg  [16-1:0] sdata_reg;
 reg  [25-1:2] zmAddr;
 reg           zce;
@@ -708,75 +706,32 @@ always @ (posedge sysclk) begin
   clk7_enD <= clk7_en;
 end
 
-//// sdram data I/O ////
-assign sdata = (sdwrite) ? datawr : 16'bzzzzzzzzzzzzzzzz;
-
-
 //// read data reg ////
 always @ (posedge sysclk) begin
 	sdata_reg <= #1 sdata;
 end
 
-
-//// write data reg ////
-always @ (posedge sysclk) begin
-	if(sdram_state == ph3) begin
-		case(slot1_type)
-			CHIP : begin
-				datawr <= #1 chipWR;
-			end
-			CPU_WRITECACHE : begin
-				datawr <= #1 writebufferWR_reg;
-			end
-			default : begin
-				datawr <= #1 hostWR[31:16];
-			end
-		endcase
-	end else if(sdram_state == ph10) begin
-		if (slot1_type==CPU_WRITECACHE)
-			datawr <= #1 writebufferWR2_reg;
-		else
-			datawr <= #1 hostWR[15:0];
-	end else if(sdram_state == ph11) begin
-		// Only the writebuffer can write during slot 2.
-		datawr <= #1 writebufferWR_reg;
-	end else if(sdram_state == ph2) begin
-		datawr <= #1 writebufferWR2_reg;
-	end
-end
-
-
 //// write / read control ////
 always @ (posedge sysclk) begin
 	if(!reset_sdstate) begin
-		sdwrite       <= #1 1'b0;
 		enaRDreg      <= #1 1'b0;
 		enaWRreg      <= #1 1'b0;
 		ena7RDreg     <= #1 1'b0;
 		ena7WRreg     <= #1 1'b0;
 	end else begin
-		sdwrite       <= #1 1'b0;
 		enaRDreg      <= #1 1'b0;
 		enaWRreg      <= #1 1'b0;
 		ena7RDreg     <= #1 1'b0;
 		ena7WRreg     <= #1 1'b0;
 		case(sdram_state) // LATENCY=3
-			ph1 : begin
-				sdwrite <= #1 slot2_write;	// Drive the bus for a single cycle
-			end
 			ph2 : begin
-				sdwrite <= #1 slot2_write;	// Drive the bus for a single cycle
 				enaWRreg  <= #1 1'b1;
 			end
 			ph6 : begin
 				enaWRreg  <= #1 1'b1;
 				ena7RDreg <= #1 1'b1;
 			end
-			ph9 : begin
-				sdwrite <= #1 slot1_write;	// Drive the bus for a single cycle
-			end
 			ph10 : begin
-				sdwrite <= #1 slot1_write;	// Drive the bus for a single cycle
 				enaWRreg  <= #1 1'b1;
 			end
 			ph14 : begin
@@ -884,6 +839,8 @@ end
 // 22 downto 10: row
 // 9 downto 1: column
 always @ (posedge sysclk) begin
+	sdata                       <= 16'bzzzzzzzzzzzzzzzz;
+
 	if(!reset) begin
 		refresh_pending           <= #1 1'b0;
 		slot1_type                <= #1 IDLE;
@@ -958,8 +915,10 @@ always @ (posedge sysclk) begin
 			end
 
 			ph1 : begin
-				if(slot2_write) 
+				if(slot2_write) begin
 					dqm                 <= #1 slot2_dqm;
+					sdata               <= #1 writebufferWR_reg;
+				end
 				cache_fill_2                <= #1 1'b1; // slot 2
 				cas_sd_cs                   <= #1 4'b1111;
 				cas_sd_ras                  <= #1 1'b1;
@@ -1075,8 +1034,10 @@ always @ (posedge sysclk) begin
 			end
 
 			ph2 : begin
-				if(slot2_write)
+				if(slot2_write) begin
+					sdata               <= #1 writebufferWR2_reg;
 					dqm                 <= #1 slot2_dqm2; // Third word of write.
+				end
 				slot1_write                 <=!cas_sd_we;
 				// slot 2
 				cache_fill_2                <= #1 1'b1;
@@ -1142,6 +1103,11 @@ always @ (posedge sysclk) begin
 				cache_fill_1                <= #1 1'b1;
 				if(slot1_write) begin
 					dqm<=#1 slot1_dqm; // Mask off the second word of a write.
+					case (slot1_type)
+						CHIP:           sdata   <= #1 chipWR;
+						CPU_WRITECACHE:	sdata   <= #1 writebufferWR_reg;
+						default :       sdata   <= #1 hostWR[31:16];
+					endcase
 				end
 
 				// Access slot 2, RAS
@@ -1205,8 +1171,13 @@ always @ (posedge sysclk) begin
 			end
 
 			ph10 : begin
-				if(slot1_write)
+				if(slot1_write) begin
 					dqm                 <=#1 slot1_dqm2; // Mask for third word of write.
+					case (slot1_type)
+						CPU_WRITECACHE:	sdata   <= #1 writebufferWR2_reg;
+						default :       sdata   <= #1 hostWR[15:0];
+					endcase
+				end
 				slot2_write                 <=!cas_sd_we;
 				cache_fill_1                <= #1 1'b1;
 			end
