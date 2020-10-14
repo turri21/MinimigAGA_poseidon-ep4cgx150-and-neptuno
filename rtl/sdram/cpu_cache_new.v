@@ -102,7 +102,7 @@ reg [128-1:0] cpu_cacheline;
 reg  [25-1:4] cpu_cacheline_adr;
 wire          cpu_cacheline_valid;
 reg           cpu_cacheline_dirty;
-wire          cpu_cacheline_match;
+reg           cpu_cacheline_match;
 reg   [2-1:0] cpu_cacheline_cnt;
 // idram0
 wire [10-1:0] idram0_cpu_adr;
@@ -252,7 +252,7 @@ assign cpu_adr_blk = cpu_adr[3:1];    // cache block address (inside cache row),
 assign cpu_adr_idx = cpu_adr[11:4];   // cache row address, 8 bits
 assign cpu_adr_tag = cpu_adr[24:12];  // tag, 13 bits
 
-always @(*) begin
+always @(posedge clk) begin
   case (cpu_adr_blk)
     3'b000: cpu_dat_r = cpu_cacheline[15:0];
     3'b001: cpu_dat_r = cpu_cacheline[31:16];
@@ -266,7 +266,7 @@ always @(*) begin
   endcase
 end
 
-assign cpu_cacheline_match = cpu_adr[24:4] == cpu_cacheline_adr && !cpu_cacheline_dirty;
+always @(posedge clk) cpu_cacheline_match <= cpu_adr[24:4] == cpu_cacheline_adr && !cpu_cacheline_dirty;
 assign cpu_cacheline_valid = cpu_cacheline_match && (cpu_sm_state == CPU_SM_IDLE) && (cpu_ir || cpu_dr) && !cache_inhibit;
 assign cpu_ack = cpu_cache_ack || cpu_cacheline_valid;
 

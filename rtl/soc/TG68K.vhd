@@ -249,7 +249,7 @@ sel_eth<='0';
 
   cache_inhibit <= '1' WHEN sel_chipram='1' OR sel_kickram='1' ELSE '0';
 
-  ramcs <= (NOT sel_ram) or slower(0);-- OR (state(0) AND NOT state(1));
+  ramcs <= (NOT sel_ram_d) or slower(0);-- OR (state(0) AND NOT state(1));
 --  cpuDMA <= sel_ram;
   cpustate <= longword&clkena&slower(1 downto 0)&ramcs&state(1 downto 0);
   ramlds <= lds_in;

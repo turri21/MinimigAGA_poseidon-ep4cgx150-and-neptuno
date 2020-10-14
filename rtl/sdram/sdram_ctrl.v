@@ -83,16 +83,14 @@ module sdram_ctrl(
 );
 
 
-reg [24:1] cpu_addr_d;
 reg cpu_long_hit;
 reg [3:1] cpu_long_dif;
 
 assign debug={cpu_long_hit,cpu_long_dif};
 always @(posedge sysclk)
 begin
-	cpu_addr_d<=cpuAddr;
-	cpu_long_hit<=cpu_addr_d[24:4]==cpuAddr[24:4];
-	cpu_long_dif<=cpuAddr[3:1]-cpu_addr_d[3:1];
+	cpu_long_hit<=cpuAddr_r[24:4]==cpuAddr[24:4];
+	cpu_long_dif<=cpuAddr[3:1]-cpuAddr_r[3:1];
 end
 
 
@@ -211,15 +209,15 @@ wire          writebuffer_cache_ack;
 reg           writebuffer_hold;
 reg           writebuffer_canfinish;
 reg  [ 3-1:0] writebuffer_state;
-wire [25-1:1] cpuAddr_mangled;
+reg  [25-1:1] cpuAddr_r; // registered CPU address - cpuAddr must be stable one cycle before cpuCSn
 
 
 
 ////////////////////////////////////////
-// address mangling
+// misc signals
 ////////////////////////////////////////
 
-assign cpuAddr_mangled = cpuAddr;
+always @(posedge sysclk) cpuAddr_r <= cpuAddr;
 
 assign cpuLongword = cpustate[6];
 assign cpuCSn      = cpustate[2];
@@ -545,7 +543,7 @@ cpu_cache_new cpu_cache (
 	.cpu_cache_ctrl   (cpu_cache_ctrl),               // CPU cache control
 	.cache_inhibit    (cache_inhibit),                // cache inhibit
 	.cpu_cs           (!cpuCSn),                      // cpu activity
-	.cpu_adr          ({cpuAddr_mangled, 1'b0}),      // cpu address
+	.cpu_adr          ({cpuAddr, 1'b0}),              // cpu address
 	.cpu_bs           ({!cpuU, !cpuL}),               // cpu byte selects
 	.cpu_bs_hi        (~writebuffer_dqm),             // cpu byte selects (1st word of a longword write)
 	.cpu_32bit        (cache_32bitwrite),             // cpu 32 bit write
@@ -573,7 +571,7 @@ TwoWayCache mytwc (
 	.reset            (reset),
 	.cache_rst        (cache_rst),
 	.ready            (),
-	.cpu_addr         ({7'b0000000, cpuAddr_mangled, 1'b0}),
+	.cpu_addr         ({7'b0000000, cpuAddr, 1'b0}),
 	.cpu_req          (!cpuCSn),
 	.cpu_ack          (ccachehit),
 	.cpu_wr_ack       (writebuffer_cache_ack),
@@ -594,7 +592,7 @@ TwoWayCache mytwc (
 
 `endif
 
-assign longword_en = cpuLongword && cpuAddr[3:1]!=3'b111 && cpustate[1:0]==2'b11;
+assign longword_en = cpuLongword && cpuAddr_r[3:1]!=3'b111 && cpustate[1:0]==2'b11;
 
 //// writebuffer ////
 // write buffer, enables CPU to continue while a write is in progress
@@ -611,7 +609,7 @@ always @ (posedge sysclk) begin
 			longword_wait <= #1 longword_en;
 			// CPU write cycle, no cycle already pending
 			if(!cpuCSn && cpustate[1:0] == 2'b11) begin
-				writebufferAddr <= #1 cpuAddr_mangled[24:1];
+				writebufferAddr <= #1 cpuAddr_r[24:1];
 				writebufferWR   <= #1 cpuWR;
 				writebuffer_dqm <= #1 {cpuU, cpuL};
 				writebuffer_dqm2 <= #1 2'b11;
@@ -805,13 +803,10 @@ reg rtg_slot2ok;
 
 always @(posedge sysclk) begin
 
-	cpu_reservertg <= rtgce && cpuAddr_mangled[24:23]==rtgAddr[24:23] ? 1'b1 : 1'b0;
-	cpu_slot1ok <= (slot2_type == IDLE || slot2_bank != cpuAddr_mangled[24:23]) ? 1'b1 : 1'b0;
-	cpu_slot2ok <= (|cpuAddr_mangled[24:23]   // Reserve bank 0 for slot 1
-	               && (slot1_type == IDLE || slot1_bank != cpuAddr_mangled[24:23])) ? 1'b1 : 1'b0;
-
-	               //|cpuAddr[24:23] // reserve bank 0 for slot 1
-	               //&& (slot1_type == IDLE || slot1_bank != cpuAddr_mangled[24:23])) begin
+	cpu_reservertg <= rtgce && cpuAddr_r[24:23]==rtgAddr[24:23] ? 1'b1 : 1'b0;
+	cpu_slot1ok <= (slot2_type == IDLE || slot2_bank != cpuAddr_r[24:23]) ? 1'b1 : 1'b0;
+	cpu_slot2ok <= (|cpuAddr_r[24:23]   // Reserve bank 0 for slot 1
+	               && (slot1_type == IDLE || slot1_bank != cpuAddr_r[24:23])) ? 1'b1 : 1'b0;
 
 	wb_reservertg <= rtgce && writebufferAddr[24:23]==rtgAddr[24:23] ? 1'b1 : 1'b0;
 	wb_slot1ok <= (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23]) ? 1'b1 : 1'b0;
@@ -962,8 +957,6 @@ always @ (posedge sysclk) begin
 				// the Amiga CPU gets next bite of the cherry, unless the OSD CPU has been cycle-starved
 				// request from write buffer
 				else if(writebuffer_req && !zatn && wb_slot1ok && !wb_reservertg) begin
-//				&& (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23])
-//					&& (!rtgce || writebufferAddr[24:23]!=rtgAddr[24:23])) begin
 					// We only yield to the OSD CPU if it's both cycle-starved and ready to go.
 					slot1_type          <= #1 CPU_WRITECACHE;
 					sdaddr              <= #1 writebufferAddr[22:10];
@@ -985,13 +978,13 @@ always @ (posedge sysclk) begin
 				else if(cache_req && !zatn && cpu_slot1ok && !cpu_reservertg) begin 
 					// we only yield to the OSD CPU if it's both cycle-starved and ready to go
 					slot1_type          <= #1 CPU_READCACHE;
-					sdaddr              <= #1 cpuAddr_mangled[22:10];
-					ba                  <= #1 cpuAddr_mangled[24:23];
-					slot1_bank          <= #1 cpuAddr_mangled[24:23];
+					sdaddr              <= #1 cpuAddr_r[22:10];
+					ba                  <= #1 cpuAddr_r[24:23];
+					slot1_bank          <= #1 cpuAddr_r[24:23];
 					slot1_dqm           <= #1 {cpuU,cpuL};
 					sd_cs               <= #1 4'b1110; // ACTIVE
 					sd_ras              <= #1 1'b0;
-					casaddr             <= #1 {cpuAddr_mangled[24:1], 1'b0};
+					casaddr             <= #1 {cpuAddr_r[24:1], 1'b0};
 					cas_sd_we           <= #1 1'b1;
 					cas_sd_cas          <= #1 1'b0;
 					cas_sd_cs           <= #1 4'b1110;
@@ -1131,9 +1124,6 @@ always @ (posedge sysclk) begin
 						cas_sd_cs         <= #1 4'b1110;
 					end
 					else if(writebuffer_req && wb_slot2ok) begin
-			 // reserve bank 0 for slot 1
-//          else if(writebuffer_req && |writebufferAddr[24:23] // reserve bank 0 for slot 1
-//					&& (slot1_type == IDLE || slot1_bank != writebufferAddr[24:23])) begin
             // We only yield to the OSD CPU if it's both cycle-starved and ready to go.
 						slot2_type        <= #1 CPU_WRITECACHE;
 						sdaddr            <= #1 writebufferAddr[22:10];
@@ -1153,16 +1143,14 @@ always @ (posedge sysclk) begin
 					end
 					// request from read cache
 					else if(cache_req && cpu_slot2ok) begin
-					 //|cpuAddr[24:23] // reserve bank 0 for slot 1
-					//&& (slot1_type == IDLE || slot1_bank != cpuAddr_mangled[24:23])) begin
 						slot2_type        <= #1 CPU_READCACHE;
-						sdaddr            <= #1 cpuAddr_mangled[22:10];
-						ba                <= #1 cpuAddr_mangled[24:23];
-						slot2_bank        <= #1 cpuAddr_mangled[24:23];
+						sdaddr            <= #1 cpuAddr_r[22:10];
+						ba                <= #1 cpuAddr_r[24:23];
+						slot2_bank        <= #1 cpuAddr_r[24:23];
 						slot2_dqm         <= #1 {cpuU, cpuL};
 						sd_cs             <= #1 4'b1110; // ACTIVE
 						sd_ras            <= #1 1'b0;
-						casaddr           <= #1 {cpuAddr_mangled[24:1], 1'b0};
+						casaddr           <= #1 {cpuAddr_r[24:1], 1'b0};
 						cas_sd_we         <= #1 1'b1;
 						cas_sd_cas        <= #1 1'b0;
 						cas_sd_cs         <= #1 4'b1110;
