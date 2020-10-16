@@ -538,7 +538,6 @@ wire           host_we;
 wire           hostreq;
 wire           hostack;
 wire           hostce;
-wire [3:0]     debug_sdr;
 
 //sdram sdram (
 sdram_ctrl sdram (
@@ -597,8 +596,7 @@ sdram_ctrl sdram (
   .enaRDreg     (                 ),
   .enaWRreg     (tg68_ena28       ),
   .ena7RDreg    (tg68_ena7RD      ),
-  .ena7WRreg    (tg68_ena7WR      ),
-  .debug        (debug_sdr        )
+  .ena7WRreg    (tg68_ena7WR      )
 );
 
 
