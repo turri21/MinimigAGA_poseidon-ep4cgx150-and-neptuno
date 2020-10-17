@@ -165,18 +165,12 @@ always @(posedge clk)
 //always @(posedge clk)
 ////	{lr_w,l_as,l_uds,l_lds,l_dtack} <= {r_w,_as,_uds,_lds,_dtack};
 //  {lr_w,l_as,l_dtack} <= ({r_w,_as,_dtack});
-always @ (posedge clk) begin
-  if (clk7_en) begin
-    lr_w <= !halt ? r_w : !host_we;
-    l_as <= !halt ? _as : !host_cs;
-    l_dtack <= _dtack;
-  end
-
-end
-
 always @(posedge clk) begin
   l_uds <= !halt ? _uds : !(host_bs[1]);
   l_lds <= !halt ? _lds : !(host_bs[0]);
+  lr_w <= !halt ? r_w : !host_we;
+  l_as <= !halt ? _as : !host_cs;
+  l_dtack <= _dtack;
 end
 
 reg _as28m;

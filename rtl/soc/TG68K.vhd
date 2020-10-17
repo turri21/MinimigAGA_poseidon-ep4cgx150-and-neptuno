@@ -140,7 +140,7 @@ SIGNAL datatg68         : std_logic_vector(15 downto 0);
 SIGNAL ramcs            : std_logic;
 
 SIGNAL z2ram_ena        : std_logic;
-SIGNAL z3ram_base       : std_logic_vector(7 downto 0);
+SIGNAL z3ram_base       : std_logic_vector(7 downto 0) := x"40";
 SIGNAL z3ram_ena        : std_logic;
 SIGNAL eth_base         : std_logic_vector(7 downto 0);
 SIGNAL eth_cfgd         : std_logic;
@@ -188,11 +188,6 @@ sel_eth<='0';
         sel_nmi_vector <= '1';
 	  END IF;
 
-		sel_z3ram<='0';
-		if cpuaddr(31 downto 24)=z3ram_base AND z3ram_ena='1' then
-			sel_z3ram <= '1';
-		end if;
-
 		sel_autoconfig_d<=sel_autoconfig;
 		sel_akiko_d<=sel_akiko;
 		sel_32_d<=sel_32;
@@ -200,7 +195,11 @@ sel_eth<='0';
   END PROCESS;
 
   wrd <= wr;
-  addr <= cpuaddr;
+	process(clk) begin
+		if rising_edge(clk) then
+			addr <= cpuaddr;
+		end if;
+	end process;
 
 	datatg68 <= fromram WHEN sel_ram_d='1' ELSE datatg68_c;
 
@@ -224,14 +223,14 @@ sel_eth<='0';
 	sel_akiko <= '1' when cpuaddr(31 downto 16)=X"00B8" else '0';
 	sel_32 <= '1' when cpu(1)='1' and cpuaddr(31 downto 24)/=X"00" and cpuaddr(31 downto 24)/=X"ff" else '0'; -- Decode 32-bit space, but exclude interrupt vectors
 	sel_autoconfig  <= '1' WHEN fastramcfg(2 downto 0)/="000" AND cpuaddr(23 downto 19)="11101" AND autoconfig_out/="00" ELSE '0'; --$E80000 - $EFFFFF
-	--  sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 24)=z3ram_base) AND z3ram_ena='1' ELSE '0';
+	sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 24)=z3ram_base) AND z3ram_ena='1' ELSE '0';
 	sel_z2ram       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 21) = "001") OR (cpuaddr(23 downto 21) = "010") OR (cpuaddr(23 downto 21) = "011") OR (cpuaddr(23 downto 21) = "100")) AND z2ram_ena='1' ELSE '0';
 	--sel_eth         <= '1' WHEN (cpuaddr(31 downto 24) = eth_base) AND eth_cfgd='1' ELSE '0';
-	sel_chipram     <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 21)="000") AND turbochip_ena='1' AND turbochip_d='1' ELSE '0'; --$000000 - $1FFFFF
+	sel_chipram     <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 21)="000") AND turbochip_d='1' ELSE '0'; --$000000 - $1FFFFF
 	sel_kick        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 19)="11111") OR (cpuaddr(23 downto 19)="11100")) AND state/="11" ELSE '0'; -- $F8xxxx, $E0xxxx, read only
-	sel_kickram     <= '1' WHEN sel_kick='1' AND turbochip_ena='1' AND turbokick_d='1' ELSE '0';
+	sel_kickram     <= '1' WHEN sel_kick='1' AND turbokick_d='1' ELSE '0';
 	sel_slow        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 20)=X"C") OR (cpuaddr(23 downto 19)=X"D"&'0')) ELSE '0'; -- $C00000 - $D7FFFF
-	sel_slowram     <= '1' WHEN sel_slow='1' AND turbochip_ena='1' AND turbokick_d='1' ELSE '0';
+	sel_slowram     <= '1' WHEN sel_slow='1' AND turbokick_d='1' ELSE '0';
 	sel_cart        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 20)="1010") ELSE '0'; -- $A00000 - $A7FFFF (actually matches up to $AFFFFF)
 	sel_audio       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 19)="10110") ELSE '0'; -- $B00000 - $B7FFFF
 	sel_undecoded   <= '1' when sel_32_d='1' and sel_z3ram='0' else '0';
@@ -250,7 +249,7 @@ sel_eth<='0';
 
   cache_inhibit <= '1' WHEN sel_chipram='1' OR sel_kickram='1' ELSE '0';
 
-  ramcs <= (NOT sel_ram) or slower(0);-- OR (state(0) AND NOT state(1));
+  ramcs <= (NOT sel_ram_d) or slower(0);-- OR (state(0) AND NOT state(1));
 --  cpuDMA <= sel_ram;
   cpustate <= longword&clkena&slower(1 downto 0)&ramcs&state(1 downto 0);
   ramlds <= lds_in;
@@ -341,8 +340,8 @@ PROCESS (clk, turbochipram, turbokick) BEGIN
       turbochip_d <= '0';
       turbokick_d <= '0';
     ELSIF state="01" THEN -- No mem access, so safe to switch chipram access mode
-      turbochip_d <= turbochipram;
-      turbokick_d <= turbokick;
+      turbochip_d <= turbochipram and turbochip_ena;
+      turbokick_d <= turbokick and turbochip_ena;
     END IF;
 	 sel_ram_d<=sel_ram;
   END IF;
@@ -472,7 +471,7 @@ process(clk,reset,nResetOut) begin
       turbochip_ena <= '0';  -- disable turbo_chipram until we know kickstart's running...
       z2ram_ena <='0';
       z3ram_ena <='0';
-      z3ram_base<=X"01";
+      --z3ram_base<=X"01";
       --eth_cfgd <='0';
       --eth_base<=X"02";
     ELSIF clkena_in='1' THEN
@@ -488,7 +487,8 @@ process(clk,reset,nResetOut) begin
           WHEN "100010" => -- Register 0x44, assign base address to ZIII RAM.
                       -- We ought to take 16 bits here, but for now we take liberties and use a single byte.
             IF autoconfig_out="10" THEN
-              z3ram_base<=data_write(15 downto 8);
+              --z3ram_base is fixed to 0x40 to achieve better timings
+              --z3ram_base<=data_write(15 downto 8);
               z3ram_ena <='1';
 --              autoconfig_out<= eth_en & eth_en;
 --            ELSIF autoconfig_out="11" THEN
@@ -566,6 +566,12 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
       rw_s <= '1';
       uds_s <= '1';
       lds_s <= '1';
+
+      as_e <= '1';
+      rw_e <= '1';
+      uds_e <= '1';
+      lds_e <= '1';
+      clkena_e <= '0';
     ELSIF rising_edge(clk) THEN
       IF ena7WRreg='1' THEN
         as_s <= '1';
@@ -574,8 +580,9 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
         lds_s <= '1';
           CASE S_state IS
             WHEN "00" => IF state/="01" AND sel_ram='0' and sel_akiko='0' THEN
-                     uds_s <= uds_in;
-                     lds_s <= lds_in;
+                    uds_s <= uds_in;
+                    lds_s <= lds_in;
+                    as_e <= '0';
                     S_state <= "01";
                    END IF;
             WHEN "01" => as_s <= '0';
@@ -594,19 +601,12 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
                      lds_s <= lds_in;
                    END IF;
             WHEN "11" =>
-                   S_state <= "00";
+                   IF clkena = '1' THEN
+                     S_state <= "00";
+                   END IF;
             WHEN OTHERS => null;
           END CASE;
-      END IF;
-    END IF;
-    IF reset='0' THEN
-      as_e <= '1';
-      rw_e <= '1';
-      uds_e <= '1';
-      lds_e <= '1';
-      clkena_e <= '0';
-    ELSIF rising_edge(clk) THEN
-      IF ena7RDreg='1' THEN
+      ELSIF ena7RDreg='1' THEN
         as_e <= '1';
         rw_e <= '1';
         uds_e <= '1';
@@ -616,9 +616,6 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
           WHEN "00" =>
                  cpuIPL <= IPL;
                  IF sel_ram='0' and sel_akiko='0' THEN
-                   IF state/="01" THEN
-                    as_e <= '0';
-                   END IF;
                    rw_e <= wr;
                    IF wr='1' THEN
                      uds_e <= uds_in;
@@ -633,8 +630,13 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
           WHEN "10" => rw_e <= wr;
                  cpuIPL <= IPL;
                  waitm <= dtack;
-          WHEN OTHERS => --null;
-                   clkena_e <= '1';
+          WHEN "11" =>
+                 clkena_e <= '1';
+                 IF clkena = '1' THEN
+                   S_state <= "00";
+                   clkena_e <= '0';
+                 END IF;
+          WHEN OTHERS => null;
         END CASE;
       END IF;
     END IF;
