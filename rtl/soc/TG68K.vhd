@@ -153,12 +153,13 @@ SIGNAL sel_slow         : std_logic;
 SIGNAL sel_slowram      : std_logic;
 SIGNAL sel_cart         : std_logic;
 SIGNAL sel_32           : std_logic;
-signal sel_32_d         : std_logic;
 signal sel_undecoded    : std_logic;
+signal sel_undecoded_d  : std_logic;
 signal sel_akiko        : std_logic;
 signal sel_akiko_d      : std_logic;
 signal sel_audio        : std_logic;
-signal sel_ram_d			: std_logic;
+signal sel_ram_d        : std_logic;
+SIGNAL cpu_int          : std_logic;
 
 -- Akiko registers
 signal akiko_d : std_logic_vector(15 downto 0);
@@ -190,18 +191,19 @@ sel_eth<='0';
 
 		sel_autoconfig_d<=sel_autoconfig;
 		sel_akiko_d<=sel_akiko;
-		sel_32_d<=sel_32;
+		sel_undecoded_d<=sel_undecoded;
     END IF;
   END PROCESS;
 
   wrd <= wr;
+	cpu_int <= '1' WHEN state = "01" else '0';
 	process(clk) begin
 		if rising_edge(clk) then
 			addr <= cpuaddr;
 		end if;
 	end process;
 
-	datatg68 <= fromram WHEN sel_ram_d='1' ELSE datatg68_c;
+	datatg68 <= fromram WHEN cpu_int='0' AND sel_ram_d='1' AND sel_nmi_vector='0' ELSE datatg68_c;
 
 	-- Register incoming data
 	process(clk) begin
@@ -233,8 +235,8 @@ sel_eth<='0';
 	sel_slowram     <= '1' WHEN sel_slow='1' AND turbokick_d='1' ELSE '0';
 	sel_cart        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 20)="1010") ELSE '0'; -- $A00000 - $A7FFFF (actually matches up to $AFFFFF)
 	sel_audio       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 19)="10110") ELSE '0'; -- $B00000 - $B7FFFF
-	sel_undecoded   <= '1' when sel_32_d='1' and sel_z3ram='0' else '0';
-	sel_ram         <= '1' WHEN state/="01" AND sel_nmi_vector='0' AND (
+	sel_undecoded   <= '1' WHEN sel_32='1' and sel_z3ram='0' else '0';
+	sel_ram         <= '1' WHEN (
          sel_z2ram='1'
       OR sel_z3ram='1'
       OR sel_chipram='1'
@@ -249,8 +251,8 @@ sel_eth<='0';
 
   cache_inhibit <= '1' WHEN sel_chipram='1' OR sel_kickram='1' ELSE '0';
 
-  ramcs <= (NOT sel_ram_d) or slower(0);-- OR (state(0) AND NOT state(1));
---  cpuDMA <= sel_ram;
+  ramcs <= NOT (NOT cpu_int AND sel_ram_d AND NOT sel_nmi_vector) OR slower(0);
+
   cpustate <= longword&clkena&slower(1 downto 0)&ramcs&state(1 downto 0);
   ramlds <= lds_in;
   ramuds <= uds_in;
@@ -533,7 +535,7 @@ END PROCESS;
 
 clkena <= '1' WHEN (clkena_in='1' AND
                    (state="01" OR (ena7RDreg='1' AND clkena_e='1') OR
-                    ramready='1' OR sel_undecoded='1' OR akiko_ack='1'))
+                    ramready='1' OR sel_undecoded_d='1' OR akiko_ack='1'))
               ELSE '0';
 
 PROCESS (clk) BEGIN
@@ -555,7 +557,7 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
       uds <= '1';
       lds <= '1';
     ELSE
-      as <= (as_s AND as_e) OR sel_ram;
+      as <= (as_s AND as_e) OR (sel_ram AND NOT sel_nmi_vector);
       rw <= rw_s AND rw_e;
       uds <= uds_s AND uds_e;
       lds <= lds_s AND lds_e;
@@ -579,7 +581,7 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
         uds_s <= '1';
         lds_s <= '1';
           CASE S_state IS
-            WHEN "00" => IF state/="01" AND sel_ram='0' and sel_akiko='0' THEN
+            WHEN "00" => IF cpu_int='0' AND (sel_ram='0' OR sel_nmi_vector='1') AND sel_akiko='0' THEN
                     uds_s <= uds_in;
                     lds_s <= lds_in;
                     as_e <= '0';
@@ -615,7 +617,7 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
         CASE S_state IS
           WHEN "00" =>
                  cpuIPL <= IPL;
-                 IF sel_ram='0' and sel_akiko='0' THEN
+                 IF cpu_int='0' AND (sel_ram='0' OR sel_nmi_vector='1') AND sel_akiko='0' THEN
                    rw_e <= wr;
                    IF wr='1' THEN
                      uds_e <= uds_in;
