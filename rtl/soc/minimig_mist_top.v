@@ -210,6 +210,7 @@ assign no_csync         = core_config[2];
 assign force_csync      = ypbpr | (!no_csync & vga_selcsync);
 assign clock_override   = core_status[2:1];
 assign clock_ntsc       = |clock_override ? clock_override[1] : ntsc;
+wire aud_int;
 
 //// amiga clocks ////
 amiga_clk amiga_clk (
@@ -281,7 +282,8 @@ TG68K tg68k (
 	.rtg_clut_g(rtg_clut_g),
 	.rtg_clut_b(rtg_clut_b),
 	.audio_ena(aud_ena_cpu),
-	.audio_buf(aud_addr[15])
+	.audio_buf(aud_addr[15]),
+	.audio_int(aud_int)
 );
 
 //sdram sdram (
@@ -475,7 +477,9 @@ minimig minimig (
 	.osd_blank_out(osd_window       ),  // Let the toplevel dither module handle drawing the OSD.
 	.osd_pixel_out(osd_pixel        ),
 	.rtg_ena      (rtg_ena          ),
-  .ntsc         (ntsc             )
+  .ntsc         (ntsc             ),
+  .ext_int2     (1'b0             ),
+  .ext_int6     (aud_int          )
 );
 
 

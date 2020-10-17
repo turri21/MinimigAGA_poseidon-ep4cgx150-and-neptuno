@@ -372,6 +372,7 @@ assign VGA_R[7:0]       = osd_window ? {osd_r,red_reg[7:2]} : red_reg[7:0];
 
 
 // Audio for CD images
+wire aud_int;
 reg [15:0] aud_left;
 reg [15:0] aud_right;    // sigma-delta DAC output right
 
@@ -515,6 +516,7 @@ TG68K tg68k (
 	.rtg_clut_b(rtg_clut_b),
 	.audio_buf(aud_addr[15]),
 	.audio_ena(aud_ena_cpu),
+	.audio_int(aud_int),
 	// Amiga to host signals
 	.host_req(amigahost_req),
 	.host_ack(amigahost_ack),
@@ -763,7 +765,9 @@ minimig minimig (
 	.vblank_out   (vblank_out       ),
 	.osd_blank_out(osd_window       ),  // Let the toplevel dither module handle drawing the OSD.
 	.osd_pixel_out(osd_pixel        ),
-	.rtg_ena      (rtg_ena          )
+	.rtg_ena      (rtg_ena          ),
+	.ext_int2     (1'b0             ),
+	.ext_int6     (aud_int          )
 );
 `endif
 

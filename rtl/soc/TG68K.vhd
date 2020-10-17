@@ -82,6 +82,7 @@ port(
 	-- Audio interface
 	audio_buf : in std_logic;
 	audio_ena : out std_logic;
+	audio_int : out std_logic;
 	-- Host interface
 	host_req : out std_logic;
 	host_ack : in std_logic :='0';
@@ -167,7 +168,6 @@ signal akiko_wr : std_logic;
 signal akiko_req : std_logic;
 signal akiko_ack : std_logic;
 signal host_req_r : std_logic;
-signal audio_int : std_logic;
 
 SIGNAL NMI_addr         : std_logic_vector(31 downto 0);
 SIGNAL sel_nmi_vector   : std_logic;

@@ -261,8 +261,9 @@ module minimig
   output  osd_blank_out,	// Let the toplevel dither module handle drawing the OSD.
   output  osd_pixel_out,
   output  rtg_ena,
-  output reg ntsc = NTSC  //PAL/NTSC video mode selection
-
+  output reg ntsc = NTSC, //PAL/NTSC video mode selection
+  input   ext_int2,	// External interrupt for Akiko
+  input   ext_int6	// External interrupt for AHI audio
 );
 
 //--------------------------------------------------------------------------------------
@@ -567,9 +568,9 @@ paula PAULA1
 	.sof(sof),
   .strhor(strhor_paula),
   .vblint(vbl_int),
-	.int2(int2|gayle_irq),
+	.int2(int2|gayle_irq|ext_int2),
 	.int3(int3),
-	.int6(int6),
+	.int6(int6|ext_int6),
 	._ipl(_iplx),
 	.audio_dmal(audio_dmal),
 	.audio_dmas(audio_dmas),
