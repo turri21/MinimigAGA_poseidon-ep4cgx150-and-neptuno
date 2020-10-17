@@ -471,7 +471,7 @@ PORT map
 		PS2_MDAT_O => ps2_mouse_dat_out,
 		PS2_MCLK_O => ps2_mouse_clk_out,
 
-		AMIGA_RESET_N => amiga_reset_n,
+		AMIGA_RESET_N => '1', -- fix problem with V1 docking station -- amiga_reset_n,
 		AMIGA_KEY => std_logic_vector(amiga_key),
 		AMIGA_KEY_STB => amiga_key_stb,
 		C64_KEYS => std_logic_vector(c64_keys),

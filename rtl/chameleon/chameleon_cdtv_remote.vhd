@@ -120,8 +120,7 @@ architecture rtl of chameleon_cdtv_remote is
 		);
 	signal state : state_t := STATE_IDLE;
 
-	signal jumpmode_a : std_logic;
-	signal jumpmode_b : std_logic;
+	signal jumpmode : std_logic;
 	signal prevb_a : std_logic;
 	signal prevb_b : std_logic;
 	
@@ -285,18 +284,18 @@ begin
 			end case;
 
 			if (current_code(11) = '0') and (current_code(1 downto 0) = "00") then
-				joystick_a <= not ((current_code(6) and not jumpmode_a) & current_code(7)  -- Buttons
+				joystick_a <= not ((current_code(6) and not jumpmode) & current_code(7)  -- Buttons
 					& current_code(2) & current_code(3) & current_code(4)  -- Directions
-						& (current_code(5) or (current_code(6) and jumpmode_a)));
+						& (current_code(5) or (current_code(6) and jumpmode)));
 				prevb_a <= current_code(6);
-				jumpmode_a <= jumpmode_a xor ((current_code(6) xor prevb_a) and prevb_b);
+				jumpmode <= jumpmode xor ((current_code(6) xor prevb_a) and prevb_b);
 			end if;
 			if (current_code(11) = '1') and (current_code(1 downto 0) = "00") then
-				joystick_b <= not ((current_code(6) and not jumpmode_b) & current_code(7)  -- Buttons
+				joystick_b <= not ((current_code(6) and not jumpmode) & current_code(7)  -- Buttons
 					& current_code(2) & current_code(3) & current_code(4)  -- Directions
-						& (current_code(5) or (current_code(6) and jumpmode_b)));
+						& (current_code(5) or (current_code(6) and jumpmode)));
 				prevb_b <= current_code(6);
-				jumpmode_b <= jumpmode_b xor ((current_code(6) xor prevb_b) and prevb_a);
+				jumpmode <= jumpmode xor ((current_code(6) xor prevb_b) and prevb_a);
 			end if;
 		end if;
 	end process;
