@@ -68,7 +68,12 @@ ALL_SOURCES = $(LIBDIR)/crt0.a $(COMMON_SOURCES) $(LIBDIR)/lib832.a
 ### build rules ###
 
 # all
-all: bootcustominit.h $(PROJECT).bin
+all: bootcustominit.h version.h $(PROJECT).bin
+
+force:
+
+version.h: force
+	echo >version.h \#define MM_FIRMWARE_VERSION \"`date +%Y-%-m-%-d`\"
 
 bootcustominit.h: bootcustominit.s
 	vasmm68k_mot -Fbin bootcustominit.s -o bootcustominit.bin
