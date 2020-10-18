@@ -102,6 +102,7 @@ begin
 		if reset_n='0' then
 			audio_intena<='0';
 			audio_int<='0';
+			audio_ena<='0';
 		else
 
 			-- Trigger an interrupt when the buffer flips
