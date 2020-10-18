@@ -780,7 +780,6 @@ end
 
 
 reg zatn;
-
 reg cpu_reservertg;
 reg cpu_slot1ok;
 reg cpu_slot2ok;
@@ -788,22 +787,24 @@ reg wb_reservertg;
 reg wb_slot1ok;
 reg wb_slot2ok;
 reg rtg_slot2ok;
+reg aud_slot1req;
 
 always @(posedge sysclk) begin
 
 	cpu_reservertg <= rtgce && cpuAddr_r[24:23]==rtgAddr[24:23] ? 1'b1 : 1'b0;
-	cpu_slot1ok <= (slot2_type == IDLE || slot2_bank != cpuAddr_r[24:23]) ? 1'b1 : 1'b0;
-	cpu_slot2ok <= (|cpuAddr_r[24:23]   // Reserve bank 0 for slot 1
+	cpu_slot1ok <= !zatn && (slot2_type == IDLE || slot2_bank != cpuAddr_r[24:23]) ? 1'b1 : 1'b0;
+	cpu_slot2ok <= !refresh_pending && (|cpuAddr_r[24:23]   // Reserve bank 0 for slot 1
 	               && (slot1_type == IDLE || slot1_bank != cpuAddr_r[24:23])) ? 1'b1 : 1'b0;
 
 	wb_reservertg <= rtgce && writebufferAddr[24:23]==rtgAddr[24:23] ? 1'b1 : 1'b0;
-	wb_slot1ok <= (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23]) ? 1'b1 : 1'b0;
-	wb_slot2ok <= (|writebufferAddr[24:23] // Reserve bank 0 for slot 1
+	wb_slot1ok <= !zatn && (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23]) ? 1'b1 : 1'b0;
+	wb_slot2ok <= !refresh_pending && (|writebufferAddr[24:23] // Reserve bank 0 for slot 1
 	           && (slot1_type == IDLE || slot1_bank != writebufferAddr[24:23])) ? 1'b1 : 1'b0;
 
-	rtg_slot2ok <= (slot1_type == IDLE || slot1_bank != rtgAddr[24:23]) ? 1'b1 : 1'b0;
+	rtg_slot2ok <= !refresh_pending && (slot1_type == IDLE || slot1_bank != rtgAddr[24:23]) ? 1'b1 : 1'b0;
 
 	zatn <= !(|hostslot_cnt) && zreq && !hostena;
+	aud_slot1req <= slot1_type!=AUDIO && audce & !zatn;
 end
 
 //
@@ -941,7 +942,7 @@ always @ (posedge sysclk) begin
 				end
 				// the Amiga CPU gets next bite of the cherry, unless the OSD CPU has been cycle-starved
 				// request from write buffer
-				else if(writebuffer_req && !zatn && wb_slot1ok && !wb_reservertg) begin
+				else if(writebuffer_req && wb_slot1ok && !wb_reservertg) begin
 					// We only yield to the OSD CPU if it's both cycle-starved and ready to go.
 					slot1_type          <= #1 CPU_WRITECACHE;
 					sdaddr              <= #1 writebufferAddr[22:10];
@@ -960,7 +961,7 @@ always @ (posedge sysclk) begin
 					cas_sd_cs           <= #1 4'b1110;
 				end
 				// request from read cache
-				else if(cache_req && !zatn && cpu_slot1ok && !cpu_reservertg) begin 
+				else if(cache_req && cpu_slot1ok && !cpu_reservertg) begin 
 					// we only yield to the OSD CPU if it's both cycle-starved and ready to go
 					slot1_type          <= #1 CPU_READCACHE;
 					sdaddr              <= #1 cpuAddr_r[22:10];
@@ -974,7 +975,7 @@ always @ (posedge sysclk) begin
 					cas_sd_cas          <= #1 1'b0;
 					cas_sd_cs           <= #1 4'b1110;
 				end
-				else if(audce && !zatn) begin
+				else if(aud_slot1req) begin
 					slot1_type          <= #1 AUDIO;
 					sdaddr              <= #1 audAddr[22:10];
 					ba                  <= #1 2'b00;	// Always bank zero for audio
@@ -1086,52 +1087,50 @@ always @ (posedge sysclk) begin
 				cas_sd_cas            <= #1 1'b1;
 				cas_sd_we             <= #1 1'b1;
 				slot2_type            <= #1 IDLE;
-				if(!refresh_pending) begin
-					if(rtgce && rtg_slot2ok) begin 
-						slot2_type        <= #1 RTG;
-						sdaddr            <= #1 rtgAddr[22:10];
-						ba                <= #1 rtgAddr[24:23];
-						slot2_bank        <= #1 rtgAddr[24:23];
-						slot2_dqm         <= #1 2'b11;
-						sd_cs             <= #1 4'b1110; // ACTIVE
-						sd_ras            <= #1 1'b0;
-						casaddr           <= #1 rtgAddr[24:0];
-						cas_sd_we         <= #1 1'b1;
-						cas_sd_cas        <= #1 1'b0;
-						cas_sd_cs         <= #1 4'b1110;
-					end
-					else if(writebuffer_req && wb_slot2ok) begin
-            // We only yield to the OSD CPU if it's both cycle-starved and ready to go.
-						slot2_type        <= #1 CPU_WRITECACHE;
-						sdaddr            <= #1 writebufferAddr[22:10];
-						ba                <= #1 writebufferAddr[24:23];
-						slot2_bank        <= #1 writebufferAddr[24:23];
-						slot2_dqm         <= #1 writebuffer_dqm;
-						slot2_dqm2        <= #1 writebuffer_dqm2;
-						sd_cs             <= #1 4'b1110; // ACTIVE
-						sd_ras            <= #1 1'b0;
-						casaddr           <= #1 {writebufferAddr[24:1], 1'b0};
-						cas_sd_we         <= #1 1'b0;
-						writebufferWR_reg <= #1 writebufferWR;
-						writebufferWR2_reg <= #1 writebufferWR2;
-						cas_sd_cas        <= #1 1'b0;
-						cas_sd_cs         <= #1 4'b1110;
-						writebuffer_hold  <= #1 1'b1; // let the write buffer know we're about to write
-					end
-					// request from read cache
-					else if(cache_req && cpu_slot2ok) begin
-						slot2_type        <= #1 CPU_READCACHE;
-						sdaddr            <= #1 cpuAddr_r[22:10];
-						ba                <= #1 cpuAddr_r[24:23];
-						slot2_bank        <= #1 cpuAddr_r[24:23];
-						slot2_dqm         <= #1 {cpuU, cpuL};
-						sd_cs             <= #1 4'b1110; // ACTIVE
-						sd_ras            <= #1 1'b0;
-						casaddr           <= #1 {cpuAddr_r[24:1], 1'b0};
-						cas_sd_we         <= #1 1'b1;
-						cas_sd_cas        <= #1 1'b0;
-						cas_sd_cs         <= #1 4'b1110;
-					end
+				if(rtgce && rtg_slot2ok) begin 
+					slot2_type        <= #1 RTG;
+					sdaddr            <= #1 rtgAddr[22:10];
+					ba                <= #1 rtgAddr[24:23];
+					slot2_bank        <= #1 rtgAddr[24:23];
+					slot2_dqm         <= #1 2'b11;
+					sd_cs             <= #1 4'b1110; // ACTIVE
+					sd_ras            <= #1 1'b0;
+					casaddr           <= #1 rtgAddr[24:0];
+					cas_sd_we         <= #1 1'b1;
+					cas_sd_cas        <= #1 1'b0;
+					cas_sd_cs         <= #1 4'b1110;
+				end
+				else if(writebuffer_req && wb_slot2ok) begin
+			// We only yield to the OSD CPU if it's both cycle-starved and ready to go.
+					slot2_type        <= #1 CPU_WRITECACHE;
+					sdaddr            <= #1 writebufferAddr[22:10];
+					ba                <= #1 writebufferAddr[24:23];
+					slot2_bank        <= #1 writebufferAddr[24:23];
+					slot2_dqm         <= #1 writebuffer_dqm;
+					slot2_dqm2        <= #1 writebuffer_dqm2;
+					sd_cs             <= #1 4'b1110; // ACTIVE
+					sd_ras            <= #1 1'b0;
+					casaddr           <= #1 {writebufferAddr[24:1], 1'b0};
+					cas_sd_we         <= #1 1'b0;
+					writebufferWR_reg <= #1 writebufferWR;
+					writebufferWR2_reg <= #1 writebufferWR2;
+					cas_sd_cas        <= #1 1'b0;
+					cas_sd_cs         <= #1 4'b1110;
+					writebuffer_hold  <= #1 1'b1; // let the write buffer know we're about to write
+				end
+				// request from read cache
+				else if(cache_req && cpu_slot2ok) begin
+					slot2_type        <= #1 CPU_READCACHE;
+					sdaddr            <= #1 cpuAddr_r[22:10];
+					ba                <= #1 cpuAddr_r[24:23];
+					slot2_bank        <= #1 cpuAddr_r[24:23];
+					slot2_dqm         <= #1 {cpuU, cpuL};
+					sd_cs             <= #1 4'b1110; // ACTIVE
+					sd_ras            <= #1 1'b0;
+					casaddr           <= #1 {cpuAddr_r[24:1], 1'b0};
+					cas_sd_we         <= #1 1'b1;
+					cas_sd_cas        <= #1 1'b0;
+					cas_sd_cs         <= #1 4'b1110;
 				end
 			end
 
