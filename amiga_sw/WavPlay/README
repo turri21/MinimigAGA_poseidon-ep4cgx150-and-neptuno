@@ -1,0 +1,21 @@
+
+Experimental 16-bit WAV player for Minimig.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+By Alastair M. Robinson
+
+
+WavPlay can be run from the shell or from workbench.
+There is no user-interface - to play a file either
+type
+> wavplay path:to/file.wav
+on the shell, or set wavplay as the Default Tool in a Wave file's
+icon, and then double-click the Wav file, or click one on a Wav
+file's icon, hold shift and double-click on WavPlay.
+
+WavPlay will detect and terminate an already-running instance, so
+you can stop playback by running WavPlay with no arguments.
+
+Only one sample format is currently supported, namely 44.1Khz 16-bit
+stereo Little-endian.  Don't attempt to play any other type of Wav file
+- your ears will thank you!
+
