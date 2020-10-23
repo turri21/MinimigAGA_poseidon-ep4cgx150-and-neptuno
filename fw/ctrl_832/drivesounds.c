@@ -35,6 +35,7 @@ struct dseventbuffer
 	int	cursor;
 	int silence;
 	int active;
+	int playing;
 	struct dsevent events[DSEVENTBUFFER_SIZE];
 	struct drivesound sounds[DRIVESOUND_COUNT];
 };
@@ -56,16 +57,17 @@ void drivesounds_stop()
 {
 	audio_stop();
 	drivesounds.active=0;
+	drivesounds.playing=0;
 }
 
 
 void drivesounds_start()
 {
 	drivesounds.active=1;
-	drivesounds.silence=1;
+	drivesounds.silence=0;
 	drivesounds.timestamp=TIMER;
-	drivesounds.cursor=AUDIO_BUFFER_SIZE/2;
-	audio_start();
+	drivesounds.cursor=0;
+	drivesounds.playing=0;
 }
 
 
@@ -183,24 +185,23 @@ void drivesounds_render(int timestamp)
 
  		samples-=span;
 
-		if(audio_busy(b2 ? 1 : 0))
-		{
-//			putchar('.');
-		}
 		if(src3)
 		{
 			drivesounds.silence=0;
 			drivesounds.sounds[srcs].cursor+=span;
 			drivesounds.sounds[srcs2].cursor+=span;
 			drivesounds.sounds[srcs3].cursor+=span;
-			while(span--)
+			if(!(AUDIO&AUDIOF_AMIGA))
 			{
-				int c=*src++;
-				c+=*src2++;
-				c+=*src3++;
-				c=((c&255)<<8) | ((c>>8)&255);
-				c=c*0x10001;
-				*buf++=c;
+				while(span--)
+				{
+					int c=*src++;
+					c+=*src2++;
+					c+=*src3++;
+					c=((c&255)<<8) | ((c>>8)&255);
+					c=c*0x10001;
+					*buf++=c;
+				}
 			}
 			if(drivesounds.sounds[srcs].cursor>=drivesounds.sounds[srcs].length)
 				drivesounds_finishsound(srcs);
@@ -214,13 +215,16 @@ void drivesounds_render(int timestamp)
 			drivesounds.silence=0;
 			drivesounds.sounds[srcs].cursor+=span;
 			drivesounds.sounds[srcs2].cursor+=span;
-			while(span--)
+			if(!(AUDIO&AUDIOF_AMIGA))
 			{
-				int c=*src++;
-				c+=*src2++;
-				c=((c&255)<<8) | ((c>>8)&255);
-				c=c*0x10001;
-				*buf++=c;
+				while(span--)
+				{
+					int c=*src++;
+					c+=*src2++;
+					c=((c&255)<<8) | ((c>>8)&255);
+					c=c*0x10001;
+					*buf++=c;
+				}
 			}
 			if(drivesounds.sounds[srcs].cursor>=drivesounds.sounds[srcs].length)
 				drivesounds_finishsound(srcs);
@@ -231,12 +235,15 @@ void drivesounds_render(int timestamp)
 		{
 			drivesounds.silence=0;
 			drivesounds.sounds[srcs].cursor+=span;
-			while(span--)
+			if(!(AUDIO&AUDIOF_AMIGA))
 			{
-				int c=*src++;
-				c=((c&255)<<8) | ((c>>8)&255);
-				c=c*0x10001;
-				*buf++=c;
+				while(span--)
+				{
+					int c=*src++;
+					c=((c&255)<<8) | ((c>>8)&255);
+					c=c*0x10001;
+					*buf++=c;
+				}
 			}
 			if(drivesounds.sounds[srcs].cursor>=drivesounds.sounds[srcs].length)
 				drivesounds_finishsound(srcs);
@@ -244,13 +251,18 @@ void drivesounds_render(int timestamp)
 		else if(span)
 		{
 			drivesounds.silence+=span;
-			while(span--)
-				*buf++=0;
+			if(!(AUDIO&AUDIOF_AMIGA))
+			{
+				while(span--)
+					*buf++=0;
+			}
 		}
 	}
 
 	if(drivesounds.silence>=AUDIO_BUFFER_SIZE)
 		drivesounds_stop();
+	else if(drivesounds.active && !drivesounds.playing && drivesounds.cursor&0x4000)
+		audio_start();	// Start playing audio once the first buffer is full...
 
 	drivesounds.timestamp=timestamp;
 }
@@ -370,7 +382,7 @@ int drivesounds_init(const char *filename)
 					if(size && id<DRIVESOUND_COUNT)
 					{
 						printf("Sound %d at %x, length %d\n",id,buf,size);
-						drivesounds.sounds[id].base=buf;
+						drivesounds.sounds[id].base=(short *)buf;
 						drivesounds.sounds[id].length=size/2; /* Size needs to be in 16-bit words */
 						buf+=size;
 						result=1;
@@ -393,6 +405,8 @@ int drivesounds_init(const char *filename)
 			printf("Drive sounds file too large\n");
 	}
 	drivesounds.cursor=0;
+	drivesounds.active=0;
+	drivesounds.playing=0;
 	return(result);
 }
 

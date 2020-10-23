@@ -378,7 +378,7 @@ void HandleHDD(unsigned int c1, unsigned int c2)
         else if (tfr[7] == ACMD_READ_SECTORS) // Read Sectors
         {
 			long lba;
-			putchar('r');
+//			putchar('r');
             sector = tfr[3];
             cylinder = tfr[4] | (tfr[5] << 8);
             head = tfr[6] & 0x0F;
@@ -513,7 +513,7 @@ void HandleHDD(unsigned int c1, unsigned int c2)
         {
 			long lba;
             WriteStatus(IDE_STATUS_RDY); // pio in (class 1) command type
-			putchar('R');
+//			putchar('R');
 
             sector = tfr[3];
             cylinder = tfr[4] | (tfr[5] << 8);
@@ -622,7 +622,7 @@ void HandleHDD(unsigned int c1, unsigned int c2)
         else if (tfr[7] == ACMD_WRITE_SECTORS) // write sectors
         {
             WriteStatus(IDE_STATUS_REQ); // pio out (class 2) command type
-			putchar('w');
+//			putchar('w');
             sector = tfr[3];
             cylinder = tfr[4] | (tfr[5] << 8);
             head = tfr[6] & 0x0F;
@@ -710,7 +710,7 @@ void HandleHDD(unsigned int c1, unsigned int c2)
        else if (tfr[7] == ACMD_WRITE_MULTIPLE) // write sectors
         {
             WriteStatus(IDE_STATUS_REQ); // pio out (class 2) command type
-			putchar('W');
+//			putchar('W');
             sector = tfr[3];
             cylinder = tfr[4] | (tfr[5] << 8);
             head = tfr[6] & 0x0F;

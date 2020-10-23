@@ -816,6 +816,7 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.audio_ena(aud_ena_host),
 		.audio_clear(aud_clear),
 		.audio_buf(aud_addr[15]),
+		.audio_amiga(aud_ena_cpu),
 		.vbl_int(vblank_out),
 		.interrupt(host_interrupt),
 		.amiga_key(c64_translated_key),

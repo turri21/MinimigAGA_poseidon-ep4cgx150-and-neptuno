@@ -27,17 +27,19 @@ void Audio_Enable(struct AudioContext *ac)
   {
     int i;
     int *buf=(int *)AUDIOBUFFER;
-    for(i=0;i<AUDIOBUFFERSIZE;i+=2)
-    {
-        *buf++=0;
-    }
     ac->Interrupt.is_Node.ln_Name="Minimig Audio";
     ac->Interrupt.is_Node.ln_Type=NT_INTERRUPT;
-    ac->Interrupt.is_Node.ln_Pri=-128;
+    ac->Interrupt.is_Node.ln_Pri=0;
     ac->Interrupt.is_Code=ac->Server;
     ac->Interrupt.is_Data=ac;
     AddIntServer(INTB_EXTER,&ac->Interrupt);
     ac->Active=TRUE;
+
+    for(i=0;i<AUDIOBUFFERSIZE;i+=2)
+    {
+        *buf++=0;
+    }
+    ac->ActiveBuffer=1;
     AUDIOHW=AUDIOACTIVE|AUDIOINTACTIVE;
   }
 }
@@ -102,7 +104,8 @@ BOOL Audio_Handle(struct AudioContext *ac,unsigned long Signals)
   int bytesread=0;
   if(Signals&ac->Signals)
   {
-    char *buffer=AUDIOBUFFER+ac->ActiveBuffer*AUDIOBUFFERSIZE;
+    int buf=AUDIOHW&1;
+    char *buffer=AUDIOBUFFER+(1-buf)*AUDIOBUFFERSIZE;
     if(ac->FillFunction)
         bytesread=ac->FillFunction(ac->FillUserData,buffer,AUDIOBUFFERSIZE);
     if(bytesread<AUDIOBUFFERSIZE)

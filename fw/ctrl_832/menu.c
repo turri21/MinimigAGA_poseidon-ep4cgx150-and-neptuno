@@ -50,6 +50,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 signed char errorpage;
 unsigned char menustate = MENU_NONE1;
 unsigned char parentstate;
+unsigned char parentsub;
 unsigned char menusub = 0;
 unsigned int menumask = 0; // Used to determine which rows are selectable...
 unsigned long menu_timer;
@@ -604,6 +605,7 @@ void HandleUI(void)
 			menusub=0, menustate = MENU_MAIN2_1;
         else if (select)
         {
+			parentsub=menusub;
             if (menusub == 0)	// Reset
             {
                 menusub = 0;
@@ -627,12 +629,12 @@ void HandleUI(void)
 			}
             if (menusub == 3)	// About
             {
-				menusub=0;
+//				menusub=0;
 				menustate=MENU_ABOUT1;
 			}
             if (menusub == 4)	// About
             {
-				menusub=0;
+//				menusub=0;
 				menustate=MENU_SUPPORTERS1;
 			}
             if (menusub == 5)	// Exit
@@ -679,7 +681,7 @@ void HandleUI(void)
 		ScrollText(5,"                                 Minimig AGA by Rok Krajnc, ported to Turbo Chameleon 64 by Alastair M. Robinson.  Original Minimig by Dennis van Weeren with chipset improvements by Jakub Bednarski and Sascha Boing.  TG68K softcore by Tobias Gubener.  Menu / disk code by Dennis van Weeren, Jakub Bednarski, Alastair M. Robinson and Christian Vogelgsang.  Minimig logo based on a design by Loriano Pagni.  Minimig is distributed under the terms of the GNU General Public License version 3.",0,0,0);
         if (select || menu)
         {
-			menusub = 2;
+			menusub = parentsub;
 			menustate=MENU_MISC1;
 		}
 		break;
@@ -721,7 +723,7 @@ void HandleUI(void)
 		ScrollText(5,"                                 I'm very grateful to these people for their support, which will give me the means and motivation to continue working on this core and others.  If you would like to contribute then one-off donations at paypal.me/robinsonb5 are very welcome, or if you wish you can contribute regularly at patreon.com/coresforchameleon - if you donate 20UKP or more, or join the second tier at Patreon your name will be included on this screen, or the equivalent screen of future projects.",0,0,0);
         if (select || menu)
         {
-			menusub = 2;
+			menusub = parentsub;
 			menustate=MENU_MISC1;
 		}
 		break;
@@ -989,7 +991,7 @@ void HandleUI(void)
         if (menu || (select && (menusub == 1))) // exit menu
         {
             menustate = MENU_MISC1;
-            menusub = 0;
+            menusub = parentsub;
         }
         break;
 

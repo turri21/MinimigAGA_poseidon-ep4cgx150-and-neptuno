@@ -23,6 +23,7 @@
 #define AUDIO (*(volatile unsigned char *)0x0fffffb3)
 #define AUDIOF_CLEAR 2
 #define AUDIOF_ENA 1
+#define AUDIOF_AMIGA 2
 
 /* AUDIO_BUFFER at host address 0x680000, is 0xb00000 in Amiga space */
 #define AUDIO_BUFFER 0x680000

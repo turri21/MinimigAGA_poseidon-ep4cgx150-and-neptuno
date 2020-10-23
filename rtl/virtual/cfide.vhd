@@ -56,6 +56,7 @@ entity cfide is
 		audio_ena : out std_logic;
 		audio_clear : out std_logic;
 		audio_buf : in std_logic;
+		audio_amiga : in std_logic;
 		
 		vbl_int	: in std_logic;
 		interrupt	: out std_logic;
@@ -160,7 +161,7 @@ end process;
 sd_in(15 downto 8) <= (others=>'0');
 sd_in(7 downto 0) <= sd_in_shift(7 downto 0);
 
-audio_q<=X"000"&"000"&audio_buf;
+audio_q<=X"000"&"00"&audio_amiga&audio_buf;
 
 SPI_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"E" ELSE '0';
 rs232_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"F" ELSE '0';

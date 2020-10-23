@@ -127,7 +127,6 @@ int main(int argc,char **argv)
 			else
 			{
 				puts("Unable to locate partition\n");
-				puts("Unable to locate partition\n");
 			}
 		}
 		else

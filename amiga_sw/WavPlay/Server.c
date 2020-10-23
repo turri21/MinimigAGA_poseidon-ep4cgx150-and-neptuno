@@ -1,7 +1,7 @@
 
 #include <exec/types.h>
 
-#include "audiotest.h"
+#include "minimigaudio.h"
 
 
 void Audio_Server(struct AudioContext *ac)
@@ -11,8 +11,8 @@ void Audio_Server(struct AudioContext *ac)
     s&=1;
     if(ac->ActiveBuffer!=s)
     {
+        ac->ActiveBuffer=s;
         Signal(ac->SigTask,ac->Signals);
     }
-    ac->ActiveBuffer=s&1;
 }
 
