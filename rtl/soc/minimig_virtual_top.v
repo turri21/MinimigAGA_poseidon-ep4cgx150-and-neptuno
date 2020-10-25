@@ -133,7 +133,8 @@ wire           tg68_ena28;
 wire [ 16-1:0] tg68_cout;
 wire           tg68_cpuena;
 wire [  4-1:0] cpu_config;
-wire [  6-1:0] memcfg;
+wire [2:0]     board_configured;
+//wire [  6-1:0] memcfg;
 wire           turbochipram;
 wire           turbokick;
 wire           cache_inhibit;
@@ -491,7 +492,9 @@ TG68K tg68k (
   .turbochipram (turbochipram     ),
   .turbokick    (turbokick        ),
   .cache_inhibit(cache_inhibit    ),
-  .fastramcfg   ({&memcfg[5:4],memcfg[5:4]}),
+  .ziiram_active(board_configured[0]),
+  .ziiiram_active(board_configured[1]),
+//  .fastramcfg   ({&memcfg[5:4],memcfg[5:4]}),
   .eth_en       (1'b1), // TODO
   .sel_eth      (),
   .frometh      (16'd0),
@@ -747,7 +750,7 @@ minimig minimig (
 	.rdata        (aud_amiga_right  ),  // right DAC data
 	//user i/o
 	.cpu_config   (cpu_config       ), // CPU config
-	.memcfg       (memcfg           ), // memory config
+   .board_configured(board_configured),
 	.turbochipram (turbochipram     ), // turbo chipRAM
 	.turbokick    (turbokick        ), // turbo kickstart
 	.init_b       (                 ), // vertical sync for MCU (sync OSD update)

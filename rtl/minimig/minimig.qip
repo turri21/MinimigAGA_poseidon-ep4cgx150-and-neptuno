@@ -1,4 +1,6 @@
 set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) minimig.v]
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) minimig_autoconfig.v]
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) minimig_autoconfig_rom.v]
 set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) minimig_syscontrol.v]
 set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) minimig_sram_bridge.v]
 set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) minimig_m68k_bridge.v]

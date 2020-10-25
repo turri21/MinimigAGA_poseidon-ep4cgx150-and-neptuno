@@ -629,12 +629,12 @@ void HandleUI(void)
 			}
             if (menusub == 3)	// About
             {
-//				menusub=0;
+				menusub=0;
 				menustate=MENU_ABOUT1;
 			}
             if (menusub == 4)	// About
             {
-//				menusub=0;
+				menusub=0;
 				menustate=MENU_SUPPORTERS1;
 			}
             if (menusub == 5)	// Exit

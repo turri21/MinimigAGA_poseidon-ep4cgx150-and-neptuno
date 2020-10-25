@@ -244,7 +244,7 @@ module minimig
 	output	[15:0]rdata, 			//right DAC data
 	//user i/o
   output  [3:0] cpu_config,
-  output  [5:0] memcfg,
+  output  [2:0] board_configured,
   output  turbochipram,
   output  turbokick,
   output  init_b,       // vertical sync for MCU (sync OSD update)
@@ -330,6 +330,7 @@ wire		sel_reg;				//chip register select
 wire		sel_cia_a;				//cia A select
 wire		sel_cia_b;				//cia B select
 wire    sel_rtc;      // RTC select
+wire		sel_autoconfig;
 wire		int2;					//intterrupt 2
 wire		int3;					//intterrupt 3 
 wire		int6;					//intterrupt 6
@@ -466,7 +467,7 @@ assign vblank_out = vbl_int;
 //assign pwr_led = (_led & led_dim) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
 assign pwr_led = (_led & !hblank_out) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
 
-assign memcfg = memory_config[5:0];
+//assign memcfg = memory_config[5:0];
 
 // turbo chipram only when in AGA mode, no overlay is active, cpu_config[2] (fast chip) is enabled and Agnus allows CPU on the bus and chipRAM=2MB
 //assign turbochipram = chipset_config[4] && !ovl && (cpu_config[2] || cpu_custom) && (&memory_config[1:0]); // TODO fix turbochipram
@@ -985,7 +986,8 @@ gary GARY1
 	.sel_cia_b(sel_cia_b),
 	.sel_rtc(sel_rtc),
 	.sel_ide(sel_ide),
-	.sel_gayle(sel_gayle)
+	.sel_gayle(sel_gayle),
+	.sel_autoconfig(sel_autoconfig)
 );
 
 gayle GAYLE1
@@ -1029,6 +1031,23 @@ minimig_syscontrol CONTROL1
 	.reset(sys_reset)
 );
 
+wire [15:0] autoconfig_data_out;
+
+minimig_autoconfig autoconfig
+(
+	.clk(clk),
+	.clk7_en(clk7_en),
+	.reset(reset),
+	.address_in(cpu_address_out),
+	.data_in(cpu_data_out),
+	.data_out(autoconfig_data_out),
+	.rd(cpu_rd),
+	.hwr(cpu_hwr),
+	.lwr(cpu_lwr),
+	.sel(sel_autoconfig),
+	.fastram_config(memory_config[5:4]),
+	.board_configured(board_configured)
+);
 
 //-------------------------------------------------------------------------------------
 assign rtc_data_out = (sel_rtc && cpu_rd) ? {12'h000, rtc[{cpu_address_out[5:2], 2'b00} +:4]} : 16'h0000;
@@ -1038,7 +1057,8 @@ assign cpu_data_in[15:0] = gary_data_out[15:0]
 						 | cia_data_out[15:0]
 						 | gayle_data_out[15:0]
              | cart_data_out[15:0]
-             | rtc_data_out;
+             | rtc_data_out
+				 | autoconfig_data_out;
 
 assign custom_data_out[15:0] = agnus_data_out[15:0]
 							 | paula_data_out[15:0]
