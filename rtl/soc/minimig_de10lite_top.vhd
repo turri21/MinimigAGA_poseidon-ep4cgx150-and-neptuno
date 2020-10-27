@@ -140,7 +140,11 @@ architecture RTL of DE10liteToplevel is
 	
 	COMPONENT minimig_virtual_top
 	generic
-	( debug : boolean := false );
+	( debug : boolean := false;
+		havertg : boolean := true;
+		haveaudio : boolean := true;
+		havec2p : boolean := true
+	);
 	PORT
 	(
 		CLK_IN		:	 IN STD_LOGIC;
@@ -235,7 +239,10 @@ ps2_keyboard_clk <= '0' when ps2_keyboard_clk_out='0' else 'Z';
 virtual_top : COMPONENT minimig_virtual_top
 generic map
 	(
-		debug => true
+		debug => false,
+		havertg => true,
+		haveaudio => true,
+		havec2p => true
 	)
 PORT map
 	(

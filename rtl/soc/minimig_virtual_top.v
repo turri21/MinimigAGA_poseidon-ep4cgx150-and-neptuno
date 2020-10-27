@@ -13,7 +13,8 @@
 `include "minimig_defines.vh"
 
 module minimig_virtual_top
-	#(parameter hostonly=0, parameter debug = 0, parameter spimux = 0 )
+	#(parameter hostonly=0, parameter debug = 0, parameter spimux = 0,
+		parameter havertg = 1, parameter haveaudio = 1, parameter havec2p = 1)
 (
   // clock inputs
   input wire            CLK_IN,
@@ -225,6 +226,7 @@ assign sdctl_rst        = PLL_LOCKED & RESET_N;
 // RTG support...
 
 wire rtg_ena;	// RTG screen on/off
+wire rtg_ena_mm; // RTG screen on/off
 wire rtg_clut;	// Are we in high-colour or 8-bit CLUT mode?
 
 reg [3:0] rtg_pixelctr;	// Counter, compared against rtg_pixelwidth
@@ -336,12 +338,11 @@ VideoStream myvs
 	.a(rtg_addr),
 	.req(rtg_ramreq),
 	.d(rtg_fromram),
-	.fill(rtg_fill),
+	.fill(rtg_fill & havertg),
 	// Display interface
-	.rdreq(rtg_pixel),
+	.rdreq(rtg_pixel & havertg),
 	.q(rtg_dat)
 );
-
 
 always @ (posedge CLK_114) begin
   red_reg   <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_r : rtg_r : red;
@@ -432,9 +433,9 @@ VideoStream myaudiostream
 	.a(aud_addr),
 	.req(aud_ramreq),
 	.d(aud_fromram),
-	.fill(aud_fill),
+	.fill(aud_fill & haveaudio),
 	// Display interface
-	.rdreq(aud_next),
+	.rdreq(aud_next & haveaudio),
 	.q(aud_sample)
 );
 
@@ -467,7 +468,10 @@ assign tg68_cpustate=2'b01;
 assign tg68_nrst_out=1'b1;
 `else
 
-TG68K tg68k (
+TG68K #(.havertg(havertg ? "true" : "false"),
+			.haveaudio(haveaudio ? "true" : "false"),
+			.havec2p(havec2p ? "true" : "false")
+		) tg68k (
   .clk          (CLK_114          ),
   .reset        (tg68_rst         ),
   .clkena_in    (tg68_ena28       ),
@@ -766,10 +770,13 @@ minimig minimig (
 	.vblank_out   (vblank_out       ),
 	.osd_blank_out(osd_window       ),  // Let the toplevel dither module handle drawing the OSD.
 	.osd_pixel_out(osd_pixel        ),
-	.rtg_ena      (rtg_ena          ),
+	.rtg_ena      (rtg_ena_mm       ),
 	.ext_int2     (1'b0             ),
 	.ext_int6     (aud_int          )
 );
+
+assign rtg_ena = havertg && rtg_ena_mm;
+
 `endif
 
 wire host_interrupt;

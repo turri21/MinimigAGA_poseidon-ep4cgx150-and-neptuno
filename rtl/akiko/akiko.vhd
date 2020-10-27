@@ -3,6 +3,12 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.numeric_std.ALL;
 
 entity akiko is
+generic
+	(
+		havertg : boolean := true;
+		haveaudio : boolean := true;
+		havec2p : boolean := true
+	);
 port (
 	clk : in std_logic;
 	reset_n : in std_logic;
@@ -73,6 +79,8 @@ id_ack<=req and id_sel;
 
 ct_sel <= '1' when addr(7 downto 2)=X"3"&"10" else '0';	-- Cornerturn at 0xb80038
 
+c2p:
+if havec2p=true generate
 myc2p: entity work.cornerturn
 port map
 (
@@ -84,7 +92,12 @@ port map
 	req => req and ct_sel,
 	ack => ct_ack
 );
+end generate;
 
+noc2p:
+if havec2p=false generate
+	ct_ack<='0';
+end generate;
 
 -- Host interface
 -- Defer any requests not handled by the Cornerturn or RTG to the host CPU
@@ -103,8 +116,7 @@ begin
 			audio_intena<='0';
 			audio_int<='0';
 			audio_ena<='0';
-		else
-
+		elsif haveaudio=true then
 			-- Trigger an interrupt when the buffer flips
 			audio_buf_d <= audio_buf;
 			if audio_buf_d /= audio_buf then
@@ -148,30 +160,33 @@ begin
 	if rising_edge(clk) then
 
 		clut_rgb<=clut(to_integer(unsigned(rtg_clut_idx)));
+
+		if havertg=true then
 	
-		if req='1' and wr='1' then
-			if rtg_sel='1' then
-				case addr(4 downto 1) is
-					when X"0" =>
-						rtg_addr(24 downto 16)<=d(8 downto 0);
-					when X"1" =>
-						rtg_addr(15 downto 4)<=d(15 downto 4);
-					when X"2" =>
-						rtg_pixelclock<=d(3 downto 0);
-						rtg_vbend<=d(rtg_vbend'high + 6 downto 6);
-						rtg_clut<=d(15);
-						rtg_ext<=d(14);
-					when others =>
-						null;
-				end case;
-			end if;
-			if clut_sel='1' then
-				if clut_wr='1' then
-					clut(to_integer(unsigned(clut_idx_w)))<=X"00"&clut_high&d;
-				else
-					clut_high<=d(7 downto 0);
+			if req='1' and wr='1' then
+				if rtg_sel='1' then
+					case addr(4 downto 1) is
+						when X"0" =>
+							rtg_addr(24 downto 16)<=d(8 downto 0);
+						when X"1" =>
+							rtg_addr(15 downto 4)<=d(15 downto 4);
+						when X"2" =>
+							rtg_pixelclock<=d(3 downto 0);
+							rtg_vbend<=d(rtg_vbend'high + 6 downto 6);
+							rtg_clut<=d(15);
+							rtg_ext<=d(14);
+						when others =>
+							null;
+					end case;
 				end if;
-			end if;		
+				if clut_sel='1' then
+					if clut_wr='1' then
+						clut(to_integer(unsigned(clut_idx_w)))<=X"00"&clut_high&d;
+					else
+						clut_high<=d(7 downto 0);
+					end if;
+				end if;		
+			end if;
 		end if;	
 	end if;
 end process;

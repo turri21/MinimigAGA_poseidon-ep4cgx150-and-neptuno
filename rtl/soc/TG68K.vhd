@@ -28,6 +28,12 @@ use ieee.std_logic_unsigned.all;
 
 
 entity TG68K is
+generic
+	(
+		havertg : boolean := true;
+		haveaudio : boolean := true;
+		havec2p : boolean := true
+	);
 port(
 	clk           : in      std_logic;
 	reset         : in      std_logic;
@@ -121,7 +127,6 @@ SIGNAL vmaena           : std_logic;
 SIGNAL eind             : std_logic;
 SIGNAL eindd            : std_logic;
 SIGNAL sel_ram          : std_logic;
-SIGNAL sel_a0map        : std_logic;
 SIGNAL sel_chipram      : std_logic;
 SIGNAL turbochip_ena    : std_logic := '0';
 SIGNAL turbochip_d      : std_logic := '0';
@@ -236,10 +241,6 @@ sel_eth<='0';
       OR sel_audio='1'
     ) ELSE '0';
 
-  -- when this is true, we set bit 23 to zero, to map the memory ranges within $A0-$FF to
-  -- $20-$7F. Don't need this for chipram, since there is no remapping.
-  sel_a0map     <= '1' WHEN sel_cart='1' OR sel_slow='1' OR sel_kick='1' ELSE '0';
-
   cache_inhibit <= '1' WHEN sel_chipram='1' OR sel_kickram='1' ELSE '0';
 
   ramcs <= NOT (NOT cpu_int AND sel_ram_d AND NOT sel_nmi_vector) OR slower(0);
@@ -247,9 +248,8 @@ sel_eth<='0';
   cpustate <= longword&clkena&slower(1 downto 0)&ramcs&state(1 downto 0);
   ramlds <= lds_in;
   ramuds <= uds_in;
-
   
--- This is the mapping to the sram
+-- This is the mapping to the SDRAM
 -- map $00-$1F to $00-$1F (chipram), $A0-$FF to $20-$7F. All non-fastram goes into the first
 -- 8M block (i.e. SDRAM bank 0). This map should be the same as in minimig_sram_bridge.v
 -- 8M Zorro II RAM $20-9F goes to $80-$FF (SDRAM bank 1)
@@ -328,6 +328,12 @@ END PROCESS;
 
 host_req<=host_req_r;
 myakiko : entity work.akiko
+generic map
+(
+	havertg => havertg,
+	haveaudio => haveaudio,
+	havec2p => havec2p
+)
 port map
 (
 	clk => clk,

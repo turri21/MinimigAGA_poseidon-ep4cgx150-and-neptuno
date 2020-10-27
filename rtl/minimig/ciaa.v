@@ -248,7 +248,7 @@ assign keystrobe=keystrobe_ps2;
 
 // sdr register
 // !!! Amiga receives keycode ONE STEP ROTATED TO THE RIGHT AND INVERTED !!!
-always @(posedge clk)
+always @(posedge clk) begin
 	osd_ctrl<=osd_ctrl_ps2;
   if (clk7_en) begin
     if (reset)
@@ -258,7 +258,7 @@ always @(posedge clk)
     else if (wr & sdr)
       sdr_latch[7:0] <= data_in[7:0];
   end
-
+end
 `endif
   
   
