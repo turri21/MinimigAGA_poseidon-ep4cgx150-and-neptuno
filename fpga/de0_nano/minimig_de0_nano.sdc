@@ -36,6 +36,9 @@ derive_clock_uncertainty
 set_input_delay -clock clk_sdram -max 6.0 $sdram_inputs
 set_input_delay -clock clk_sdram -min 4.0 $sdram_inputs
 
+set_input_delay -clock $clk_114 .5 [get_ports {PS2*}]
+set_input_delay -clock $clk_114 .5 [get_ports {SD_DAT*}]
+set_input_delay -clock $clk_114 .5 [get_ports {UART_RXD}]
 set_input_delay -clock $clk_114 .5 [get_ports {KEY[*]}]
 set_input_delay -clock $clk_114 .5 [get_ports {Joya[*]}]
 set_input_delay -clock $clk_114 .5 [get_ports {Joyb[*]}]
@@ -51,10 +54,11 @@ set_output_delay -clock clk_sdram -max  1.5 $sdram_dqoutputs
 set_output_delay -clock clk_sdram -min -0.8 $sdram_outputs
 set_output_delay -clock clk_sdram -min -0.8 $sdram_dqoutputs
 
-set_output_delay -clock $clk_114 .5 [get_ports {VGA_R[*]}]
-set_output_delay -clock $clk_114 .5 [get_ports {VGA_G[*]}]
-set_output_delay -clock $clk_114 .5 [get_ports {VGA_B[*]}]
-set_output_delay -clock $clk_114 .5 [get_ports {VGA_*S}]
+set_output_delay -clock $clk_114 .5 [get_ports {AUDIO*}]
+set_output_delay -clock $clk_114 .5 [get_ports {UART_TXD}]
+set_output_delay -clock $clk_114 .5 [get_ports {PS2*}]
+set_output_delay -clock $clk_114 .5 [get_ports {SD_*}]
+set_output_delay -clock $clk_114 .5 [get_ports {VGA_*}]
 set_output_delay -clock $clk_114 .5 [get_ports {LEDG[*]}]
 
 set_output_delay -clock $clk_114 .5 [get_ports {altera_reserved_tdo}]
@@ -79,10 +83,10 @@ set_multicycle_path -from {virtual_top|tg68k|pf68K_Kernel_inst|memaddr*} -to {vi
 set_multicycle_path -from {virtual_top|tg68k|addr[*]} -setup 3
 set_multicycle_path -from {virtual_top|tg68k|addr[*]} -hold 2
 
-set_multicycle_path -from {virtual_top|sdram|cpu_cache|itram|*} -to {virtual_top|sdram|cpu_cache|cpu_cacheline[*]} -setup 2
-set_multicycle_path -from {virtual_top|sdram|cpu_cache|itram|*} -to {virtual_top|sdram|cpu_cache|cpu_cacheline[*]} -hold 1
-set_multicycle_path -from {virtual_top|sdram|cpu_cache|dtram|*} -to {virtual_top|sdram|cpu_cache|cpu_cacheline[*]} -setup 2
-set_multicycle_path -from {virtual_top|sdram|cpu_cache|dtram|*} -to {virtual_top|sdram|cpu_cache|cpu_cacheline[*]} -hold 1
+set_multicycle_path -from {virtual_top|sdram|cpu_cache|itram|*} -to {virtual_top|sdram|cpu_cache|cpu_cacheline_*[*][*]} -setup 2
+set_multicycle_path -from {virtual_top|sdram|cpu_cache|itram|*} -to {virtual_top|sdram|cpu_cache|cpu_cacheline_*[*][*]} -hold 1
+set_multicycle_path -from {virtual_top|sdram|cpu_cache|dtram|*} -to {virtual_top|sdram|cpu_cache|cpu_cacheline_*[*][*]} -setup 2
+set_multicycle_path -from {virtual_top|sdram|cpu_cache|dtram|*} -to {virtual_top|sdram|cpu_cache|cpu_cacheline_*[*][*]} -hold 1
 
 set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -setup 4
 set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -hold 3

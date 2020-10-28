@@ -237,7 +237,7 @@ generic map
 		debug => false,
 		havertg => true,
 		haveaudio => true,
-		havec2p => false
+		havec2p => true
 	)
 PORT map
 	(
