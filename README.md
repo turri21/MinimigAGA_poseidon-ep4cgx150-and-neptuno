@@ -2,7 +2,7 @@
 For Turbo Chameleon TC64, MiST and other platforms.
 (This core should be easily portable to any FPGA board with VGA out, PS/2 in, SD-card, about 25,000 logic elements, and a 16-bit wide SDRAM supporting 13x9 layout for 32 megabytes of RAM.)
 
-###Foreword
+### Foreword
 
 [minimig](http://en.wikipedia.org/wiki/Minimig) (short for Mini Amiga) is an open source re-implementation of an Amiga using a field-programmable gate array (FPGA). Original minimig author is Dennis van Weeren.
 
@@ -84,7 +84,7 @@ This project contains code written by:
 All code is copyright © 2005 - 2020 and the property of its respective authors.
 
 
-##License
+## License
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
