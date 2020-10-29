@@ -320,7 +320,7 @@ paula_audio ad1
 	.right(right),	
 	.ldata(ldata),
 	.rdata(rdata),
-	.filter(filter),
+	.filter(filter)
 );
 
 

@@ -19,7 +19,7 @@ entity EightThirtyTwo_Bridge is
 
 		ram_req				: out std_logic;
 		ram_ack				: in std_logic;
-		ram_d					: in std_logic_vector(31 downto 0);
+		ram_d					: in std_logic_vector(15 downto 0);
 
 		hw_req            : out std_logic;
 		hw_ack            : in std_logic;
@@ -41,6 +41,10 @@ signal cpu_addr	: std_logic_vector(31 downto 2);
 signal cpu_wr	: std_logic; 
 signal cpu_sel : std_logic_vector(3 downto 0);
 
+signal cache_req : std_logic;
+signal cache_ack : std_logic;
+signal cache_q : std_logic_vector(31 downto 0);
+
 signal debug_d : std_logic_vector(31 downto 0);
 signal debug_q : std_logic_vector(31 downto 0);
 signal debug_req : std_logic;
@@ -51,6 +55,22 @@ signal rom_d : std_logic_vector(31 downto 0);
 signal rom_wr : std_logic;
 signal rom_select : std_logic;
 signal hw_select : std_logic;
+
+component hostcache
+port
+(
+	sysclk : in std_logic;
+	reset_n : in std_logic;
+	a : in std_logic_vector(24 downto 2);
+	q : out std_logic_vector(31 downto 0);
+	req : in std_logic;
+	wr : in std_logic;
+	ack : out std_logic;
+	sdram_d : in std_logic_vector(15 downto 0);
+	sdram_req : out std_logic;
+	sdram_ack : in std_logic
+);
+end component;
 
 begin
 
@@ -123,22 +143,20 @@ begin
 	if nReset='0' then
 		state<=waiting;
 		hw_req<='0';
-		ram_req<='0';
 		wr<='0';
 	elsif rising_edge(clk) then
 
 		cpu_ack<='0';
 		rom_wr<='0';
 
+		addr<=cpu_addr;
+		q<=cpu_q;
+		sel<=cpu_sel;
+		wr<=cpu_wr;
+
 		case state is
 			when waiting =>
 				if cpu_ack='0' and cpu_req='1' then
-
-					addr<=cpu_addr;
-					q<=cpu_q;
-					sel<=cpu_sel;
-					wr<=cpu_wr;
-					
 					if rom_select='1' then
 						rom_wr<=cpu_wr;
 						state<=rom;
@@ -146,7 +164,7 @@ begin
 						hw_req<='1';
 						state<=hw;
 					else
-						ram_req<='1';
+						cache_req<='1';
 						state<=ram;
 					end if;
 				end if;
@@ -159,10 +177,10 @@ begin
 				state<=waiting;
 				
 			when ram =>
-				if ram_ack='1' then
-					cpu_d<=ram_d;
+				if cache_ack='1' then
+					cache_req<='0';
+					cpu_d<=cache_q;
 					wr<='0';
-					ram_req<='0';
 					cpu_ack<='1';
 					state<=waiting;
 				end if;
@@ -182,5 +200,20 @@ begin
 		end case;
 	end if;
 end process;
+
+hostcache_inst : component hostcache
+port map
+(
+	sysclk => clk,
+	reset_n => nReset,
+	a => cpu_addr(24 downto 2),
+	q => cache_q,
+	req => cache_req,
+	wr => cpu_wr,
+	ack => cache_ack,
+	sdram_d => ram_d,
+	sdram_req => ram_req,
+	sdram_ack => ram_ack
+);
 
 end architecture;

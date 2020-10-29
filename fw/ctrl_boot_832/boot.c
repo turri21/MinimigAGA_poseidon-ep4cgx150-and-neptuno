@@ -21,7 +21,7 @@ void BootDiag()
 	unsigned char *upload=(unsigned char *)(0x780000^0x580000);
 	unsigned char *src=bootdiag_bin;
 	int i=bootdiag_bin_len;
-	while(--i)
+	while(i--)
 		*upload++=*src++;
 }
 #endif

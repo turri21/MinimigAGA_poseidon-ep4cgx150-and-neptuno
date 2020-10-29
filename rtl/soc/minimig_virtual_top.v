@@ -440,8 +440,6 @@ VideoStream myaudiostream
 );
 
 
-
-
 //// amiga clocks ////
 amiga_clk amiga_clk (
   .rst          (1'b0             ), // async reset input
@@ -537,7 +535,7 @@ wire [ 32-1:0] hostWR;
 wire [ 32-1:2] hostaddr;
 wire [  3-1:0] hostState;
 wire [3:0]     hostbytesel;
-wire  [ 32-1:0] host_ramdata;
+wire  [ 16-1:0] host_ramdata;
 wire           host_ramack;
 wire           host_ramreq;
 wire  [ 16-1:0] host_hwdata;
