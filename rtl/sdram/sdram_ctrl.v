@@ -83,6 +83,15 @@ module sdram_ctrl(
 
 
 //// parameters ////
+
+// Refresh interval; 60ms
+// With 13 bit row address we need to visit 8192 rows every 60ms
+// So 136534 refreshes per second.
+// The SDRAM controller completes each round at 7.09MHz
+// so refresh must happen at least every 51 rounds.
+
+localparam REFRESHSCHEDULE = 'd51-1;
+
 localparam [2:0]
   REFRESH = 0,
   CHIP = 1,
@@ -696,21 +705,12 @@ always @(posedge sysclk) begin
 	aud_slot1req <= slot1_type!=AUDIO && audce & !zatn;
 end
 
-//
-//reg zatn;
-//reg cpureq1;
-//
-//always @(posedge sysclk) begin
-//	zatn <= !(|hostslot_cnt) && zreq && !hostena;
-////	zreq <= zce && !hostena;
-//	cpureq1 <= (slot2_type == IDLE || slot2_bank != cpuAddr_mangled[24:23]) ? 1'b1 : 1'b0;
-//end
-
 //// sdram control ////
 // Address bits will be allocated as follows:
 // 24 downto 23: bank
 // 22 downto 10: row
 // 9 downto 1: column
+
 always @ (posedge sysclk) begin
 	sdata                       <= 16'bzzzzzzzzzzzzzzzz;
 
@@ -718,7 +718,7 @@ always @ (posedge sysclk) begin
 		refresh_pending           <= #1 1'b0;
 		slot1_type                <= #1 IDLE;
 		slot2_type                <= #1 IDLE;
-		refreshcnt                <= #1 'd50;
+		refreshcnt                <= #1 REFRESHSCHEDULE;
 	end
 	sd_cmd                      <= #1 CMD_INHIBIT;
 	sdaddr                      <= #1 13'b0;
@@ -771,6 +771,17 @@ always @ (posedge sysclk) begin
 					dqm                 <= #1 slot2_dqm;
 					writebuffer_hold    <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
 				end
+				
+				// Evaluate refresh counter in ph0 so that the refresh can be actioned the same
+				// round as it's deemed necessary.  The chipset and RTG can still potentially hold
+				// off the refresh for two more rounds, so we start counting again immediately,
+				// instead of waiting for the refresh to be actioned.
+				if(~|refreshcnt) begin
+					refresh_pending     <= #1 1'b1;
+					refreshcnt          <= #1 REFRESHSCHEDULE;
+				end else begin
+					refreshcnt          <= #1 refreshcnt - 9'd1;
+				end
 			end
 
 			ph1 : begin
@@ -779,11 +790,6 @@ always @ (posedge sysclk) begin
 				slot1_type            <= #1 IDLE;
 				if(|hostslot_cnt) begin
 					hostslot_cnt        <= #1 hostslot_cnt - 8'd1;
-				end
-				if(~|refreshcnt) begin
-					refresh_pending     <= #1 1'b1;
-				end else begin
-					refreshcnt          <= #1 refreshcnt - 9'd1;
 				end
 				// we give the chipset first priority
 				// (this includes anything on the "motherboard" - chip RAM, slow RAM and Kickstart, turbo modes notwithstanding)
@@ -802,7 +808,6 @@ always @ (posedge sysclk) begin
 				// (a refresh cycle blocks both access slots)
 				else if(refresh_pending && slot2_type == IDLE) begin
 					sd_cmd              <= #1 CMD_AUTO_REFRESH;
-					refreshcnt          <= #1 'd50;
 					slot1_type          <= #1 REFRESH;
 					refresh_pending     <= #1 1'b0;
 				end
