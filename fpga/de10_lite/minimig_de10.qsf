@@ -458,12 +458,7 @@ set_global_assignment -name QIP_FILE ../../rtl/sdram/sdram.qip
 set_global_assignment -name QIP_FILE ../../rtl/soc/tg68.qip
 set_global_assignment -name VERILOG_FILE ../../rtl/clock/amiga_clk.v
 set_global_assignment -name VHDL_FILE ../../rtl/soc/minimig_de10lite_top.vhd
-set_global_assignment -name VHDL_FILE ../../rtl/virtual/cfide.vhd
-set_global_assignment -name VHDL_FILE ../../rtl/virtual/832_bridge.vhd
-set_global_assignment -name QIP_FILE ../../EightThirtyTwo/RTL/eightthirtytwo.qip
-set_global_assignment -name QIP_FILE ../../EightThirtyTwo/RTL/debug_bridge_jtag.qip
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
-set_global_assignment -name VHDL_FILE ../../fw/ctrl_boot_832/OSDBoot_832_ROM.vhd
 set_global_assignment -name QIP_FILE "../../rtl/de10-lite/amiga_clk_altera.qip"
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to DRAM_WE_N
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to DRAM_UDQM

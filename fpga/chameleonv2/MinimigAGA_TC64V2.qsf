@@ -304,11 +304,6 @@ set_global_assignment -name QIP_FILE ../../rtl/minimig/minimig.qip
 set_global_assignment -name QIP_FILE ../../rtl/sdram/sdram.qip
 set_global_assignment -name QIP_FILE ../../rtl/soc/tg68.qip
 set_global_assignment -name VERILOG_FILE ../../rtl/clock/amiga_clk.v
-set_global_assignment -name VHDL_FILE ../../rtl/virtual/cfide.vhd
-set_global_assignment -name VHDL_FILE ../../rtl/virtual/832_bridge.vhd
-set_global_assignment -name QIP_FILE ../../EightThirtyTwo/RTL/eightthirtytwo.qip
-set_global_assignment -name QIP_FILE ../../EightThirtyTwo/RTL/debug_bridge_jtag.qip
-set_global_assignment -name VHDL_FILE ../../fw/ctrl_boot_832/OSDBoot_832_ROM.vhd
 set_global_assignment -name QIP_FILE ../../rtl/chameleonv2/chameleonv2.qip
 set_global_assignment -name QIP_FILE ../../rtl/chameleonv2/amiga_clk_altera.qip
 set_global_assignment -name VHDL_FILE ../../rtl/chameleonv2/gen_reset.vhd
@@ -362,7 +357,7 @@ set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to low_a[1]
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to low_a[0]
 set_global_assignment -name SEED 1
 set_global_assignment -name PRE_FLOW_SCRIPT_FILE "quartus_sh:../../tcl/build_id.tcl"
-
+set_global_assignment -name QIP_FILE ../../rtl/host/host.qip
 
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to spi_clk
 set_instance_assignment -name FAST_INPUT_REGISTER ON -to spi_miso
