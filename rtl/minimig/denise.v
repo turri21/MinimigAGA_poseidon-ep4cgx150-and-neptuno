@@ -287,12 +287,14 @@ assign deniseid_out = reg_address_in[8:1]==DENISEID[8:1] ? aga ? 16'h00f8 : ecs 
 
 // generate window enable signal
 // true when beamcounter satisfies horizontal diwstrt/diwstop limits
+// AMR - reverse comparison so that areas where HDIWSTART==HDIWSTOP
+// will be correctly blanked in brdrblnk mode.
 always @(posedge clk)
   if (clk7_en) begin
-    if (hpos[8:0]==hdiwstrt[8:0])
-      window <= 1;
-    else if (hpos[8:0]==hdiwstop[8:0])
+    if (hpos[8:0]==hdiwstop[8:0])
       window <= 0;
+    else if (hpos[8:0]==hdiwstrt[8:0])
+      window <= 1;
   end
 
 reg window_ena;
@@ -457,8 +459,8 @@ wire  [24-1:0] out_rgb  = ham_sel && window_del && !sprsel_del ? ham_rgb : clut_
 
 wire t_blank;
 
-// AMR - fixme blank only if window_del and display_ena are both low.
-assign t_blank = blank | ecs & ecsena & brdrblnk & (~window_del & ~display_ena);
+// AMR - brdrblnk takes priority over border sprites, so don't need to include display_ena at all.
+assign t_blank = blank | ecs & ecsena & brdrblnk & ~window_del;
 
 // RGB video output
 assign {red[7:0],green[7:0],blue[7:0]} = t_blank ? 24'h000000 : out_rgb;
