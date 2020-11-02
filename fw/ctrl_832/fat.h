@@ -121,6 +121,7 @@ unsigned char FileWrite(fileTYPE *file, unsigned char *pBuffer);
 unsigned char FileReadEx(fileTYPE *file, unsigned char *pBuffer, unsigned long nSize);
 
 unsigned long FindDirectory(unsigned long parent, const char *name); // Returns first cluster of directory.
+int ValidateDirectory(unsigned long directory);
 
 unsigned char FileCreate(unsigned long iDirectory, fileTYPE *file);
 unsigned char UpdateEntry(fileTYPE *file);

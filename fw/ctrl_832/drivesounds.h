@@ -7,11 +7,16 @@ enum DriveSound_Type {
 };
 #define DRIVESOUND_COUNT 9
 
+void drivesounds_enable();
+void drivesounds_disable();
+void drivesounds_on();
+void drivesounds_off();
 void drivesounds_queueevent(enum DriveSound_Type type);
 void drivesounds_stop();
 void drivesounds_start();
 int drivesounds_fill();
 int drivesounds_init(const char *filename);
+int drivesounds_loaded();
 
 #endif
 

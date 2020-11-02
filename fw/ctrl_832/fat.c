@@ -427,6 +427,49 @@ unsigned char FileOpen(fileTYPE *file, const char *name)
 }
 
 
+// Verify that a directory LBA is valid by recursively tracing ".." entries back up to the root.
+int ValidateDirectory(unsigned long directory)
+{
+    DIRENTRY      *pEntry = NULL;        // pointer to current entry in sector buffer
+    unsigned long  iDirectorySector;     // current sector of directory entries table
+    unsigned long  iDirectoryCluster;    // start cluster of subdirectory or FAT32 root directory
+    unsigned long  iEntry;               // entry index in directory cluster or FAT16 root directory
+    unsigned long  nEntries;             // number of entries per cluster or FAT16 root directory size
+
+	if(!directory || (directory==root_directory_cluster))
+	{
+		return(1);
+	}
+    else // subdirectory
+    {
+        iDirectoryCluster = directory;
+        iDirectorySector = data_start + cluster_size * (iDirectoryCluster - 2);
+        nEntries = cluster_size << 4; // 16 entries per sector
+    }
+
+    if(!MMC_Read(iDirectorySector++, sector_buffer)) // root directory is linear
+		return(0);
+    pEntry = (DIRENTRY*)sector_buffer;
+    for (iEntry = 0; iEntry < nEntries; iEntry++)
+    {
+        if (pEntry->Name[0] != SLOT_EMPTY && pEntry->Name[0] != SLOT_DELETED) // valid entry??
+        {
+            if (pEntry->Attributes & ATTR_DIRECTORY) // is this a directory
+            {
+                if (strncmp((const char*)pEntry->Name, "..         ", sizeof(pEntry->Name)) == 0)
+                {
+					unsigned long dircluster=SwapBB(pEntry->StartCluster) + (fat32 ? (SwapBB(pEntry->HighCluster) & 0x0FFF) << 16 : 0);
+                    printf("Parent directory is %ld \r",dircluster);
+                    return(ValidateDirectory(dircluster));
+                }
+            }
+        }
+        pEntry++;
+    }
+	return(0);
+}
+
+
 unsigned long FindDirectory(unsigned long parent, const char *name)
 {
     DIRENTRY      *pEntry = NULL;        // pointer to current entry in sector buffer

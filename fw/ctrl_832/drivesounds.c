@@ -36,6 +36,7 @@ struct dseventbuffer
 	int silence;
 	int active;
 	int playing;
+	int enabled;
 	struct dsevent events[DSEVENTBUFFER_SIZE];
 	struct drivesound sounds[DRIVESOUND_COUNT];
 };
@@ -43,13 +44,28 @@ struct dseventbuffer
 struct dseventbuffer drivesounds;
 
 
+void drivesounds_enable()
+{
+	drivesounds.enabled=1;
+}
+
+void drivesounds_disable()
+{
+	audio_stop();
+	drivesounds.enabled=0;
+}
+
+
 void drivesounds_queueevent(enum DriveSound_Type type)
 {
-	if(!drivesounds.active)
-		drivesounds_start();
-	drivesounds.events[drivesounds.in].type=type;
-	drivesounds.events[drivesounds.in].timestamp=TIMER;
-	drivesounds.in=(drivesounds.in+1)&(DSEVENTBUFFER_SIZE-1);
+	if(drivesounds.enabled)
+	{
+		if(!drivesounds.active)
+			drivesounds_start();
+		drivesounds.events[drivesounds.in].type=type;
+		drivesounds.events[drivesounds.in].timestamp=TIMER;
+		drivesounds.in=(drivesounds.in+1)&(DSEVENTBUFFER_SIZE-1);
+	}
 }
 
 
@@ -63,11 +79,14 @@ void drivesounds_stop()
 
 void drivesounds_start()
 {
-	drivesounds.active=1;
-	drivesounds.silence=0;
-	drivesounds.timestamp=TIMER;
-	drivesounds.cursor=0;
-	drivesounds.playing=0;
+	if(drivesounds.enabled)
+	{
+		drivesounds.active=1;
+		drivesounds.silence=0;
+		drivesounds.timestamp=TIMER;
+		drivesounds.cursor=0;
+		drivesounds.playing=0;
+	}
 }
 
 
@@ -309,45 +328,45 @@ int pickstep(int maxactive)
 int drivesounds_fill()
 {
 	struct dsevent *dse;
-	while(dse=drivesounds_nextevent())
+	if(drivesounds.enabled && drivesounds.active)
 	{
-		drivesounds_render(dse->timestamp);
-		drivesounds.sounds[dse->type].cursor=0;
-		switch(dse->type)
+		while(dse=drivesounds_nextevent())
 		{
-			case DRIVESOUND_MOTORSTART:
-				drivesounds.sounds[DRIVESOUND_MOTORLOOP].chain=DRIVESOUND_MOTORLOOP;
-				if(drivesounds.sounds[DRIVESOUND_MOTORSTOP].active)
-				{
-					drivesounds.sounds[DRIVESOUND_MOTORSTOP].active=0;
-					drivesounds.sounds[DRIVESOUND_MOTORLOOP].active=1;
-				}
-				else if(drivesounds.sounds[DRIVESOUND_MOTORLOOP].active)
-				{
+			drivesounds_render(dse->timestamp);
+			drivesounds.sounds[dse->type].cursor=0;
+			switch(dse->type)
+			{
+				case DRIVESOUND_MOTORSTART:
 					drivesounds.sounds[DRIVESOUND_MOTORLOOP].chain=DRIVESOUND_MOTORLOOP;
-				}
-				else
-				{
-					drivesounds.sounds[DRIVESOUND_MOTORSTART].chain=DRIVESOUND_MOTORLOOP;
-					drivesounds.sounds[DRIVESOUND_MOTORSTART].active=1;
-				}
-				break;
-			case DRIVESOUND_MOTORSTOP:
-				drivesounds.sounds[DRIVESOUND_MOTORLOOP].chain=DRIVESOUND_MOTORSTOP;
-				break;
-			case DRIVESOUND_STEP:
-				dse->type=DRIVESOUND_STEP+pickstep(1);	/* Pick a step sound at "random" */
-				drivesounds.sounds[dse->type].active=1;
-				drivesounds.sounds[dse->type].chain=0;				
-			default:
-				drivesounds.sounds[dse->type].active=1;
-				drivesounds.sounds[dse->type].chain=0;
-				break;
+					if(drivesounds.sounds[DRIVESOUND_MOTORSTOP].active)
+					{
+						drivesounds.sounds[DRIVESOUND_MOTORSTOP].active=0;
+						drivesounds.sounds[DRIVESOUND_MOTORLOOP].active=1;
+					}
+					else if(drivesounds.sounds[DRIVESOUND_MOTORLOOP].active)
+					{
+						drivesounds.sounds[DRIVESOUND_MOTORLOOP].chain=DRIVESOUND_MOTORLOOP;
+					}
+					else
+					{
+						drivesounds.sounds[DRIVESOUND_MOTORSTART].chain=DRIVESOUND_MOTORLOOP;
+						drivesounds.sounds[DRIVESOUND_MOTORSTART].active=1;
+					}
+					break;
+				case DRIVESOUND_MOTORSTOP:
+					drivesounds.sounds[DRIVESOUND_MOTORLOOP].chain=DRIVESOUND_MOTORSTOP;
+					break;
+				case DRIVESOUND_STEP:
+					dse->type=DRIVESOUND_STEP+pickstep(1);	/* Pick a step sound at "random" */
+					drivesounds.sounds[dse->type].active=1;
+					drivesounds.sounds[dse->type].chain=0;				
+				default:
+					drivesounds.sounds[dse->type].active=1;
+					drivesounds.sounds[dse->type].chain=0;
+					break;
+			}
 		}
-	}
-//	printf("Rendering remainder\n");
-	if(drivesounds.active)
-	{
+		//	printf("Rendering remainder\n");
 		drivesounds_render(TIMER);
 	}
 	return(drivesounds.active);
@@ -407,6 +426,13 @@ int drivesounds_init(const char *filename)
 	drivesounds.cursor=0;
 	drivesounds.active=0;
 	drivesounds.playing=0;
+	drivesounds.enabled=0;
 	return(result);
+}
+
+
+int drivesounds_loaded()
+{
+	return(drivesounds.loaded);
 }
 

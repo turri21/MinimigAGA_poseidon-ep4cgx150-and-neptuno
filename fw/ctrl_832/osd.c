@@ -258,8 +258,8 @@ void FireworksUpdate()
 }
 
 // time delay after which file/dir name starts to scroll
-#define SCROLL_DELAY 1000
-#define SCROLL_DELAY2 10
+#define SCROLL_DELAY 300
+#define SCROLL_DELAY2 3
 
 static unsigned long scroll_offset=0; // file/dir name scrolling position
 static unsigned long scroll_timer=0;  // file/dir name scrolling timer

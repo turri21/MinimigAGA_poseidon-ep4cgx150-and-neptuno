@@ -230,20 +230,14 @@ __geta4 int main(void)
 	EnableInterrupts();
 
 	audio_clear();
-	drivesounds_start();
-//	drivesounds_queueevent(DRIVESOUND_MOTORSTART);
-//	while(audio_busy(0))
-//		;
+	if(drivesounds_loaded() && config.drivesounds)
+		drivesounds_enable();
 
     while(1)
     {
 		drivesounds_fill();
 		if(c64keyboard_checkreset())
 			OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
-
-//		++c;
-//		if((c&511)==0)
-//			drivesounds_queueevent(DRIVESOUND_STEP);
 
 //		cd_continueaudio(&cd);
         HandleFpga();

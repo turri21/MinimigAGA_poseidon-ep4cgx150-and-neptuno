@@ -46,9 +46,9 @@
 
 #define DISABLE_KEYBOARD 0x02        // disable keyboard while OSD is active
 
-#define REPEATDELAY      200         // repeat delay in 1ms units
-#define REPEATRATE       50          // repeat rate in 1ms units
-#define BUTTONDELAY      20          // repeat rate in 1ms units
+#define REPEATDELAY      100         // repeat delay in audio ticks
+#define REPEATRATE       25          // repeat rate in audio ticks
+#define BUTTONDELAY      20          // repeat rate in audio ticks
 
 #define KEY_UPSTROKE     0x80
 #define KEY_MENU         0x69

@@ -153,8 +153,8 @@ void SelectFile(char* pFileExt, unsigned char Options, unsigned char MenuSelect,
 
 #define STD_EXIT "            exit"
 #define STD_BACK "            back"
-#define HELPTEXT_DELAY 10000
-#define FRAME_DELAY 150
+#define HELPTEXT_DELAY 2500
+#define FRAME_DELAY 50
 
 
 void ShowSplash()
@@ -424,8 +424,7 @@ void HandleUI(void)
 		        OsdWrite(i, s, menusub == i,(i>drives)||(i>config.floppy.drives));
 			}
         }
-		sprintf(s," Floppy disk turbo : %s",config.floppy.speed ? "on" : "off");
-        OsdWrite(4, s, menusub==4,0);
+        OsdWrite(4, " Floppy disk settings \x16", menusub == 4,0);
         OsdWrite(5, " Hard disk settings \x16", menusub == 5,0);
         OsdWrite(6, "", 0,0);
         OsdWrite(7, STD_EXIT, menusub == 6,0);
@@ -465,11 +464,11 @@ void HandleUI(void)
                     SelectFile("ADF", SCAN_DIR | SCAN_LFN, MENU_FILE_SELECTED, MENU_MAIN1);
                 }
             }
-            else if (menusub == 4)	// Toggle floppy turbo
+            else if (menusub == 4)	// Floppy disk options.
 			{
-                config.floppy.speed^=1;
-				ConfigFloppy(config.floppy.drives,config.floppy.speed);
-                menustate = MENU_MAIN1;
+                menustate = MENU_FLOPPY1;
+				parentsub=4;
+				menusub=0;
 			}
             else if (menusub == 5)	// Go to harddrives page.
 			{
@@ -495,6 +494,62 @@ void HandleUI(void)
             menusub = 0;
         }
         break;
+
+	case MENU_FLOPPY1 : // Floppy drive options
+        OsdColor(OSDCOLOR_TOPLEVEL);
+		helptext=helptexts[HELPTEXT_MAIN];
+		menumask=0x0f;
+ 		OsdSetTitle("Floppy",0);
+        OsdWrite(0, "", 0,0);
+		sprintf(s," Floppy drives : %d",config.floppy.drives+1);
+        OsdWrite(1, s, menusub==0,0);
+		sprintf(s," Floppy disk turbo : %s",config.floppy.speed ? "on" : "off");
+        OsdWrite(2, s, menusub==1,0);
+		sprintf(s," Floppy disk sounds : %s",config.drivesounds ? "on" : "off");
+        OsdWrite(3, s, menusub==2,!drivesounds_loaded());
+		if(!drivesounds_loaded())
+			menumask&=0xb;
+        OsdWrite(4, "", 0,0);
+        OsdWrite(5, "", 0,0);
+        OsdWrite(6, "", 0,0);
+        OsdWrite(7, STD_EXIT, menusub == 3,0);
+
+		parentstate = menustate;
+        menustate = MENU_FLOPPY2;
+        break;
+
+	case MENU_FLOPPY2 :
+        if (menu)
+            menustate = MENU_NONE1;
+        else if (select)
+        {
+			switch(menusub)
+			{
+				case 0:	/* Number of drives */
+					config.floppy.drives=(config.floppy.drives+1)&3;
+					ConfigFloppy(config.floppy.drives,config.floppy.speed);
+					menustate = MENU_FLOPPY1;
+					break;
+				case 1:
+		            config.floppy.speed^=1;
+					ConfigFloppy(config.floppy.drives,config.floppy.speed);
+		            menustate = MENU_FLOPPY1;
+					break;
+				case 2:
+		            config.drivesounds^=1;
+					if(config.drivesounds)
+						drivesounds_enable();
+					else
+						drivesounds_disable();
+		            menustate = MENU_FLOPPY1;
+					break;
+				case 3:
+	                menustate = MENU_MAIN1;
+					menusub=parentsub;
+					break;
+			}
+        }
+		break;
 
     case MENU_FILE_SELECTED : // file successfully selected
 

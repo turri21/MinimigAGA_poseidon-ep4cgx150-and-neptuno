@@ -25,11 +25,6 @@ char DebugMode;
 
 int CheckSum();
 
-int minimig_v1()
-{
-	return(0);
-}
-
 
 unsigned char romkey[3072];
 

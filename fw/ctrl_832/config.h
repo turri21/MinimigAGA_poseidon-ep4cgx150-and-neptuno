@@ -1,6 +1,6 @@
 #include "fat.h"
 
-#define CONFIG_VERSION 2
+#define CONFIG_VERSION 3
 
 typedef struct
 {
@@ -46,7 +46,14 @@ typedef struct
 	unsigned char fastram;	// Contains fast mem (bit 0 & 1) and turbo chipram (bit 7) settings.
 	unsigned char kick13patch;
 	unsigned char autofire;
-    kickstartTYPE extrom;
+    kickstartTYPE extrom;		// Added in V2 config
+	unsigned char drivesounds;	// Added in V3 config
+	unsigned char pad1;
+	unsigned char pad2;
+	unsigned char pad3;
+	unsigned long kickdir;	// Directory of kick file.
+	unsigned long hdfdir[4]; // Directory for HDF files.  Space for expansion to four devices.
+    hardfileTYPE  secondaryhardfile[2]; // hardfile entries for potential secondary IDE devices.
 } configTYPE;
 
 extern fileTYPE file;	// Temporary file available for use by other modules, to avoid repeated memory usage.
