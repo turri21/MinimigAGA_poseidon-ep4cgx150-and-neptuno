@@ -169,37 +169,41 @@ signal akiko_ack : std_logic;
 signal host_req_r : std_logic;
 
 SIGNAL NMI_addr         : std_logic_vector(31 downto 0);
+SIGNAL sel_nmi_vector_addr : std_logic;
 SIGNAL sel_nmi_vector   : std_logic;
 
 BEGIN
 
 sel_eth<='0';
 
-  -- NMI
-  PROCESS(reset, clk,VBR_out) BEGIN
-    IF reset='0' THEN
-      NMI_addr <= X"0000007c";
-    ELSIF rising_edge(clk) THEN
-      NMI_addr <= VBR_out + X"0000007c";
-	  sel_nmi_vector <= '0';
-      IF (cpuaddr(31 downto 2) = NMI_addr(31 downto 2)) AND state="10" THEN
-        sel_nmi_vector <= '1';
-	  END IF;
-      z2ram_ena <= ziiram_active;
-      z3ram_ena <= ziiiram_active;
+	-- NMI
+	PROCESS(reset, clk,VBR_out) BEGIN
+		IF reset='0' THEN
+			NMI_addr <= X"0000007c";
+			sel_nmi_vector_addr <= '0';
+		ELSIF rising_edge(clk) THEN
+			NMI_addr <= VBR_out + X"0000007c";
+			sel_nmi_vector_addr <= '0';
+			IF (cpuaddr(31 downto 2) = NMI_addr(31 downto 2)) THEN
+				sel_nmi_vector_addr <= '1';
+			END IF;
+		END IF;
+	END PROCESS;
 
-	   sel_akiko_d<=sel_akiko;
-		sel_undecoded_d<=sel_undecoded;
-    END IF;
-  END PROCESS;
+	sel_nmi_vector <= '1' WHEN sel_nmi_vector_addr='1' AND state="10" ELSE '0';
 
-   wrd <= wr;
+	wrd <= wr;
 	cpu_int <= '1' WHEN state = "01" else '0';
-	process(clk) begin
-		if rising_edge(clk) then
+	PROCESS(clk) BEGIN
+		IF rising_edge(clk) THEN
 			addr <= cpuaddr;
-		end if;
-	end process;
+			z2ram_ena <= ziiram_active;
+			z3ram_ena <= ziiiram_active;
+
+			sel_akiko_d<=sel_akiko;
+			sel_undecoded_d<=sel_undecoded;
+		END IF;
+	END PROCESS;
 
 	datatg68 <= fromram WHEN cpu_int='0' AND sel_ram_d='1' AND sel_nmi_vector='0' ELSE datatg68_c;
 
@@ -421,7 +425,7 @@ PROCESS (clk) BEGIN
 END PROCESS;
 
 
-PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, sel_ram)
+PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, sel_ram, sel_nmi_vector)
   BEGIN
     IF state="01" THEN
       as <= '1';
