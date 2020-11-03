@@ -25,7 +25,7 @@ module cpu_cache_new (
   input  wire           cpu_ir,         // cpu instruction read
   input  wire           cpu_dr,         // cpu data read
   input  wire [ 16-1:0] cpu_dat_w,      // cpu write data
-  output wire [ 16-1:0] cpu_dat_r,      // cpu read data
+  output reg  [ 16-1:0] cpu_dat_r,      // cpu read data
   output                cpu_ack,        // cpu acknowledge
   // sdram
   input  wire [ 16-1:0] sdr_dat_r,      // sdram read data
@@ -96,7 +96,6 @@ reg           cc_clr;
 reg  [ 3-1:0] cpu_adr_blk_ptr;
 wire [ 3-1:0] cpu_adr_blk_ptr_next = {cpu_adr_blk_ptr[2:1] + 1'd1, 1'b0};
 wire [ 3-1:0] cpu_adr_blk_ptr_prev = {cpu_adr_blk_ptr[2:1] - 1'd1, 1'b0};
-wire [25-1:0] cpu_adr_prev = {cpu_adr[24:4], cpu_adr[3:1] - 1'd1, cpu_adr[0]};
 wire [ 3-1:0] cpu_adr_blk;
 wire [ 8-1:0] cpu_adr_idx;
 wire [13-1:0] cpu_adr_tag;
@@ -260,7 +259,6 @@ always @(posedge clk) cpu_cacheline_match <= cpu_adr[24:4] == cpu_cacheline_adr 
 assign cpu_cacheline_valid = cpu_cacheline_match && (cpu_sm_state == CPU_SM_IDLE) && (cpu_ir || cpu_dr) && !cache_inhibit;
 assign cpu_32bit_ena = cpu_32bit && cpu_cs && write_ena;
 assign cpu_ack = cpu_cache_ack || cpu_cacheline_valid || cpu_32bit_ena;
-assign cpu_dat_r = {cpu_cacheline_hi[cpu_adr_blk], cpu_cacheline_lo[cpu_adr_blk]};
 
 // cpu side state machine
 always @ (posedge clk) begin
@@ -292,6 +290,8 @@ always @ (posedge clk) begin
     cpu_sm_dram0_we   <= #1 1'b0;
     cpu_sm_dram1_we   <= #1 1'b0;
     cpu_sm_bs         <= #1 4'b1111;
+
+    cpu_dat_r <= {cpu_cacheline_hi[cpu_adr_blk], cpu_cacheline_lo[cpu_adr_blk]};
 
     // state machine
     case (cpu_sm_state)
@@ -429,6 +429,7 @@ always @ (posedge clk) begin
         end else begin
           // on miss fetch data from SDRAM
           cpu_acked <= #1 1'b0;
+          cpu_adr_blk_ptr <= #1 cpu_adr_blk;
           if (!sdr_read_ack) begin
             sdr_read_req <= #1 1'b1;
             cpu_sm_state <= #1 CPU_SM_FILL1;
@@ -451,7 +452,7 @@ always @ (posedge clk) begin
       end
       CPU_SM_FILL1 : begin
         fill <= #1 1'b1;
-        cpu_sm_adr <= #1 {cpu_adr_idx, cpu_adr_blk[2:0]};
+        cpu_sm_adr <= #1 {cpu_adr_idx, cpu_adr_blk_ptr};
         if (!sdr_read_ack) begin
           sdr_read_req <= #1 1'b1;
         end else begin
@@ -460,6 +461,7 @@ always @ (posedge clk) begin
           cpu_cache_ack <= #1 1'b1;
           cpu_cacheline_lo[cpu_adr[3:1]] <= #1 sdr_dat_r[7:0];
           cpu_cacheline_hi[cpu_adr[3:1]] <= #1 sdr_dat_r[15:8];
+          cpu_dat_r <= sdr_dat_r;
           if (cache_inhibit) begin
             // don't update cache if caching is inhibited
             cpu_cacheline_dirty <= #1 1'b1; //invalidate
