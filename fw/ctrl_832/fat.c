@@ -427,7 +427,9 @@ unsigned char FileOpen(fileTYPE *file, const char *name)
 }
 
 
-// Verify that a directory LBA is valid by recursively tracing ".." entries back up to the root.
+// Verify that a directory cluster is valid by recursively tracing ".." entries back up to the root,
+// then verifying that each directory entry exists within its parent.
+// Returns 0 on failure
 int ValidateDirectory(unsigned long directory)
 {
     DIRENTRY      *pEntry = NULL;        // pointer to current entry in sector buffer
@@ -458,15 +460,82 @@ int ValidateDirectory(unsigned long directory)
             {
                 if (strncmp((const char*)pEntry->Name, "..         ", sizeof(pEntry->Name)) == 0)
                 {
-					unsigned long dircluster=SwapBB(pEntry->StartCluster) + (fat32 ? (SwapBB(pEntry->HighCluster) & 0x0FFF) << 16 : 0);
-                    printf("Parent directory is %ld \r",dircluster);
-                    return(ValidateDirectory(dircluster));
+					unsigned long parent=SwapBB(pEntry->StartCluster) + (fat32 ? (SwapBB(pEntry->HighCluster) & 0x0FFF) << 16 : 0);
+                    printf("Parent directory is %ld \r",parent);
+                    return(ValidateDirectory(parent) && FindDirectoryByCluster(parent,directory));
                 }
             }
         }
         pEntry++;
     }
 	return(0);
+}
+
+
+int FindDirectoryByCluster(unsigned long parent, unsigned long cluster)
+{
+    DIRENTRY      *pEntry = NULL;        // pointer to current entry in sector buffer
+    unsigned long  iDirectorySector;     // current sector of directory entries table
+    unsigned long  iDirectoryCluster;    // start cluster of subdirectory or FAT32 root directory
+    unsigned long  iEntry;               // entry index in directory cluster or FAT16 root directory
+    unsigned long  nEntries;             // number of entries per cluster or FAT16 root directory size
+
+    if (parent) // subdirectory
+    {
+        iDirectoryCluster = parent;
+        iDirectorySector = data_start + cluster_size * (iDirectoryCluster - 2);
+        nEntries = cluster_size << 4; // 16 entries per sector
+    }
+    else // root directory
+    {
+        iDirectoryCluster = root_directory_cluster;
+        iDirectorySector = root_directory_start;
+        nEntries = fat32 ?  cluster_size << 4 : root_directory_size << 4; // 16 entries per sector
+    }
+
+    while (1)
+    {
+        for (iEntry = 0; iEntry < nEntries; iEntry++)
+        {
+            if ((iEntry & 0x0F) == 0) // first entry in sector, load the sector
+            {
+                if(!MMC_Read(iDirectorySector++, sector_buffer)) // root directory is linear
+					return(0);
+                pEntry = (DIRENTRY*)sector_buffer;
+            }
+            else
+                pEntry++;
+
+
+            if (pEntry->Name[0] != SLOT_EMPTY && pEntry->Name[0] != SLOT_DELETED) // valid entry??
+            {
+                if (pEntry->Attributes & ATTR_DIRECTORY) // is this a directory
+                {
+					unsigned long dircluster=SwapBB(pEntry->StartCluster) + (fat32 ? (SwapBB(pEntry->HighCluster) & 0x0FFF) << 16 : 0);
+					if(dircluster==cluster)
+					{
+                        printf("Found directory at %ld \r",dircluster);
+                        return(1);
+                    }
+                }
+            }
+        }
+
+        if (parent || fat32) // subdirectory is a linked cluster chain
+        {
+            iDirectoryCluster = GetFATLink(iDirectoryCluster); // get next cluster in chain
+
+            if (fat32 ? (iDirectoryCluster & 0x0FFFFFF8) == 0x0FFFFFF8 : (iDirectoryCluster & 0xFFF8) == 0xFFF8) // check if end of cluster chain
+                break; // no more clusters in chain
+
+            iDirectorySector = data_start + cluster_size * (iDirectoryCluster - 2); // calculate first sector address of the new cluster
+        }
+        else
+            break;
+    }
+
+    printf("Directory not found at %ld\r",cluster);
+    return(0);
 }
 
 
@@ -494,6 +563,7 @@ unsigned long FindDirectory(unsigned long parent, const char *name)
     while (1)
     {
         for (iEntry = 0; iEntry < nEntries; iEntry++)
+
         {
             if ((iEntry & 0x0F) == 0) // first entry in sector, load the sector
             {
