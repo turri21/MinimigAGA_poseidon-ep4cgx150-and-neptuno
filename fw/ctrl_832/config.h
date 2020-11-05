@@ -1,6 +1,8 @@
 #include "fat.h"
 
 #define CONFIG_VERSION 3
+#define CONFIG_VERSION_EXTROM 2
+#define CONFIG_VERSION_ROMPATH 3
 
 typedef struct
 {
@@ -52,6 +54,7 @@ typedef struct
 	unsigned char pad2;
 	unsigned char pad3;
 	unsigned long kickdir;	// Directory of kick file.
+	unsigned long extromdir;	// Directory of ext rom file.
 	unsigned long hdfdir[4]; // Directory for HDF files.  Space for expansion to four devices.
     hardfileTYPE  secondaryhardfile[2]; // hardfile entries for potential secondary IDE devices.
 } configTYPE;
@@ -62,7 +65,7 @@ extern fileTYPE file;	// Temporary file available for use by other modules, to a
 extern configTYPE config; 
 extern char DebugMode;
 
-char UploadKickstart(char *name);
+char UploadKickstart(unsigned long dir,char *name);
 char UploadActionReplay();
 void SetConfigurationFilename(int config);	// Set configuration filename by slot number
 unsigned char LoadConfiguration(char *filename);	// Can supply NULL to use filename previously set by slot number

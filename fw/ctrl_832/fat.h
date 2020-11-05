@@ -120,6 +120,7 @@ unsigned char FileRead(fileTYPE *file, unsigned char *pBuffer) RAMFUNC;
 unsigned char FileWrite(fileTYPE *file, unsigned char *pBuffer);
 unsigned char FileReadEx(fileTYPE *file, unsigned char *pBuffer, unsigned long nSize);
 
+unsigned long CurrentDirectory();
 int ValidateDirectory(unsigned long directory);
 unsigned long FindDirectory(unsigned long parent, const char *name); // Returns first cluster of directory.
 unsigned long FindDirectoryByCluster(unsigned long parent, unsigned long cluster); // Returns 1 if directory at <cluster> is found within directory at <parent>

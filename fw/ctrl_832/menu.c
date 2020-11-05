@@ -1364,7 +1364,7 @@ void HandleUI(void)
 			}
             else if (menusub == 3) /* Kickstart ROM */
             {
-                SelectFile("ROM", SCAN_LFN, MENU_ROMFILE_SELECTED, MENU_SETTINGS_MEMORY1);
+                SelectFile("ROM", SCAN_DIR | SCAN_LFN, MENU_ROMFILE_SELECTED, MENU_SETTINGS_MEMORY1);
             }
             else if (menusub == 4) /* HRTMon */
             {
@@ -1507,7 +1507,7 @@ void HandleUI(void)
             }
             else if (menusub == 2)
             {
-                SelectFile("HDF", SCAN_LFN, MENU_HARDFILE_SELECTED, MENU_SETTINGS_HARDFILE1);
+                SelectFile("HDF", SCAN_DIR | SCAN_LFN, MENU_HARDFILE_SELECTED, MENU_SETTINGS_HARDFILE1);
             }
             else if (menusub == 3)
             {
@@ -1529,7 +1529,7 @@ void HandleUI(void)
             }
             else if (menusub == 4)
             {
-                SelectFile("HDF", SCAN_LFN, MENU_HARDFILE_SELECTED, MENU_SETTINGS_HARDFILE1);
+                SelectFile("HDF", SCAN_DIR | SCAN_LFN, MENU_HARDFILE_SELECTED, MENU_SETTINGS_HARDFILE1);
             }
             else if (menusub == 5) // return to previous menu
             {
@@ -1552,6 +1552,7 @@ void HandleUI(void)
 			// Read RDB from selected drive and determine type...
             memcpy((void*)config.hardfile[0].name, (void*)file.name, sizeof(config.hardfile[0].name));
             memcpy((void*)config.hardfile[0].long_name, (void*)file.long_name, sizeof(config.hardfile[0].long_name));
+			config.hdfdir[0]=CurrentDirectory();
 			switch(GetHDFFileType(file.name))
 			{
 				case HDF_FILETYPE_RDB:
@@ -1585,6 +1586,7 @@ void HandleUI(void)
         {
             memcpy((void*)config.hardfile[1].name, (void*)file.name, sizeof(config.hardfile[1].name));
             memcpy((void*)config.hardfile[1].long_name, (void*)file.long_name, sizeof(config.hardfile[1].long_name));
+			config.hdfdir[1]=CurrentDirectory();
 			switch(GetHDFFileType(file.name))
 			{
 				case HDF_FILETYPE_RDB:
@@ -1870,6 +1872,7 @@ void HandleUI(void)
             {
                 memcpy((void*)config.kickstart.name, (void*)file.name, sizeof(config.kickstart.name));
                 memcpy((void*)config.kickstart.long_name, (void*)file.long_name, sizeof(config.kickstart.long_name));
+				config.kickdir=CurrentDirectory();
 
 		        OsdWrite(7, "           Loading...", 0,0);
 
@@ -2166,7 +2169,8 @@ void InsertFloppy(adfTYPE *drive)
     tracks = file.size / (512*11);
     if (tracks > MAX_TRACKS)
     {
-        printf("UNSUPPORTED ADF SIZE!!! Too many tracks: %lu\r", tracks);
+        SetError(ERROR_FDD,"ADF has too many tracks!",tracks,0);
+		printf("UNSUPPORTED ADF SIZE!!! Too many tracks: %lu\r", tracks);
         tracks = MAX_TRACKS;
     }
     drive->tracks = (unsigned char)tracks;

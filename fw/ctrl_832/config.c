@@ -51,13 +51,22 @@ void ClearVectorTable(void)
 }
 
 //// UploadKickstart() ////
-char UploadKickstart(char *name)
+char UploadKickstart(unsigned long dir,char *name)
 {
 	int keysize=0;
 	char filename[12];
 
 	strncpy(filename, name, 8); // copy base name
 	strcpy(&filename[8], "ROM"); // add extension
+
+	printf("ROM dir: %d\n",dir);
+
+	if(!ValidateDirectory(dir))
+	{
+		SetError(ERROR_ROM,"Bad ROM Directory",dir,0);
+		return(0);
+	}
+	ChangeDirectory(dir);
 
 	BootPrint("Checking for Amiga Forever key file:");
 	if(RAOpen(&romfile,"ROM     KEY")) {
@@ -122,7 +131,7 @@ char UploadKickstart(char *name)
 
 
 // Upload Extended ROM
-char UploadExtROM(char *name)
+char UploadExtROM(unsigned long dir,char *name)
 {
 #ifdef EXTENDED_ROM
 	char filename[12];
@@ -130,22 +139,28 @@ char UploadExtROM(char *name)
 	strncpy(filename, name, 8); // copy base name
 	strcpy(&filename[8], "ROM"); // add extension
 
-	if (RAOpen(&romfile, filename)) {
-		ClearError(ERROR_FILESYSTEM);
-		if(romfile.size == 0x80000) {
-			// 512KB Extended CD32 ROM
-			SendFileV2(&romfile, NULL, 0, 0xe00000, romfile.size>>9);
-			return(1);
-		}
-		else
-		{
-			FatalError(ERROR_ROM,"ExtROM size incorrect",romfile.size,0);
+	if(ValidateDirectory(dir))
+	{
+		ChangeDirectory(dir);
+		if (RAOpen(&romfile, filename)) {
+			ClearError(ERROR_FILESYSTEM);
+			if(romfile.size == 0x80000) {
+				// 512KB Extended CD32 ROM
+				SendFileV2(&romfile, NULL, 0, 0xe00000, romfile.size>>9);
+				return(1);
+			}
+			else
+			{
+				FatalError(ERROR_ROM,"ExtROM size incorrect",romfile.size,0);
+			}
 		}
 	}
+	else
+		FatalError(ERROR_ROM,"Bad ExtROM directory",dir,0);
 	return(0);
 #else
 	return(1);
-#endif;
+#endif
 }
 
 
@@ -215,6 +230,7 @@ unsigned char ConfigurationExists(char *filename)
 {
 	if(!filename)
 		filename=configfilename;	// Use slot-based filename if none provided.
+	ChangeDirectory(0); // Config files always live in the root directory
     if (FileOpen(&file, filename))
     {
 		return(1);
@@ -236,6 +252,7 @@ unsigned char LoadConfiguration(char *filename)
 		filename=configfilename;	// Use slot-based filename if none provided.
 
     // load configuration data
+	ChangeDirectory(0); // Config files always live in the root directory
     if (FileOpen(&file, filename))
     {
 		configTYPE *tmpconf=(configTYPE *)&sector_buffer;
@@ -261,18 +278,32 @@ unsigned char LoadConfiguration(char *filename)
             if (strncmp(tmpconf->id, config_id, sizeof(config.id)) != 0)
 				result=0;
 
-            if(tmpconf->version<CONFIG_VERSION)
+            if(tmpconf->version<CONFIG_VERSION_EXTROM)
 			{
-				BootPrint("Updating config file version");
-				tmpconf->version=CONFIG_VERSION;
+				BootPrint("Config file predates ExtROM support");
 				strncpy(tmpconf->extrom.name, "EXTENDED", sizeof(config.extrom.name));
 			}
-			else if(tmpconf->version>CONFIG_VERSION)
+            if(tmpconf->version<CONFIG_VERSION_ROMPATH)
+			{
+				BootPrint("Config file predates ROM Path support");
+				tmpconf->kickdir=0;
+				tmpconf->hdfdir[0]=tmpconf->hdfdir[1]=tmpconf->hdfdir[2]=tmpconf->hdfdir[3]=0;
+				tmpconf->secondaryhardfile[0].enabled=0;
+				tmpconf->secondaryhardfile[0].present=0;
+				tmpconf->secondaryhardfile[0].name[0]=0;
+				tmpconf->secondaryhardfile[0].long_name[0]=0;
+				tmpconf->secondaryhardfile[1].enabled=0;
+				tmpconf->secondaryhardfile[1].present=0;
+				tmpconf->secondaryhardfile[1].name[0]=0;
+				tmpconf->secondaryhardfile[1].long_name[0]=0;
+			}
+			if(tmpconf->version>CONFIG_VERSION)
 			{
 				BootPrint("Wrong configuration file format!\n");
 				result=0;
 			}
 
+			tmpconf->version=CONFIG_VERSION;
 			if(result)
                 memcpy((void*)&config, (void*)sector_buffer, sizeof(config));
         }
@@ -386,7 +417,7 @@ int ApplyConfiguration(char reloadkickstart, char applydrives)
     ConfigMisc(config.misc);
 
     if(reloadkickstart) {
-		WaitTimer(1000);
+//		WaitTimer(100);
 		EnableOsd();
 		SPI(OSD_CMD_RST);
 		rstval |= (SPI_RST_CPU | SPI_CPU_HLT);
@@ -394,22 +425,22 @@ int ApplyConfiguration(char reloadkickstart, char applydrives)
 		DisableOsd();
 		SPIN; SPIN; SPIN; SPIN;
 		UploadActionReplay();
-		if (UploadKickstart(config.kickstart.name))
+		if (UploadKickstart(config.kickdir,config.kickstart.name))
 		{
 			result=1;
 		}
 		else
 		{
 			strcpy(config.kickstart.name, "KICK    ");
-			result=UploadKickstart(config.kickstart.name);
+			result=UploadKickstart(config.kickdir,config.kickstart.name);
 		}
 		if(result)
 		{
 			/* Attempt to upload an extended ROM */
-			if(!UploadExtROM(config.extrom.name))
+			if(!UploadExtROM(config.extromdir,config.extrom.name))
 			{
 				strcpy(config.extrom.name, "EXTENDED");
-				result=UploadExtROM(config.extrom.name);
+				result=UploadExtROM(config.extromdir,config.extrom.name);
 			}
 			ClearError(ERROR_FILESYSTEM); /* We don't need to report a missing ExtROM yet */
 		}
@@ -424,6 +455,7 @@ unsigned char SaveConfiguration(char *filename)
 		filename=configfilename;	// Use slot-based filename if none provided.
 
     // save configuration data
+	ChangeDirectory(0); // Config files always live in the root directory
     if (FileOpen(&file, filename))
     {
         if (file.size != sizeof(config))

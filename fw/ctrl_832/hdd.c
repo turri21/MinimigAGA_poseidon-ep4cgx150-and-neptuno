@@ -822,7 +822,7 @@ void GetHardfileGeometry(hdfTYPE *pHDF)
 
     unsigned long total=0;
     unsigned long i, head, cyl, spt;
-    unsigned long sptt[] = { 63, 127, 255, -1 };
+    long sptt[] = { 63, 127, 255, -1 };
 
 	switch(pHDF->type)
 	{
@@ -934,28 +934,37 @@ unsigned char OpenHardfile(unsigned int unit)
 
 			if (filename[0])
 			{
-				if (FileOpen(&hdf[unit].file, filename))
+				if(ValidateDirectory(config.hdfdir[unit]))
 				{
-				    GetHardfileGeometry(&hdf[unit]);
+					ChangeDirectory(config.hdfdir[unit]);
+					if (FileOpen(&hdf[unit].file, filename))
+					{
+						GetHardfileGeometry(&hdf[unit]);
 
-				    printf("HARDFILE %d:\r", unit);
-				    printf("file: \"%.8s.%.3s\"\r", hdf[unit].file.name, &hdf[unit].file.name[8]);
-				    printf("size: %lu (%lu MB)\r", hdf[unit].file.size, hdf[unit].file.size >> 20);
-				    printf("CHS: %u.%u.%u", hdf[unit].cylinders, hdf[unit].heads, hdf[unit].sectors);
-				    printf(" (%lu MB)\r", ((((unsigned long) hdf[unit].cylinders) * hdf[unit].heads * hdf[unit].sectors) >> 11));
+						printf("HARDFILE %d:\r", unit);
+						printf("file: \"%.8s.%.3s\"\r", hdf[unit].file.name, &hdf[unit].file.name[8]);
+						printf("size: %lu (%lu MB)\r", hdf[unit].file.size, hdf[unit].file.size >> 20);
+						printf("CHS: %u.%u.%u", hdf[unit].cylinders, hdf[unit].heads, hdf[unit].sectors);
+						printf(" (%lu MB)\r", ((((unsigned long) hdf[unit].cylinders) * hdf[unit].heads * hdf[unit].sectors) >> 11));
 
-				    time = GetTimer(0);
-				    BuildHardfileIndex(&hdf[unit]);
-				    time = GetTimer(0) - time;
-				    printf("Hardfile indexed in %lu ms\r", time >> 16);
+						time = GetTimer(0);
+						BuildHardfileIndex(&hdf[unit]);
+						time = GetTimer(0) - time;
+						printf("Hardfile indexed in %lu ms\r", time >> 16);
 
-					if(config.hardfile[unit].enabled & HDF_SYNTHRDB)
-						hdf[unit].offset=-(hdf[unit].heads*hdf[unit].sectors);
-					else
-						hdf[unit].offset=0;		
+						if(config.hardfile[unit].enabled & HDF_SYNTHRDB)
+							hdf[unit].offset=-(hdf[unit].heads*hdf[unit].sectors);
+						else
+							hdf[unit].offset=0;		
 
-				    config.hardfile[unit].present = 1;
-				    return 1;
+						config.hardfile[unit].present = 1;
+						return 1;
+					}
+				}
+				else
+				{
+					config.hardfile[unit].present = 0;
+					SetError(ERROR_HDD,"Bad hardfile directory",config.hdfdir[unit],0);
 				}
 			}
 			break;

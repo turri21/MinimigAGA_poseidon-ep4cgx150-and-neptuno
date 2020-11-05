@@ -181,10 +181,11 @@ int ColdBoot()
 				ApplyConfiguration(0,0);
 			}
 
+			drivesounds_init("DRIVESNDBIN");
+			ClearError(ERROR_FILESYSTEM); /* Don't report a missing drivesnd.bin */			
+
 			BootPrintEx("Loading kickstart ROM...");
 			result=ApplyConfiguration(1,1);
-
-			drivesounds_init("DRIVESNDBIN");
 
 			OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
 		}

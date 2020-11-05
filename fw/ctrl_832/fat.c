@@ -339,16 +339,16 @@ static int doLFN(DIRENTRY *pEntry,char *lfnbuf)
 
 unsigned char FileOpen(fileTYPE *file, const char *name)
 {
-    unsigned long  iDirectory = 0;       // only root directory is supported
+//    unsigned long  iDirectory = 0;       // only root directory is supported
     DIRENTRY      *pEntry = NULL;        // pointer to current entry in sector buffer
     unsigned long  iDirectorySector;     // current sector of directory entries table
     unsigned long  iDirectoryCluster;    // start cluster of subdirectory or FAT32 root directory
     unsigned long  iEntry;               // entry index in directory cluster or FAT16 root directory
     unsigned long  nEntries;             // number of entries per cluster or FAT16 root directory size
 
-    if (iDirectory) // subdirectory
+    if (iCurrentDirectory) // subdirectory
     {
-        iDirectoryCluster = iDirectory;
+        iDirectoryCluster = iCurrentDirectory;
         iDirectorySector = data_start + cluster_size * (iDirectoryCluster - 2);
         nEntries = cluster_size << 4; // 16 entries per sector
     }
@@ -406,7 +406,7 @@ unsigned char FileOpen(fileTYPE *file, const char *name)
             }
         }
 
-        if (iDirectory || fat32) // subdirectory is a linked cluster chain
+        if (iCurrentDirectory || fat32) // subdirectory is a linked cluster chain
         {
             iDirectoryCluster = GetFATLink(iDirectoryCluster); // get next cluster in chain
 
@@ -436,7 +436,6 @@ int ValidateDirectory(unsigned long directory)
     unsigned long  iDirectorySector;     // current sector of directory entries table
     unsigned long  iDirectoryCluster;    // start cluster of subdirectory or FAT32 root directory
     unsigned long  iEntry;               // entry index in directory cluster or FAT16 root directory
-    unsigned long  nEntries;             // number of entries per cluster or FAT16 root directory size
 
 	if(!directory || (directory==root_directory_cluster))
 	{
@@ -446,13 +445,12 @@ int ValidateDirectory(unsigned long directory)
     {
         iDirectoryCluster = directory;
         iDirectorySector = data_start + cluster_size * (iDirectoryCluster - 2);
-        nEntries = cluster_size << 4; // 16 entries per sector
     }
 
     if(!MMC_Read(iDirectorySector++, sector_buffer)) // root directory is linear
 		return(0);
     pEntry = (DIRENTRY*)sector_buffer;
-    for (iEntry = 0; iEntry < nEntries; iEntry++)
+    for (iEntry = 0; iEntry < 16; iEntry++)	// 16 entries in a single sector.  Assume ".." will be in the first sector.
     {
         if (pEntry->Name[0] != SLOT_EMPTY && pEntry->Name[0] != SLOT_DELETED) // valid entry??
         {
@@ -1312,6 +1310,11 @@ void ChangeDirectory(unsigned long iStartCluster)
 {
     iPreviousDirectory = iCurrentDirectory;
     iCurrentDirectory = iStartCluster;
+}
+
+unsigned long CurrentDirectory()
+{
+	return(iCurrentDirectory);
 }
 
 unsigned long GetFATLink(unsigned long cluster)
