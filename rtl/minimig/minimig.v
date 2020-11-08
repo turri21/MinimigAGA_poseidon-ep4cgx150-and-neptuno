@@ -314,6 +314,7 @@ wire		kbdrst;					//keyboard reset
 wire		reset;					//global reset
 wire    aflock;
 wire    cpu_custom;
+wire    autoconfig_done;
 wire		dbr;					//data bus request, Agnus tells CPU that she is using the bus
 wire		dbwe;					//data bus write enable, Agnus tells the RAM it's writing data
 wire		dbs;					//data bus slow down, used for slowing down CPU access to chip, slow and custor register address space
@@ -471,10 +472,10 @@ assign pwr_led = (_led & !hblank_out) ? 1'b0 : 1'b1; // led dim at off-state and
 
 // turbo chipram only when in AGA mode, no overlay is active, cpu_config[2] (fast chip) is enabled and Agnus allows CPU on the bus and chipRAM=2MB
 //assign turbochipram = chipset_config[4] && !ovl && (cpu_config[2] || cpu_custom) && (&memory_config[1:0]); // TODO fix turbochipram
-assign turbochipram = chipset_config[4] && !ovl && (cpu_config[2] && cpu_custom) && (&memory_config[1:0]);
+assign turbochipram = chipset_config[4] && !ovl && (cpu_config[2] && cpu_custom) && (&memory_config[1:0]) && autoconfig_done;
 
 // turbo kickstart only when no overlay is active and cpu_config[3] (fast kick) enabled and AGA mode is enabled
-assign turbokick = !ovl && cpu_config[3] && chipset_config[4];
+assign turbokick = !ovl && cpu_config[3] && chipset_config[4] && autoconfig_done;
 
 // NTSC/PAL switching is controlled by OSD menu, change requires reset to take effect
 always @(posedge clk)
@@ -1046,7 +1047,8 @@ minimig_autoconfig autoconfig
 	.lwr(cpu_lwr),
 	.sel(sel_autoconfig),
 	.fastram_config(memory_config[5:4]),
-	.board_configured(board_configured)
+	.board_configured(board_configured),
+	.autoconfig_done(autoconfig_done)
 );
 
 //-------------------------------------------------------------------------------------
