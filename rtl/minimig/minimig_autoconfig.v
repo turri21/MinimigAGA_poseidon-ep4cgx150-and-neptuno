@@ -13,7 +13,8 @@ module minimig_autoconfig
 	input	lwr,				//cpu low write
 	input sel,
 	input	[1:0] fastram_config,
-	output reg [2:0] board_configured
+	output reg [2:0] board_configured,
+	output reg autoconfig_done
 );
 
 reg [1:0] acdevice;
@@ -47,7 +48,8 @@ begin
 	begin
 		init=1'b1;
 		board_configured<=3'b000;
-		acdevice<=2'b11;
+		acdevice<=2'b00;
+		autoconfig_done <= 1'b0;
 	end
 
 	rom_we<=1'b0;
@@ -72,6 +74,7 @@ begin
 		begin
 			case({address_in,1'b0})
 				8'h48 : begin
+					autoconfig_done <= 1'b1;
 					case(acdevice)
 						2'b00 : begin // ZII RAM
 								board_configured[0] <= 1'b1;
@@ -86,6 +89,7 @@ begin
 								board_configured[2] <= 1'b1;
 								acdevice<=2'b11; // NULL device to terminate the chain
 							end
+						default: ;
 					endcase
 				end
 			endcase

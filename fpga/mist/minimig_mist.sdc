@@ -77,8 +77,7 @@ set_multicycle_path -from {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|memadd
 set_multicycle_path -from {TG68K:tg68k|addr[*]} -setup 3
 set_multicycle_path -from {TG68K:tg68k|addr[*]} -hold 2
 
-set_multicycle_path -from {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|dpram_256x32:dtram|altsyncram:altsyncram_component|*|q_a[*]} -to {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|cpu_cacheline_*[*][*]} -setup 2
-set_multicycle_path -from {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|dpram_256x32:dtram|altsyncram:altsyncram_component|*|q_a[*]} -to {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|cpu_cacheline_*[*][*]} -hold 1
+set_multicycle_path -from {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|dpram_256x32:dtram|altsyncram:altsyncram_component|*|q_a[*]} -to {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|cpu_cacheline_*[*][*]} -setup 2set_multicycle_path -from {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|dpram_256x32:dtram|altsyncram:altsyncram_component|*|q_a[*]} -to {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|cpu_cacheline_*[*][*]} -hold 1
 set_multicycle_path -from {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|dpram_256x32:itram|altsyncram:altsyncram_component|*|q_a[*]} -to {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|cpu_cacheline_*[*][*]} -setup 2
 set_multicycle_path -from {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|dpram_256x32:itram|altsyncram:altsyncram_component|*|q_a[*]} -to {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|cpu_cacheline_*[*][*]} -hold 1
 
@@ -87,18 +86,11 @@ set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -hold 3
 
 set_multicycle_path -from [get_clocks $clk_sdram] -to [get_clocks $clk_114] -setup 2
 
-#set_multicycle_path -to {red_mixed_r[*]} -setup -end 3
-#set_multicycle_path -to {green_mixed_r[*]} -setup -end 3
-#set_multicycle_path -to {blue_mixed_r[*]} -setup -end 3
-#set_multicycle_path -to {red_mixed_r[*]} -hold -end 2
-#set_multicycle_path -to {green_mixed_r[*]} -hold -end 2
-#set_multicycle_path -to {blue_mixed_r[*]} -hold -end 2
-
 # Neither in nor out of the C2P requires single-cycle speed
-set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|rdptr[*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -setup -end 2
-set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|rdptr[*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold -end 1
-set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|buf[*][*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -setup -end 2
-set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:myc2p|buf[*][*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold -end 1
+set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:\c2p:myc2p|rdptr[*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -setup -end 2
+set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:\c2p:myc2p|rdptr[*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold -end 1
+set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:\c2p:myc2p|buf[*][*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -setup -end 2
+set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:\c2p:myc2p|buf[*][*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold -end 1
 
 # Likewise RTG and audio address have 8 cycles of downtime between bursts
 set_multicycle_path -from {VideoStream:myvs|address_high[*]} -to {sdram_ctrl:sdram|*} -setup -end 2
@@ -107,20 +99,3 @@ set_multicycle_path -from {VideoStream:myvs|outptr[*]} -to {sdram_ctrl:sdram|*} 
 set_multicycle_path -from {VideoStream:myvs|outptr[*]} -to {sdram_ctrl:sdram|*} -hold -end 1
 set_multicycle_path -from {VideoStream:myaudiostream|*} -to {sdram_ctrl:sdram|*} -setup -end 2
 set_multicycle_path -from {VideoStream:myaudiostream|*} -to {sdram_ctrl:sdram|*} -hold -end 1
-
-# JTAG
-set ports [get_ports -nowarn {altera_reserved_tck}]
-if {[get_collection_size $ports] == 1} {
-  create_clock -name tck -period 100.000 [get_ports {altera_reserved_tck}]
-  set_clock_groups -exclusive -group altera_reserved_tck
-  set_output_delay -clock tck 20 [get_ports altera_reserved_tdo]
-  set_input_delay  -clock tck 20 [get_ports altera_reserved_tdi]
-  set_input_delay  -clock tck 20 [get_ports altera_reserved_tms]
-  set tck altera_reserved_tck
-  set tms altera_reserved_tms
-  set tdi altera_reserved_tdi
-  set tdo altera_reserved_tdo
-  set_false_path -from *                -to [get_ports $tdo]
-  set_false_path -from [get_ports $tms] -to *
-  set_false_path -from [get_ports $tdi] -to *
-}
