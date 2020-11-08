@@ -44,6 +44,7 @@ port(
 	ein           : in      std_logic:='1';
 	addr          : buffer  std_logic_vector(31 downto 0);
 	data_read     : in      std_logic_vector(15 downto 0);
+	data_read2    : in      std_logic_vector(15 downto 0);
 	data_write    : buffer  std_logic_vector(15 downto 0);
 	as            : out     std_logic;
 	uds           : out     std_logic;
@@ -115,6 +116,7 @@ SIGNAL rw_e             : std_logic;
 SIGNAL vpad             : std_logic;
 SIGNAL waitm            : std_logic;
 SIGNAL clkena_e         : std_logic;
+SIGNAL clkena_f         : std_logic;
 SIGNAL S_state          : std_logic_vector(1 downto 0);
 SIGNAL decode           : std_logic;
 SIGNAL wr               : std_logic;
@@ -127,6 +129,7 @@ SIGNAL vmaena           : std_logic;
 SIGNAL eind             : std_logic;
 SIGNAL eindd            : std_logic;
 SIGNAL sel_ram          : std_logic;
+SIGNAL sel_chip         : std_logic;
 SIGNAL sel_chipram      : std_logic;
 SIGNAL turbochip_ena    : std_logic := '0';
 SIGNAL turbochip_d      : std_logic := '0';
@@ -228,7 +231,8 @@ sel_eth<='0';
 	sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 30)="01") AND z3ram_ena='1' ELSE '0';
 	sel_z2ram       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 21) = "001") OR (cpuaddr(23 downto 21) = "010") OR (cpuaddr(23 downto 21) = "011") OR (cpuaddr(23 downto 21) = "100")) AND z2ram_ena='1' ELSE '0';
 	--sel_eth         <= '1' WHEN (cpuaddr(31 downto 24) = eth_base) AND eth_cfgd='1' ELSE '0';
-	sel_chipram     <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 21)="000") AND turbochip_d='1' ELSE '0'; --$000000 - $1FFFFF
+	sel_chip        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 21)="000") ELSE '0'; --$000000 - $1FFFFF
+	sel_chipram     <= '1' WHEN sel_chip = '1' AND turbochip_d='1' ELSE '0';
 	sel_kick        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 19)="11111") OR (cpuaddr(23 downto 19)="11100")) AND state/="11" ELSE '0'; -- $F8xxxx, $E0xxxx, read only
 	sel_kickram     <= '1' WHEN sel_kick='1' AND turbokick_d='1' ELSE '0';
 	sel_slow        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 20)=X"C") OR (cpuaddr(23 downto 19)=X"D"&'0')) ELSE '0'; -- $C00000 - $D7FFFF
@@ -410,7 +414,7 @@ PROCESS (clk) BEGIN
 END PROCESS;
 
 clkena <= '1' WHEN (clkena_in='1' AND
-                   (state="01" OR (ena7RDreg='1' AND clkena_e='1') OR
+                   (state="01" OR (ena7RDreg='1' AND clkena_e='1') OR (ena7WRreg='1' AND clkena_f='1') OR
                     ramready='1' OR sel_undecoded_d='1' OR akiko_ack='1'))
               ELSE '0';
 
@@ -450,6 +454,7 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
       uds_e <= '1';
       lds_e <= '1';
       clkena_e <= '0';
+      clkena_f <= '0';
     ELSIF rising_edge(clk) THEN
       IF ena7WRreg='1' THEN
         as_s <= '1';
@@ -479,8 +484,9 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
                      lds_s <= lds_in;
                    END IF;
             WHEN "11" =>
-                   IF clkena = '1' THEN
-                     S_state <= "00";
+                   IF clkena_f = '1' THEN
+                     clkena_f <= '0';
+                     r_data <= data_read2;
                    END IF;
             WHEN OTHERS => null;
           END CASE;
@@ -490,6 +496,7 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
         uds_e <= '1';
         lds_e <= '1';
         clkena_e <= '0';
+        clkena_f <= '0';
         CASE S_state IS
           WHEN "00" =>
                  cpuIPL <= IPL;
@@ -510,6 +517,10 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
                  waitm <= dtack;
           WHEN "11" =>
                  clkena_e <= '1';
+                 IF cpu(1) = '1' AND longword = '1' AND state(0) = '0' AND addr(1 downto 0) = "00" AND (sel_chip = '1' OR sel_kick = '1') THEN
+                   -- 32 bit read
+                   clkena_f <= '1';
+                 END IF;
                  IF clkena = '1' THEN
                    S_state <= "00";
                    clkena_e <= '0';

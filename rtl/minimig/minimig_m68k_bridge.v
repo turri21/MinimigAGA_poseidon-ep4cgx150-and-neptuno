@@ -58,10 +58,12 @@ module minimig_m68k_bridge
 //	output	reg [23:1] address_out,	// internal cpu address bus output
 	output	[23:1] address_out,	// internal cpu address bus output
   output  [15:0] data,      // external cpu data bus
+  output  [15:0] data2,     // external cpu data bus 2nd word
   input [15:0] cpudatain,
 //  output  reg [15:0] data_out,  // internal data bus output
   output  [15:0] data_out,  // internal data bus output
   input [15:0] data_in,      // internal data bus input
+  input [15:0] data_in2,     // internal data bus input 2nd word
   // UserIO interface
   input _cpu_reset,
   input cpu_halt,
@@ -113,6 +115,7 @@ DOUT   -------------------------------------------------<___________________>---
 
 wire	doe;					// data buffer output enable
 reg		[15:0] ldata_in;		// latched data_in
+reg		[15:0] ldata_in2;		// latched data_in word2
 wire	enable;					// enable
 reg		lr_w,l_as,l_dtack;  	// synchronised inputs
 reg		l_uds,l_lds;
@@ -233,8 +236,10 @@ assign data_out = !halt ? cpudatain : host_wdat;
 //  if (!clk)
 //    ldata_in <= data_in;
 always @(posedge clk)
-  if (!c1 && c3 && enable)
+  if (!c1 && c3 && enable) begin
     ldata_in <= data_in;
+    ldata_in2 <= data_in2;
+  end
 //assign ldata_in = data_in;
 
 // --------------------------------------------------------------------------------------
@@ -242,6 +247,7 @@ always @(posedge clk)
 // CPU data bus tristate buffers and output data multiplexer
 //assign data[15:0] = doe ? cache_hit ? cache_out : ldata_in[15:0] : 16'bz;
 assign data[15:0] = ldata_in;
+assign data2 = ldata_in2;
 assign host_rdat = ldata_in;
 
 //always @(posedge clk)

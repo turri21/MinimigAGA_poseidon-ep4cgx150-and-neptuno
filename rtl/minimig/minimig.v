@@ -151,6 +151,7 @@ module minimig
 	//m68k pins
 	input	[23:1] cpu_address,	// m68k address bus
 	output 	[15:0] cpu_data,	// m68k data bus
+	output 	[15:0] cpu_data2,	// m68k data bus 2nd word
 	input	[15:0] cpudata_in,	// m68k data in
 	output	[2:0] _cpu_ipl,		// m68k interrupt request
 	input	_cpu_as,			// m68k address strobe
@@ -274,6 +275,7 @@ module minimig
 
 //local signals for data bus
 wire		[15:0] cpu_data_in;		//cpu data bus in
+wire		[15:0] cpu_data_in2;	//cpu data bus in 2nd word
 wire		[15:0] cpu_data_out;	//cpu data bus out
 wire		[15:0] ram_data_in;		//ram data bus in
 wire		[15:0] ram_data_out;	//ram data bus out
@@ -831,7 +833,6 @@ ciab CIAB1
 	.portb_out({_motor,_sel3,_sel2,_sel1,_sel0,side,direc,_step})
 );
 
-
 //instantiate cpu bridge
 minimig_m68k_bridge CPU1 
 (
@@ -864,8 +865,10 @@ minimig_m68k_bridge CPU1
 	.address_out(cpu_address_out),
 	.cpudatain(cpudata_in),
 	.data(cpu_data),
+	.data2(cpu_data2),
 	.data_out(cpu_data_out),
 	.data_in(cpu_data_in),
+	.data_in2(cpu_data_in2),
   ._cpu_reset (_cpu_reset),
   .cpu_halt (cpuhlt),
   .host_cs (host_cs),
@@ -947,6 +950,8 @@ cart CART1
 
 //level 7 interrupt for CPU
 assign _cpu_ipl = int7 ? 3'b000 : _iplx;	//m68k interrupt request
+
+assign cpu_data_in2 = chip48[47:32];
 
 //instantiate gary
 gary GARY1 

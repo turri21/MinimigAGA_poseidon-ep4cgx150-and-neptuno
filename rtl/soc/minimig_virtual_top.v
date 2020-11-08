@@ -120,6 +120,7 @@ wire           reg_status;
 // tg68
 wire           tg68_rst;
 wire [ 16-1:0] tg68_dat_in;
+wire [ 16-1:0] tg68_dat_in2;
 wire [ 16-1:0] tg68_dat_out;
 wire [ 32-1:0] tg68_adr;
 wire [  3-1:0] tg68_IPL;
@@ -479,6 +480,7 @@ TG68K #(.havertg(havertg ? "true" : "false"),
   .ein          (1'b1             ),
   .addr         (tg68_adr         ),
   .data_read    (tg68_dat_in      ),
+  .data_read2   (tg68_dat_in2     ),
   .data_write   (tg68_dat_out     ),
   .as           (tg68_as          ),
   .uds          (tg68_uds         ),
@@ -668,6 +670,7 @@ minimig minimig (
 	//m68k pins
 	.cpu_address  (tg68_adr[23:1]   ), // M68K address bus
 	.cpu_data     (tg68_dat_in      ), // M68K data bus
+	.cpu_data2    (tg68_dat_in2     ), // M68K data bus 2nd word
 	.cpudata_in   (tg68_dat_out     ), // M68K data in
 	._cpu_ipl     (tg68_IPL         ), // M68K interrupt request
 	._cpu_as      (tg68_as          ), // M68K address strobe
