@@ -64,6 +64,8 @@ port(
 	sel_eth       : buffer  std_logic;
 	frometh       : in      std_logic_vector(15 downto 0);
 	ethready      : in      std_logic;
+	slow_config   : in      std_logic_vector(1 downto 0);
+	aga           : in      std_logic;
 	turbochipram  : in      std_logic;
 	turbokick     : in      std_logic;
 	cache_inhibit : out     std_logic;
@@ -134,6 +136,7 @@ SIGNAL sel_chipram      : std_logic;
 SIGNAL turbochip_ena    : std_logic := '0';
 SIGNAL turbochip_d      : std_logic := '0';
 SIGNAL turbokick_d      : std_logic := '0';
+SIGNAL turboslow_d      : std_logic := '0';
 SIGNAL slower           : std_logic_vector(3 downto 0);
 
 TYPE   sync_states      IS (sync0, sync1, sync2, sync3, sync4, sync5, sync6, sync7, sync8, sync9);
@@ -235,8 +238,8 @@ sel_eth<='0';
 	sel_chipram     <= '1' WHEN sel_chip = '1' AND turbochip_d='1' ELSE '0';
 	sel_kick        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 19)="11111") OR (cpuaddr(23 downto 19)="11100")) AND state/="11" ELSE '0'; -- $F8xxxx, $E0xxxx, read only
 	sel_kickram     <= '1' WHEN sel_kick='1' AND turbokick_d='1' ELSE '0';
-	sel_slow        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 20)=X"C") OR (cpuaddr(23 downto 19)=X"D"&'0')) ELSE '0'; -- $C00000 - $D7FFFF
-	sel_slowram     <= '1' WHEN sel_slow='1' AND turbokick_d='1' ELSE '0';
+	sel_slow        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 20)=X"C" AND ((cpuaddr(19)='0' AND slow_config/="00") OR (cpuaddr(19)='1' AND slow_config(1)='1'))) OR (cpuaddr(23 downto 19)=X"D"&'0' AND slow_config="11")) ELSE '0'; -- $C00000 - $D7FFFF
+	sel_slowram     <= '1' WHEN sel_slow='1' AND turboslow_d='1' ELSE '0';
 	sel_cart        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 20)="1010") ELSE '0'; -- $A00000 - $A7FFFF (actually matches up to $AFFFFF)
 	sel_audio       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 19)="10110") ELSE '0'; -- $B00000 - $B7FFFF
 	sel_undecoded   <= '1' WHEN sel_32='1' and sel_z3ram='0' else '0';
@@ -325,11 +328,13 @@ PROCESS (clk, turbochipram, turbokick) BEGIN
     IF (reset='0' OR nResetOut='0') THEN
       turbochip_d <= '0';
       turbokick_d <= '0';
+      turboslow_d <= '0';
     ELSIF state="01" THEN -- No mem access, so safe to switch chipram access mode
-      turbochip_d <= turbochipram; -- and turbochip_ena;
-      turbokick_d <= turbokick; -- and turbochip_ena;
+      turbochip_d <= turbochipram;
+      turbokick_d <= turbokick;
+      turboslow_d <= turbochipram OR aga;
     END IF;
-	 sel_ram_d<=sel_ram;
+    sel_ram_d<=sel_ram;
   END IF;
 END PROCESS;
 
@@ -517,7 +522,7 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
                  waitm <= dtack;
           WHEN "11" =>
                  clkena_e <= '1';
-                 IF cpu(1) = '1' AND longword = '1' AND state(0) = '0' AND addr(1 downto 0) = "00" AND (sel_chip = '1' OR sel_kick = '1') THEN
+                 IF aga = '1' AND cpu(1) = '1' AND longword = '1' AND state(0) = '0' AND addr(1 downto 0) = "00" AND (sel_chip = '1' OR sel_kick = '1') THEN
                    -- 32 bit read
                    clkena_f <= '1';
                  END IF;

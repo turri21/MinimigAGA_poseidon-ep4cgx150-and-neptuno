@@ -105,9 +105,10 @@ wire [ 16-1:0] tg68_cout;
 wire           tg68_cpuena;
 wire [  4-1:0] cpu_config;
 wire [2:0]     board_configured;
-//wire [  6-1:0] memcfg;
 wire           turbochipram;
 wire           turbokick;
+wire [1:0]     slow_config;
+wire           aga;
 wire           cache_inhibit;
 wire [ 32-1:0] tg68_cad;
 wire [  7-1:0] tg68_cpustate;
@@ -259,6 +260,8 @@ TG68K tg68k (
   .cpu          (cpu_config[1:0]  ),
   .turbochipram (turbochipram     ),
   .turbokick    (turbokick        ),
+  .slow_config  (slow_config      ),
+  .aga          (aga              ),
   .cache_inhibit(cache_inhibit    ),
   .ziiram_active(board_configured[0]),
   .ziiiram_active(board_configured[1]),
@@ -470,6 +473,8 @@ minimig minimig (
 //  .memcfg       (memcfg           ), // memory config
   .turbochipram (turbochipram     ), // turbo chipRAM
   .turbokick    (turbokick        ), // turbo kickstart
+  .slow_config  (slow_config      ),
+  .aga          (aga              ),
   .init_b       (                 ), // vertical sync for MCU (sync OSD update)
   .fifo_full    (                 ),
   // fifo / track display

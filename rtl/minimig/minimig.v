@@ -248,6 +248,8 @@ module minimig
   output  [2:0] board_configured,
   output  turbochipram,
   output  turbokick,
+  output  [1:0] slow_config,
+  output  aga,
   output  init_b,       // vertical sync for MCU (sync OSD update)
   output wire fifo_full,
   // fifo / track display
@@ -473,11 +475,14 @@ assign pwr_led = (_led & !hblank_out) ? 1'b0 : 1'b1; // led dim at off-state and
 //assign memcfg = memory_config[5:0];
 
 // turbo chipram only when in AGA mode, no overlay is active, cpu_config[2] (fast chip) is enabled and Agnus allows CPU on the bus and chipRAM=2MB
-//assign turbochipram = chipset_config[4] && !ovl && (cpu_config[2] || cpu_custom) && (&memory_config[1:0]); // TODO fix turbochipram
-assign turbochipram = chipset_config[4] && !ovl && (cpu_config[2] && cpu_custom) && (&memory_config[1:0]) && autoconfig_done;
+assign turbochipram = chipset_config[4] && !ovl && cpu_config[2] && (&memory_config[1:0]);
 
 // turbo kickstart only when no overlay is active and cpu_config[3] (fast kick) enabled and AGA mode is enabled
-assign turbokick = !ovl && cpu_config[3] && chipset_config[4] && autoconfig_done;
+assign turbokick = !ovl && cpu_config[3] && chipset_config[4];
+
+assign aga = chipset_config[4];
+
+assign slow_config = memory_config[3:2];
 
 // NTSC/PAL switching is controlled by OSD menu, change requires reset to take effect
 always @(posedge clk)
