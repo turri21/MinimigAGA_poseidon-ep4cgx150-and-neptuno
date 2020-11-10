@@ -245,7 +245,7 @@ module minimig
 	output	[15:0]rdata, 			//right DAC data
 	//user i/o
   output  [3:0] cpu_config,
-  output  [2:0] board_configured,
+  output  [3:0] board_configured,
   output  turbochipram,
   output  turbokick,
   output  [1:0] slow_config,
@@ -476,6 +476,7 @@ assign pwr_led = (_led & !hblank_out) ? 1'b0 : 1'b1; // led dim at off-state and
 
 // turbo chipram only when in AGA mode, no overlay is active, cpu_config[2] (fast chip) is enabled and Agnus allows CPU on the bus and chipRAM=2MB
 assign turbochipram = chipset_config[4] && !ovl && cpu_config[2] && (&memory_config[1:0]);
+//assign turbochipram = chipset_config[4] && !ovl && (cpu_config[2] || cpu_custom) && (&memory_config[1:0]); // TODO fix turbochipram
 
 // turbo kickstart only when no overlay is active and cpu_config[3] (fast kick) enabled and AGA mode is enabled
 assign turbokick = !ovl && cpu_config[3] && chipset_config[4];
@@ -1058,6 +1059,7 @@ minimig_autoconfig autoconfig
 	.sel(sel_autoconfig),
 	.fastram_config(memory_config[5:4]),
 	.m68020(cpu_config[1]),
+	.slowram_config(memory_config[3:2]),
 	.board_configured(board_configured),
 	.autoconfig_done(autoconfig_done)
 );

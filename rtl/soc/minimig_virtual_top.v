@@ -135,7 +135,7 @@ wire           tg68_ena28;
 wire [ 16-1:0] tg68_cout;
 wire           tg68_cpuena;
 wire [  4-1:0] cpu_config;
-wire [2:0]     board_configured;
+wire [3:0]     board_configured;
 wire           turbochipram;
 wire           turbokick;
 wire [1:0]     slow_config;
@@ -396,7 +396,7 @@ wire aud_clear;
 
 wire [22:0] aud_ramaddr;
 assign aud_ramaddr[15:0]=aud_addr;
-assign aud_ramaddr[22:16]=7'b0110000;  // 0x300000 in SDRAM, 0x680000 to host, 0xb00000 to Amiga
+assign aud_ramaddr[22:16]=7'b1101100;  // 0x6c0000 in SDRAM, 0x040000 to host, 0xec0000 to Amiga
 
 reg [9:0] aud_ctr;
 always @(posedge CLK_28) begin
@@ -501,6 +501,7 @@ TG68K #(.havertg(havertg ? "true" : "false"),
   .cache_inhibit(cache_inhibit    ),
   .ziiram_active(board_configured[0]),
   .ziiiram_active(board_configured[1]),
+  .ziiiram2_active(board_configured[2]),
 //  .fastramcfg   ({&memcfg[5:4],memcfg[5:4]}),
   .eth_en       (1'b1), // TODO
   .sel_eth      (),

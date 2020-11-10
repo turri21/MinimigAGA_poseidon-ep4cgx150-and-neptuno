@@ -59,6 +59,7 @@ port(
 	cpu           : in      std_logic_vector(1 downto 0);
 	ziiram_active : in      std_logic;
 	ziiiram_active : in     std_logic;
+	ziiiram2_active : in     std_logic;
 
 	eth_en        : in      std_logic:='0';
 	sel_eth       : buffer  std_logic;
@@ -147,10 +148,12 @@ SIGNAL ramcs            : std_logic;
 
 SIGNAL z2ram_ena        : std_logic;
 SIGNAL z3ram_ena        : std_logic;
+SIGNAL z3ram2_ena        : std_logic;
 SIGNAL eth_base         : std_logic_vector(7 downto 0);
 SIGNAL eth_cfgd         : std_logic;
 SIGNAL sel_z2ram        : std_logic;
 SIGNAL sel_z3ram        : std_logic;
+SIGNAL sel_z3ram2       : std_logic;
 SIGNAL sel_kick         : std_logic;
 SIGNAL sel_kickram      : std_logic;
 --SIGNAL sel_eth          : std_logic;
@@ -177,6 +180,8 @@ signal host_req_r : std_logic;
 SIGNAL NMI_addr         : std_logic_vector(31 downto 0);
 SIGNAL sel_nmi_vector_addr : std_logic;
 SIGNAL sel_nmi_vector   : std_logic;
+
+signal chipset_cycle : std_logic;
 
 BEGIN
 
@@ -205,6 +210,7 @@ sel_eth<='0';
 			addr <= cpuaddr;
 			z2ram_ena <= ziiram_active;
 			z3ram_ena <= ziiiram_active;
+			z3ram2_ena <= ziiiram2_active;
 
 			sel_akiko_d<=sel_akiko;
 			sel_undecoded_d<=sel_undecoded;
@@ -231,7 +237,8 @@ sel_eth<='0';
 	sel_akiko <= '1' when cpuaddr(31 downto 16)=X"00B8" else '0';
 	sel_32 <= '1' when cpu(1)='1' and cpuaddr(31 downto 24)/=X"00" and cpuaddr(31 downto 24)/=X"ff" else '0'; -- Decode 32-bit space, but exclude interrupt vectors
 --	sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 24)=z3ram_base) else '0'; -- AND z3ram_ena='1' ELSE '0';
-	sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 30)="01") AND z3ram_ena='1' ELSE '0';
+	sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 30)="01") and cpuaddr(24)='0' AND z3ram_ena='1' ELSE '0';
+	sel_z3ram2      <= '1' WHEN (cpuaddr(31 downto 30)="01") and cpuaddr(24)='1' AND z3ram2_ena='1' ELSE '0';
 	sel_z2ram       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 21) = "001") OR (cpuaddr(23 downto 21) = "010") OR (cpuaddr(23 downto 21) = "011") OR (cpuaddr(23 downto 21) = "100")) AND z2ram_ena='1' ELSE '0';
 	--sel_eth         <= '1' WHEN (cpuaddr(31 downto 24) = eth_base) AND eth_cfgd='1' ELSE '0';
 	sel_chip        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 21)="000") ELSE '0'; --$000000 - $1FFFFF
@@ -241,11 +248,12 @@ sel_eth<='0';
 	sel_slow        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 20)=X"C" AND ((cpuaddr(19)='0' AND slow_config/="00") OR (cpuaddr(19)='1' AND slow_config(1)='1'))) OR (cpuaddr(23 downto 19)=X"D"&'0' AND slow_config="11")) ELSE '0'; -- $C00000 - $D7FFFF
 	sel_slowram     <= '1' WHEN sel_slow='1' AND turboslow_d='1' ELSE '0';
 	sel_cart        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 20)="1010") ELSE '0'; -- $A00000 - $A7FFFF (actually matches up to $AFFFFF)
-	sel_audio       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 19)="10110") ELSE '0'; -- $B00000 - $B7FFFF
-	sel_undecoded   <= '1' WHEN sel_32='1' and sel_z3ram='0' else '0';
+	sel_audio       <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 18)="111011") ELSE '0'; -- $EC0000 - $EFFFFF
+	sel_undecoded   <= '1' WHEN sel_32='1' and sel_z3ram='0' and sel_z3ram2='0' else '0';
 	sel_ram         <= '1' WHEN (
          sel_z2ram='1'
       OR sel_z3ram='1'
+      OR sel_z3ram2='1'
       OR sel_chipram='1'
       OR sel_slowram='1'
       OR sel_kickram='1'
@@ -281,12 +289,20 @@ sel_eth<='0';
 -- 1010  1    0       A -> 2
 -- 1100  1    0       C -> 4
 -- 1110  1    0       E -> 6 
-  
+ 
+-- Secondary ZIII mapping maps 41000000 -> 200000, bits 23 downto 20 are mapped like so:
+-- 0000->0010, 0010->0100, 0100->0010, 0110->0100, 
+-- addr(23) <= addr(23) and not sel_ziii_2;
+-- addr(22) <= (addr(22) and not sel_ziii_2) or (addr(21) and sel_ziii_2);
+-- addr(21) <= addr(21) xor sel_ziii_2;
+ 
   ramaddr(31 downto 25) <= "0000000";
   ramaddr(24) <= sel_z3ram; -- Remap the Zorro III RAM to 0x1000000
-  ramaddr(23)<=cpuaddr(23) xor (cpuaddr(22) or cpuaddr(21));
-  ramaddr(22 downto 0) <= cpuaddr(22 downto 0);
-	
+  ramaddr(23)<=(cpuaddr(23) xor (cpuaddr(22) or cpuaddr(21))) and not sel_z3ram2;
+  ramaddr(22)<=cpuaddr(21) when sel_z3ram2='1' else cpuaddr(22);
+  ramaddr(21)<=cpuaddr(21) xor sel_z3ram2;
+  ramaddr(20 downto 0) <= cpuaddr(20 downto 0);
+  
   -- 32bit address space for 68020, limit address space to 24bit for 68000/68010
   cpuaddr <= addrtg68 WHEN cpu(1) = '1' ELSE X"00" & addrtg68(23 downto 0);
 
@@ -434,6 +450,9 @@ PROCESS (clk) BEGIN
 END PROCESS;
 
 
+chipset_cycle <= '1' when (sel_ram='0' OR sel_nmi_vector='1')
+	AND sel_akiko='0' and sel_undecoded='0' else '0';
+
 PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, sel_ram, sel_nmi_vector)
   BEGIN
     IF state="01" THEN
@@ -467,7 +486,7 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
         uds_s <= '1';
         lds_s <= '1';
           CASE S_state IS
-            WHEN "00" => IF cpu_int='0' AND (sel_ram='0' OR sel_nmi_vector='1') AND sel_akiko='0' THEN
+            WHEN "00" => IF cpu_int='0' AND chipset_cycle='1' THEN
                     uds_s <= uds_in;
                     lds_s <= lds_in;
                     as_e <= '0';
@@ -505,7 +524,7 @@ PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, 
         CASE S_state IS
           WHEN "00" =>
                  cpuIPL <= IPL;
-                 IF cpu_int='0' AND (sel_ram='0' OR sel_nmi_vector='1') AND sel_akiko='0' THEN
+                 IF cpu_int='0' AND chipset_cycle='1' THEN
                    rw_e <= wr;
                    IF wr='1' THEN
                      uds_e <= uds_in;
