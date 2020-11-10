@@ -13,6 +13,7 @@ module minimig_autoconfig
 	input	lwr,				//cpu low write
 	input sel,
 	input	[1:0] fastram_config,
+	input m68020,
 	output reg [2:0] board_configured,
 	output reg autoconfig_done
 );
@@ -78,7 +79,7 @@ begin
 					case(acdevice)
 						2'b00 : begin // ZII RAM
 								board_configured[0] <= 1'b1;
-								acdevice<=&fastram_config ? 2'b01 : 2'b11; // ZIII RAM next
+								acdevice<=(&fastram_config & m68020) ? 2'b01 : 2'b11; // ZIII RAM next
 							end
 						2'b01 : begin // ZIII RAM
 								board_configured[1] <= 1'b1;

@@ -1057,6 +1057,7 @@ minimig_autoconfig autoconfig
 	.lwr(cpu_lwr),
 	.sel(sel_autoconfig),
 	.fastram_config(memory_config[5:4]),
+	.m68020(cpu_config[1]),
 	.board_configured(board_configured),
 	.autoconfig_done(autoconfig_done)
 );
