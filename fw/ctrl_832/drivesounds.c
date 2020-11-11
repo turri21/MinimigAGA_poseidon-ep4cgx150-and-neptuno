@@ -333,22 +333,21 @@ int drivesounds_fill()
 	{
 		while(dse=drivesounds_nextevent())
 		{
+			/* If we're about to start the motor but a stop is in progress, cancel both the stop and start, and go straight to loop. */
+			if(dse->type==DRIVESOUND_MOTORSTART && drivesounds.sounds[DRIVESOUND_MOTORSTOP].active)
+			{
+				drivesounds.sounds[DRIVESOUND_MOTORLOOP].chain=DRIVESOUND_MOTORLOOP;
+				drivesounds.sounds[DRIVESOUND_MOTORSTOP].active=0;
+				drivesounds.sounds[DRIVESOUND_MOTORLOOP].active=1;
+			}
+
 			drivesounds_render(dse->timestamp);
 			drivesounds.sounds[dse->type].cursor=0;
 			switch(dse->type)
 			{
 				case DRIVESOUND_MOTORSTART:
 					drivesounds.sounds[DRIVESOUND_MOTORLOOP].chain=DRIVESOUND_MOTORLOOP;
-					if(drivesounds.sounds[DRIVESOUND_MOTORSTOP].active)
-					{
-						drivesounds.sounds[DRIVESOUND_MOTORSTOP].active=0;
-						drivesounds.sounds[DRIVESOUND_MOTORLOOP].active=1;
-					}
-					else if(drivesounds.sounds[DRIVESOUND_MOTORLOOP].active)
-					{
-						drivesounds.sounds[DRIVESOUND_MOTORLOOP].chain=DRIVESOUND_MOTORLOOP;
-					}
-					else
+					if(!drivesounds.sounds[DRIVESOUND_MOTORLOOP].active)
 					{
 						drivesounds.sounds[DRIVESOUND_MOTORSTART].chain=DRIVESOUND_MOTORLOOP;
 						drivesounds.sounds[DRIVESOUND_MOTORSTART].active=1;
