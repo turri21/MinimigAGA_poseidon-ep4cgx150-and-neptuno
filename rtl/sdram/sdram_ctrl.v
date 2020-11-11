@@ -241,9 +241,9 @@ assign audfill=slot1_type==AUDIO ? cache_fill_1 : 1'b0;
 assign hostRD = sdata_reg;
 assign hostena=slot1_type==HOST ? cache_fill_1 : 1'b0;
 
-// map host processor's address space to 0x580000
+// map host processor's address space to 0x680000
 always @ (*) begin
-	zmAddr = {2'b00, ~hostAddr[22], hostAddr[21], ~hostAddr[20], ~hostAddr[19], hostAddr[18:2]};
+	zmAddr = {2'b00, ~hostAddr[22], ~hostAddr[21], hostAddr[20], ~hostAddr[19], hostAddr[18:2]};
 end
 
 ////////////////////////////////////////

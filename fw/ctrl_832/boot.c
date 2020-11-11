@@ -17,7 +17,7 @@
 static unsigned char *bootscreen_adr; // = 0x80000 + /*120*/112*640/8;
 
 void BootHome() {
-  bootscreen_adr = (unsigned char *)((0x80000 + 112*640/8)^0x580000);
+  bootscreen_adr = (unsigned char *)((0x80000 + 112*640/8)^HOSTMAP_ADDR);
 }
 
 //// boot font ////
@@ -125,7 +125,7 @@ static const char boot_font [96][8] = {
 void BootClearScreen(unsigned short *adr, int size)
 {
 	int i;
-	adr=(unsigned short *)(((int)adr & 0x7fffff) ^ 0x580000);
+	adr=(unsigned short *)(((int)adr & 0x7fffff) ^ HOSTMAP_ADDR);
 	for (i=0; i<size; i++) {
 		*adr++=0;
 	}
@@ -143,7 +143,7 @@ void BootUploadLogo()
 	if (RAOpen(&file, LOGO_FILE)) {
 		RARead(&file, sector_buffer, 512);
 		for (y=0; y<LOGO_HEIGHT; y++) {
-			adr = (unsigned char *)((SCREEN_BPL1+LOGO_OFFSET+y*(SCREEN_WIDTH/8))^0x580000);
+			adr = (unsigned char *)((SCREEN_BPL1+LOGO_OFFSET+y*(SCREEN_WIDTH/8))^HOSTMAP_ADDR);
 			for (x=0; x<LOGO_WIDTH/16; x++) {
 				if (i == 512) {
 					RARead(&file, sector_buffer, 512);
@@ -154,7 +154,7 @@ void BootUploadLogo()
 			}
 		}
 		for (y=0; y<LOGO_HEIGHT; y++) {
-			adr = (unsigned char *)((SCREEN_BPL2+LOGO_OFFSET+y*(SCREEN_WIDTH/8))^0x580000);
+			adr = (unsigned char *)((SCREEN_BPL2+LOGO_OFFSET+y*(SCREEN_WIDTH/8))^HOSTMAP_ADDR);
 			for (x=0; x<LOGO_WIDTH/16; x++) {
 				if (i == 512) {
 					RARead(&file, sector_buffer, 512);
@@ -178,7 +178,7 @@ void BootUploadBall()
 	unsigned char *adr;
 
 	if (RAOpen(&file, BALL_FILE)) {
-		adr = (unsigned char *)(BALL_ADDRESS ^ 0x580000);
+		adr = (unsigned char *)(BALL_ADDRESS ^ HOSTMAP_ADDR);
 		RARead(&file, adr, BALL_SIZE);
 	}
 	ClearError(ERROR_FILESYSTEM);
@@ -194,10 +194,10 @@ void BootUploadCopper()
 	unsigned char *adr;
 
 	if (RAOpen(&file, COPPER_FILE)) {
-		adr = (unsigned char *)(COPPER_ADDRESS ^ 0x580000);
+		adr = (unsigned char *)(COPPER_ADDRESS ^ HOSTMAP_ADDR);
 		RARead(&file, adr, COPPER_SIZE);
 	} else {
-		unsigned short *p = (unsigned short *)(COPPER_ADDRESS ^ 0x580000);
+		unsigned short *p = (unsigned short *)(COPPER_ADDRESS ^ HOSTMAP_ADDR);
 		*p++=0x00e0; *p++=0x0008;
 		*p++=0x00e2; *p++=0x0000;
 		*p++=0x00e4; *p++=0x0008;
@@ -213,7 +213,7 @@ void BootUploadCopper()
 //// BootCustomInit() ////
 void BootCustomInit()
 {
-	unsigned char *upload=(unsigned char *)(0x780000^0x580000);
+	unsigned char *upload=(unsigned char *)(0x780000^HOSTMAP_ADDR);
 	unsigned char *src=bootcustominit_bin;
 	int i=bootcustominit_bin_len;
 	while(i--) /* --i - Off by one error! */

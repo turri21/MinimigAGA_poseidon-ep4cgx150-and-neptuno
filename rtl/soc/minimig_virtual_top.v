@@ -396,7 +396,7 @@ wire aud_clear;
 
 wire [22:0] aud_ramaddr;
 assign aud_ramaddr[15:0]=aud_addr;
-assign aud_ramaddr[22:16]=7'b1101100;  // 0x6c0000 in SDRAM, 0x040000 to host, 0xec0000 to Amiga
+assign aud_ramaddr[22:16]=7'b1101111;  // 0x6f0000 in SDRAM, 0x040000 to host, 0xec0000 to Amiga
 
 reg [9:0] aud_ctr;
 always @(posedge CLK_28) begin

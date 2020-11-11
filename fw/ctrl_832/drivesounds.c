@@ -7,6 +7,7 @@
 
 #include "drivesounds.h"
 
+extern char _bss_end__;
 
 struct drivesound
 {
@@ -376,7 +377,8 @@ int drivesounds_fill()
 int drivesounds_init(const char *filename)
 {
 	int result=0;
-	char *buf=AUDIO_BUFFER+2*AUDIO_BUFFER_SIZE;
+	char *buf=AUDIO_BUFFER;	/* Load the drivesounds immediately in front of the audio buffer */
+	int maxsize=buf-&_bss_end__;
 	RAFile file;
 	drivesounds.in=0;
 	drivesounds.out=0;
@@ -384,9 +386,10 @@ int drivesounds_init(const char *filename)
 	if(RAOpen(&file,filename))
 	{
 		int size=file.size;
-		if(size<(512*1024-2*AUDIO_BUFFER_SIZE))
+		if(size<=maxsize)
 		{
 			printf("Audio file - length %d\n",file.size);		
+			buf-=file.size;
 			RARead(&file,buf,file.size);
 			if(strncmp(buf,"DRIVESND",8)==0)
 			{

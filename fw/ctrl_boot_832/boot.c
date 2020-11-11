@@ -18,7 +18,7 @@
 #ifndef STANDALONE
 void BootDiag()
 {
-	unsigned char *upload=(unsigned char *)(0x780000^0x580000);
+	unsigned char *upload=(unsigned char *)(0x780000^0x680000);
 	unsigned char *src=bootdiag_bin;
 	int i=bootdiag_bin_len;
 	while(i--)
@@ -29,7 +29,7 @@ void BootDiag()
 void ErrorCode(int code)
 {
 #ifndef STANDALONE
-	unsigned char *upload=(unsigned char *)(0x780000^0x580000);
+	unsigned char *upload=(unsigned char *)(0x780000^0x680000);
 	EnableOsd();
 	HW_SPI(HW_SPI_DATA)=OSD_CMD_RST;
 	HW_SPI(HW_SPI_DATA)=SPI_RST_CPU|SPI_CPU_HLT; // Reset the chipset to allow the NTSC flag to take effect.
