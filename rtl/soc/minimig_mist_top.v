@@ -89,24 +89,30 @@ wire           reg_status;
 // tg68
 wire           tg68_rst;
 wire [ 16-1:0] tg68_dat_in;
+wire [ 16-1:0] tg68_dat_in2;
 wire [ 16-1:0] tg68_dat_out;
+wire [ 16-1:0] tg68_dat_out2;
 wire [ 32-1:0] tg68_adr;
 wire [  3-1:0] tg68_IPL;
 wire           tg68_dtack;
 wire           tg68_as;
 wire           tg68_uds;
 wire           tg68_lds;
+wire           tg68_uds2;
+wire           tg68_lds2;
 wire           tg68_rw;
 wire           tg68_ena7RD;
 wire           tg68_ena7WR;
 wire           tg68_ena28;
 wire [ 16-1:0] tg68_cout;
+wire [ 16-1:0] tg68_cin;
 wire           tg68_cpuena;
 wire [  4-1:0] cpu_config;
-wire [2:0]     board_configured;
-//wire [  6-1:0] memcfg;
+wire     [3:0] board_configured;
 wire           turbochipram;
 wire           turbokick;
+wire     [1:0] slow_config;
+wire           aga;
 wire           cache_inhibit;
 wire [ 32-1:0] tg68_cad;
 wire [  7-1:0] tg68_cpustate;
@@ -120,11 +126,14 @@ wire           tg68_ovr;
 // minimig
 wire           led;
 wire [ 16-1:0] ram_data;      // sram data bus
+wire [ 16-1:0] ram_data2;     // sram data bus
 wire [ 16-1:0] ramdata_in;    // sram data bus in
 wire [ 48-1:0] chip48;        // big chip read
 wire [ 23-1:1] ram_address;   // sram address bus
 wire           _ram_bhe;      // sram upper byte select
 wire           _ram_ble;      // sram lower byte select
+wire           _ram_bhe2;     // sram upper byte select 2nd word
+wire           _ram_ble2;     // sram lower byte select 2nd word
 wire           _ram_we;       // sram write enable
 wire           _ram_oe;       // sram output enable
 wire           _15khz;        // scandoubler disable
@@ -243,23 +252,31 @@ TG68K tg68k (
   .ein          (1'b1             ),
   .addr         (tg68_adr         ),
   .data_read    (tg68_dat_in      ),
+  .data_read2   (tg68_dat_in2     ),
   .data_write   (tg68_dat_out     ),
+  .data_write2  (tg68_dat_out2    ),
   .as           (tg68_as          ),
   .uds          (tg68_uds         ),
   .lds          (tg68_lds         ),
+  .uds2         (tg68_uds2        ),
+  .lds2         (tg68_lds2        ),
   .rw           (tg68_rw          ),
   .vma          (                 ),
   .wrd          (                 ),
   .ena7RDreg    (tg68_ena7RD      ),
   .ena7WRreg    (tg68_ena7WR      ),
   .fromram      (tg68_cout        ),
+  .toram        (tg68_cin         ),
   .ramready     (tg68_cpuena      ),
   .cpu          (cpu_config[1:0]  ),
   .turbochipram (turbochipram     ),
   .turbokick    (turbokick        ),
+  .slow_config  (slow_config      ),
+  .aga          (aga              ),
   .cache_inhibit(cache_inhibit    ),
   .ziiram_active(board_configured[0]),
   .ziiiram_active(board_configured[1]),
+  .ziiiram2_active(board_configured[2]),
 //  .fastramcfg   ({&memcfg[5:4],memcfg[5:4]}),
   .eth_en       (1'b1), // TODO
   .sel_eth      (),
@@ -289,11 +306,13 @@ TG68K tg68k (
 	.audio_int(aud_int)
 );
 
-//sdram sdram (
 sdram_ctrl sdram (
+  .sysclk       (clk_114          ),
+  .reset_in     (sdctl_rst        ),
   .cache_rst    (tg68_rst         ),
   .cache_inhibit(cache_inhibit    ),
   .cpu_cache_ctrl (tg68_CACR_out    ),
+  //SDRAM chip
   .sdata        (SDRAM_DQ         ),
   .sdaddr       (SDRAM_A[12:0]    ),
   .dqm          (sdram_dqm        ),
@@ -302,37 +321,44 @@ sdram_ctrl sdram (
   .sd_we        (SDRAM_nWE        ),
   .sd_ras       (SDRAM_nRAS       ),
   .sd_cas       (SDRAM_nCAS       ),
-  .sysclk       (clk_114          ),
-  .reset_in     (sdctl_rst        ),
+  // Control CPU (not used in MiST)
 	.hostce       (1'b0             ),
 	.hostwe       (1'b0             ),
-  .cpuWR        (tg68_dat_out     ),
+  // Fast RAM
+  .cpuena       (tg68_cpuena      ),
+  .cpuRD        (tg68_cout        ),
+  .cpuWR        (tg68_cin         ),
   .cpuAddr      (tg68_cad[24:1]   ),
   .cpuU         (tg68_cuds        ),
   .cpuL         (tg68_clds        ),
   .cpustate     (tg68_cpustate    ),
+  // Chip RAM
   .chipWR       (ram_data         ),
+  .chipWR2      (tg68_dat_out2    ),
   .chipAddr     ({1'b0, ram_address[22:1]}),
   .chipU        (_ram_bhe         ),
   .chipL        (_ram_ble         ),
+  .chipU2       (_ram_bhe2        ),
+  .chipL2       (_ram_ble2        ),
   .chipRW       (_ram_we          ),
   .chip_dma     (_ram_oe          ),
   .clk7_en      (clk7_en          ),
-  .hostRD       (                 ),
-  .hostena      (                 ),
-  .cpuRD        (tg68_cout        ),
-  .cpuena       (tg68_cpuena      ),
   .chipRD       (ramdata_in       ),
   .chip48       (chip48           ),
+  // RTG
   .rtgAddr      (rtg_addr_mangled ),
   .rtgce        (rtg_ramreq       ),
   .rtgfill      (rtg_fill         ),
   .rtgRd        (rtg_fromram      ), 
+  // Audio buffer
   .audAddr      (aud_ramaddr      ),
   .audce        (aud_ramreq       ),
   .audfill      (aud_fill         ),
   .audRd        (aud_fromram      ),
+  // Misc signals
   .reset_out    (reset_out        ),
+  .hostRD       (                 ),
+  .hostena      (                 ),
   .enaRDreg     (                 ),
   .enaWRreg     (tg68_ena28       ),
   .ena7RDreg    (tg68_ena7RD      ),
@@ -382,12 +408,15 @@ wire [  8-1:0] VGA_B_INT;      // VGA Blue[5:0]
 minimig minimig (
   //m68k pins
   .cpu_address  (tg68_adr[23:1]   ), // M68K address bus
-  .cpu_data     (tg68_dat_in      ), // M68K data bus
+  .cpu_data     (tg68_dat_in      ), // M68K data bus word1
+  .cpu_data2    (tg68_dat_in2     ), // M68K data bus word2
   .cpudata_in   (tg68_dat_out     ), // M68K data in
   ._cpu_ipl     (tg68_IPL         ), // M68K interrupt request
   ._cpu_as      (tg68_as          ), // M68K address strobe
   ._cpu_uds     (tg68_uds         ), // M68K upper data strobe
   ._cpu_lds     (tg68_lds         ), // M68K lower data strobe
+  ._cpu_uds2    (tg68_uds2        ), // M68K upper data strobe 2nd word
+  ._cpu_lds2    (tg68_lds2        ), // M68K lower data strobe 2nd word
   .cpu_r_w      (tg68_rw          ), // M68K read / write
   ._cpu_dtack   (tg68_dtack       ), // M68K data acknowledge
   ._cpu_reset   (tg68_rst         ), // M68K reset
@@ -400,6 +429,8 @@ minimig minimig (
   .ram_address  (ram_address[22:1]), // SRAM address bus
   ._ram_bhe     (_ram_bhe         ), // SRAM upper byte select
   ._ram_ble     (_ram_ble         ), // SRAM lower byte select
+  ._ram_bhe2    (_ram_bhe2        ), // SRAM upper byte select 2nd word
+  ._ram_ble2    (_ram_ble2        ), // SRAM lower byte select 2nd word
   ._ram_we      (_ram_we          ), // SRAM write enable
   ._ram_oe      (_ram_oe          ), // SRAM output enable
   .chip48       (chip48           ), // big chipram read
@@ -467,6 +498,8 @@ minimig minimig (
 //  .memcfg       (memcfg           ), // memory config
   .turbochipram (turbochipram     ), // turbo chipRAM
   .turbokick    (turbokick        ), // turbo kickstart
+  .slow_config  (slow_config      ),
+  .aga          (aga              ),
   .init_b       (                 ), // vertical sync for MCU (sync OSD update)
   .fifo_full    (                 ),
   // fifo / track display
@@ -731,7 +764,7 @@ wire aud_clear;
 
 wire [22:0] aud_ramaddr;
 assign aud_ramaddr[15:0]=aud_addr[15:0];
-assign aud_ramaddr[22:16]=7'b0110000;  // 0x300000 in SDRAM, 0x680000 to host, 0xb00000 to Amiga
+assign aud_ramaddr[22:16]=7'b1101111;  // 0x6f0000 in SDRAM, 0x070000 to host, 0xef0000 to Amiga
 
 reg [9:0] aud_ctr;
 always @(posedge clk_28) begin

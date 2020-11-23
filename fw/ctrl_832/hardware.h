@@ -17,6 +17,9 @@
 #include "spi.h"
 #include "uart.h"
 
+/* 0x680000 is 0xe80000 in Amiga space */
+#define HOSTMAP_ADDR 0x680000
+
 #define DISKLED_ON // *AT91C_PIOA_SODR = DISKLED;
 #define DISKLED_OFF // *AT91C_PIOA_CODR = DISKLED;
 
@@ -25,8 +28,8 @@
 #define AUDIOF_ENA 1
 #define AUDIOF_AMIGA 2
 
-/* AUDIO_BUFFER at host address 0x680000, is 0xb00000 in Amiga space */
-#define AUDIO_BUFFER 0x680000
+/* AUDIO_BUFFER at host address 0x70000, is 0xef0000 in Amiga space */
+#define AUDIO_BUFFER 0x70000
 /* We have two alternating buffers of this size */
 #define AUDIO_BUFFER_SIZE 0x8000
 

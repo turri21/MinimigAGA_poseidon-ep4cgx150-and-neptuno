@@ -51,9 +51,12 @@ module sdram_ctrl(
   input  wire    [23:1] chipAddr,
   input  wire           chipL,
   input  wire           chipU,
+  input  wire           chipL2,
+  input  wire           chipU2,
   input  wire           chipRW,
   input  wire           chip_dma,
   input  wire [ 16-1:0] chipWR,
+  input  wire [ 16-1:0] chipWR2,
   output reg  [ 16-1:0] chipRD,
   output wire [ 48-1:0] chip48,
   // RTG
@@ -156,6 +159,7 @@ reg           clk7_enD;
 reg  [ 9-1:0] refreshcnt;
 reg           refresh_pending;
 reg  [ 4-1:0] sdram_state;
+reg           snoop_act;
 // writebuffer
 reg           slot1_write;
 reg           slot2_write;
@@ -241,17 +245,14 @@ assign audfill=slot1_type==AUDIO ? cache_fill_1 : 1'b0;
 assign hostRD = sdata_reg;
 assign hostena=slot1_type==HOST ? cache_fill_1 : 1'b0;
 
-// map host processor's address space to 0x580000
+// map host processor's address space to 0x680000
 always @ (*) begin
-	zmAddr = {2'b00, ~hostAddr[22], hostAddr[21], ~hostAddr[20], ~hostAddr[19], hostAddr[18:2]};
+	zmAddr = {2'b00, ~hostAddr[22], ~hostAddr[21], hostAddr[20], ~hostAddr[19], hostAddr[18:2]};
 end
 
 ////////////////////////////////////////
 // cpu cache
 ////////////////////////////////////////
-
-wire snoop_act;
-assign snoop_act = ((sdram_state==ph2)&&(!chipRW));
 
 //// cpu cache ////
 cpu_cache_new cpu_cache (
@@ -280,7 +281,8 @@ cpu_cache_new cpu_cache (
 	.sdr_write_ack    (writebuffer_hold),
 	.snoop_act        (snoop_act),                    // snoop act (write only - just update existing data in cache)
 	.snoop_adr        ({1'b0, chipAddr, 1'b0}),       // snoop address
-	.snoop_dat_w      (chipWR)                        // snoop write data
+	.snoop_dat_w      ({chipWR2, chipWR}),            // snoop write data
+	.snoop_bs         ({!chipU2, !chipL2, !chipU, !chipL})
 );
 
 assign longword_en = cpuLongword && cpuAddr_r[3:1]!=3'b111 && cpustate[1:0]==2'b11;
@@ -450,6 +452,7 @@ always @ (posedge sysclk) begin
 	dqm                         <= #1 2'b00;
 	cache_fill_1                <= #1 1'b0;
 	cache_fill_2                <= #1 1'b0;
+	snoop_act                   <= #1 1'b0;
 	if(!init_done) begin
 		if(sdram_state == ph1) begin
 			case(initstate)
@@ -525,7 +528,7 @@ always @ (posedge sysclk) begin
 					sd_cmd              <= #1 CMD_ACTIVE;
 					slot1_bank          <= #1 2'b00;
 					slot1_dqm           <= #1 {chipU,chipL};
-					slot1_dqm2          <= #1 2'b11;
+					slot1_dqm2          <= #1 {chipU2,chipL2};
 					slot1_addr          <= #1 {1'b0, chipAddr, 1'b0};
 					slot1_write         <= #1 !chipRW;
 				end
@@ -590,6 +593,8 @@ always @ (posedge sysclk) begin
 			end
 
 			ph2 : begin
+				if(slot1_type == CHIP && slot1_write) snoop_act <= #1 1'b1;
+
 				if(slot2_write) begin // Write cycle (2nd word)
 					sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b1, 1'b0, slot2_addr[9:4]}; // auto-precharge
 					sdaddr[2:0]         <= #1 slot2_addr[3:1] + 1'd1;
@@ -697,6 +702,7 @@ always @ (posedge sysclk) begin
 					sdaddr[2:0]     <= #1 slot1_addr[3:1] + 1'd1;
 					ba              <= #1 slot1_bank;
 					case (slot1_type)
+						CHIP:           sdata_out <= #1 chipWR2;
 						CPU_WRITECACHE:	sdata_out <= #1 writebufferWR2_reg;
 						default :       sdata_out <= #1 hostWR[15:0];
 					endcase

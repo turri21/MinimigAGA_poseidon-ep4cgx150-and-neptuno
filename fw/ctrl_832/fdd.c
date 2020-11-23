@@ -702,19 +702,27 @@ void HandleFDD(unsigned char c1, unsigned char c2, unsigned char c3, unsigned ch
 		{
 			if((c4&1)!=df[sel].motor && (df[sel].status&DSK_INSERTED))
 			{
-				if(c4&1)
-					drivesounds_queueevent(DRIVESOUND_MOTORSTART);
-				else
-					drivesounds_queueevent(DRIVESOUND_MOTORSTOP);
-				printf("DF%d: motor %s\n",sel,(c4&1) ? "On" : "Off");
+				int driveson=0;
+				int i;
 				df[sel].motor=c4&1;
+				/* Count how many drives are active - we can only simulate motor sounds for one drive at a time. */
+				for(i=0;i<4;++i)
+				{
+					if(df[i].motor)
+						++driveson;
+				}
+				if((c4&1) && driveson==1)
+					drivesounds_queueevent(DRIVESOUND_MOTORSTART);
+				else if(driveson==0)
+					drivesounds_queueevent(DRIVESOUND_MOTORSTOP);
+/*				printf("DF%d: motor %s (%d)\n",sel,(c4&1) ? "On" : "Off",driveson); */
 			}
 			c4>>=1;
 		}
         sel = (c1 >> 6) & 0x03;
 		if((df[sel].status&DSK_INSERTED) && (df[sel].track&254)!=(c2&254))
 		{
-			printf("DF%d: track changed to %d\n",sel,c2);
+/*			printf("DF%d: track changed to %d\n",sel,c2); */
 			df[sel].track=c2;
 			drivesounds_queueevent(DRIVESOUND_STEP);
 		}

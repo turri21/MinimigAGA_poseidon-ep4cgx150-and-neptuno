@@ -159,7 +159,7 @@ int cd_cueaudio(struct cdimage *cd,int track)
 	if(cd->error==CD_OK)
 	{
 		cd->error=CD_FILENOTFOUND;
-		if(audiotrack_init(&cd->audio,cd->filename,cd->offset,cd->length,AUDIO_BUFFER))   /* 0xb00000 in Amiga space */
+		if(audiotrack_init(&cd->audio,cd->filename,cd->offset,cd->length,AUDIO_BUFFER))   /* 0xef0000 in Amiga space */
 		{
 			cd->error=CD_OK;
 			audiotrack_fill(&cd->audio);

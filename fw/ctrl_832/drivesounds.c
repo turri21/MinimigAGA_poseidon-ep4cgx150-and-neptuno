@@ -7,6 +7,7 @@
 
 #include "drivesounds.h"
 
+extern char _bss_end__;
 
 struct drivesound
 {
@@ -332,22 +333,21 @@ int drivesounds_fill()
 	{
 		while(dse=drivesounds_nextevent())
 		{
+			/* If we're about to start the motor but a stop is in progress, cancel both the stop and start, and go straight to loop. */
+			if(dse->type==DRIVESOUND_MOTORSTART && drivesounds.sounds[DRIVESOUND_MOTORSTOP].active)
+			{
+				drivesounds.sounds[DRIVESOUND_MOTORLOOP].chain=DRIVESOUND_MOTORLOOP;
+				drivesounds.sounds[DRIVESOUND_MOTORSTOP].active=0;
+				drivesounds.sounds[DRIVESOUND_MOTORLOOP].active=1;
+			}
+
 			drivesounds_render(dse->timestamp);
 			drivesounds.sounds[dse->type].cursor=0;
 			switch(dse->type)
 			{
 				case DRIVESOUND_MOTORSTART:
 					drivesounds.sounds[DRIVESOUND_MOTORLOOP].chain=DRIVESOUND_MOTORLOOP;
-					if(drivesounds.sounds[DRIVESOUND_MOTORSTOP].active)
-					{
-						drivesounds.sounds[DRIVESOUND_MOTORSTOP].active=0;
-						drivesounds.sounds[DRIVESOUND_MOTORLOOP].active=1;
-					}
-					else if(drivesounds.sounds[DRIVESOUND_MOTORLOOP].active)
-					{
-						drivesounds.sounds[DRIVESOUND_MOTORLOOP].chain=DRIVESOUND_MOTORLOOP;
-					}
-					else
+					if(!drivesounds.sounds[DRIVESOUND_MOTORLOOP].active)
 					{
 						drivesounds.sounds[DRIVESOUND_MOTORSTART].chain=DRIVESOUND_MOTORLOOP;
 						drivesounds.sounds[DRIVESOUND_MOTORSTART].active=1;
@@ -376,7 +376,8 @@ int drivesounds_fill()
 int drivesounds_init(const char *filename)
 {
 	int result=0;
-	char *buf=AUDIO_BUFFER+2*AUDIO_BUFFER_SIZE;
+	char *buf=AUDIO_BUFFER;	/* Load the drivesounds immediately in front of the audio buffer */
+	int maxsize=buf-&_bss_end__;
 	RAFile file;
 	drivesounds.in=0;
 	drivesounds.out=0;
@@ -384,9 +385,10 @@ int drivesounds_init(const char *filename)
 	if(RAOpen(&file,filename))
 	{
 		int size=file.size;
-		if(size<(512*1024-2*AUDIO_BUFFER_SIZE))
+		if(size<=maxsize)
 		{
 			printf("Audio file - length %d\n",file.size);		
+			buf-=file.size;
 			RARead(&file,buf,file.size);
 			if(strncmp(buf,"DRIVESND",8)==0)
 			{
