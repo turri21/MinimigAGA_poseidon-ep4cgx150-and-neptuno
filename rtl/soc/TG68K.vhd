@@ -112,14 +112,6 @@ SIGNAL addrtg68         : std_logic_vector(31 downto 0);
 SIGNAL cpuaddr          : std_logic_vector(31 downto 0);
 SIGNAL r_data           : std_logic_vector(15 downto 0);
 SIGNAL cpuIPL           : std_logic_vector(2 downto 0);
-SIGNAL as_s             : std_logic;
-SIGNAL as_e             : std_logic;
-SIGNAL uds_s            : std_logic;
-SIGNAL uds_e            : std_logic;
-SIGNAL lds_s            : std_logic;
-SIGNAL lds_e            : std_logic;
-SIGNAL rw_s             : std_logic;
-SIGNAL rw_e             : std_logic;
 SIGNAL vpad             : std_logic;
 SIGNAL waitm            : std_logic;
 SIGNAL clkena_e         : std_logic;
@@ -458,123 +450,90 @@ END PROCESS;
 chipset_cycle <= '1' when (sel_ram='0' OR sel_nmi_vector='1')
 	AND sel_akiko='0' and sel_undecoded='0' else '0';
 
-PROCESS (clk, reset, state, as_s, as_e, rw_s, rw_e, uds_s, uds_e, lds_s, lds_e, chipset_cycle)
-  BEGIN
-    IF state="01" THEN
-      as <= '1';
-      rw <= '1';
-      uds <= '1';
-      lds <= '1';
-    ELSE
-      as <= (as_s AND as_e) OR NOT chipset_cycle;
-      rw <= rw_s AND rw_e;
-      uds <= uds_s AND uds_e;
-      lds <= lds_s AND lds_e;
-    END IF;
-    IF reset='0' THEN
-      S_state <= "00";
-      as_s <= '1';
-      rw_s <= '1';
-      uds_s <= '1';
-      lds_s <= '1';
+PROCESS (clk, reset)
+BEGIN
+	IF reset='0' THEN
+		S_state <= "00";
+		as <= '1';
+		rw <= '1';
+		uds <= '1';
+		lds <= '1';
+		uds2 <= '1';
+		lds2 <= '1';
+		clkena_e <= '0';
+		clkena_f <= '0';
+	ELSIF rising_edge(clk) THEN
+		IF S_state = "01" AND clkena_e = '1' THEN
+			uds2 <= uds_in;
+			lds2 <= lds_in;
+			data_write2 <= w_datatg68;
+		END IF;
 
-      as_e <= '1';
-      rw_e <= '1';
-      uds_e <= '1';
-      lds_e <= '1';
-      uds2 <= '1';
-      lds2 <= '1';
-      clkena_e <= '0';
-      clkena_f <= '0';
-    ELSIF rising_edge(clk) THEN
-      IF S_state = "01" AND clkena_e = '1' THEN
-        uds2 <= uds_in;
-        lds2 <= lds_in;
-        data_write2 <= w_datatg68;
-      END IF;
-      IF ena7WRreg='1' THEN
-        as_s <= '1';
-        rw_s <= '1';
-        uds_s <= '1';
-        lds_s <= '1';
-          CASE S_state IS
-            WHEN "00" => IF cpu_int='0' AND chipset_cycle='1' THEN
-                    uds_s <= uds_in;
-                    lds_s <= lds_in;
-                    uds2 <= '1';
-                    lds2 <= '1';
-                    as_e <= '0';
-                    rw_s <= wr;
-                    data_write <= w_datatg68;
-                    addr <= cpuaddr;
-                    IF aga = '1' AND cpu(1) = '1' AND longword = '1' AND state = "11" AND cpuaddr(1 downto 0) = "00" AND sel_chip = '1' THEN
-                       -- 32 bit write
-                       clkena_e <= '1';
-                    END IF;
-                    S_state <= "01";
-                   END IF;
-            WHEN "01" => as_s <= '0';
-                   uds_s <= uds_in;
-                   lds_s <= lds_in;
-                   clkena_e <= '0';
-                   S_state <= "10";
-            WHEN "10" =>
-                   r_data <= data_read;
-                   IF waitm='0' OR (vma='0' AND sync_state=sync9) THEN
-                    S_state <= "11";
-                   ELSE
-                     as_s <= '0';
-                     rw_s <= wr;
-                     uds_s <= uds_in;
-                     lds_s <= lds_in;
-                   END IF;
-            WHEN "11" =>
-                   IF clkena_f = '1' THEN
-                     clkena_f <= '0';
-                     r_data <= data_read2;
-                   END IF;
-            WHEN OTHERS => null;
-          END CASE;
-      ELSIF ena7RDreg='1' THEN
-        as_e <= '1';
-        rw_e <= '1';
-        uds_e <= '1';
-        lds_e <= '1';
-        clkena_f <= '0';
-        CASE S_state IS
-          WHEN "00" =>
-                 cpuIPL <= IPL;
-                 IF cpu_int='0' AND chipset_cycle='1' THEN
-                   rw_e <= wr;
-                   IF wr='1' THEN
-                     uds_e <= uds_in;
-                     lds_e <= lds_in;
-                   END IF;
-                 END IF;
-          WHEN "01" =>
-                  as_e <= '0';
-                   rw_e <= wr;
-                   uds_e <= uds_in;
-                   lds_e <= lds_in;
-          WHEN "10" => rw_e <= wr;
-                 cpuIPL <= IPL;
-                 waitm <= dtack;
-          WHEN "11" =>
-                 clkena_e <= '1';
-                 IF aga = '1' AND cpu(1) = '1' AND longword = '1' AND state(0) = '0' AND cpuaddr(1 downto 0) = "00" AND (sel_chip = '1' OR sel_kick = '1') THEN
-                   -- 32 bit read
-                   clkena_f <= '1';
-                 END IF;
-                 IF clkena = '1' THEN
-                   S_state <= "00";
-                   clkena_e <= '0';
-                   uds2 <= '1';
-                   lds2 <= '1';
-                 END IF;
-          WHEN OTHERS => null;
-        END CASE;
-      END IF;
-    END IF;
+		IF ena7WRreg='1' THEN
+			CASE S_state IS
+				WHEN "00" =>
+					IF cpu_int='0' AND chipset_cycle='1' THEN
+						uds <= uds_in;
+						lds <= lds_in;
+						uds2 <= '1';
+						lds2 <= '1';
+						as <= '0';
+						rw <= wr;
+						data_write <= w_datatg68;
+						addr <= cpuaddr;
+						IF aga = '1' AND cpu(1) = '1' AND longword = '1' AND state = "11" AND cpuaddr(1 downto 0) = "00" AND sel_chip = '1' THEN
+							-- 32 bit write
+							clkena_e <= '1';
+						END IF;
+						S_state <= "01";
+					END IF;
+				WHEN "01" =>
+					clkena_e <= '0';
+					S_state <= "10";
+				WHEN "10" =>
+					IF waitm='0' OR (vma='0' AND sync_state=sync9) THEN
+						S_state <= "11";
+					END IF;
+				WHEN "11" =>
+					IF clkena_f = '1' THEN
+						clkena_f <= '0';
+						r_data <= data_read2;
+					END IF;
+				WHEN OTHERS => null;
+			END CASE;
+		ELSIF ena7RDreg='1' THEN
+			clkena_f <= '0';
+			CASE S_state IS
+				WHEN "00" =>
+					cpuIPL <= IPL;
+				WHEN "01" =>
+				WHEN "10" =>
+					cpuIPL <= IPL;
+					waitm <= dtack;
+				WHEN "11" =>
+					as <= '1';
+					rw <= '1';
+					uds <= '1';
+					lds <= '1';
+					uds2 <= '1';
+					lds2 <= '1';
+					IF clkena_e = '0' THEN
+						r_data <= data_read;
+					END IF;
+
+					clkena_e <= '1';
+					IF aga = '1' AND cpu(1) = '1' AND longword = '1' AND state(0) = '0' AND cpuaddr(1 downto 0) = "00" AND (sel_chip = '1' OR sel_kick = '1') THEN
+						-- 32 bit read
+						clkena_f <= '1';
+					END IF;
+					IF clkena = '1' THEN
+						S_state <= "00";
+						clkena_e <= '0';
+					END IF;
+				WHEN OTHERS => null;
+			END CASE;
+		END IF;
+	END IF;
 END PROCESS;
 
 END;
