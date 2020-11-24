@@ -28,6 +28,7 @@ module sdram_ctrl(
   input  wire           reset_in,
   input  wire           cache_rst,
   input  wire           cache_inhibit,
+  input  wire           cacheline_clr,
   input  wire [  4-1:0] cpu_cache_ctrl,
   output wire           reset_out,
   // sdram
@@ -259,6 +260,7 @@ cpu_cache_new cpu_cache (
 	.cache_en         (1'b1),                         // cache enable
 	.cpu_cache_ctrl   (cpu_cache_ctrl),               // CPU cache control
 	.cache_inhibit    (cache_inhibit),                // cache inhibit
+	.cacheline_clr    (cacheline_clr),
 	.cpu_cs           (!cpuCSn),                      // cpu activity
 	.cpu_adr          ({cpuAddr, 1'b0}),              // cpu address
 	.cpu_bs           ({!cpuU, !cpuL}),               // cpu byte selects

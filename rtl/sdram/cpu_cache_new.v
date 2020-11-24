@@ -16,6 +16,7 @@ module cpu_cache_new (
   input  wire           cache_en,       // cache enable
   input  wire [  4-1:0] cpu_cache_ctrl, // CPU cache control
   input  wire           cache_inhibit,  // cache inhibit
+  input  wire           cacheline_clr,
   // cpu
   input  wire           cpu_cs,         // cpu activity
   input  wire [ 25-1:0] cpu_adr,        // cpu address
@@ -289,6 +290,8 @@ always @ (posedge clk) begin
     cpu_sm_bs         <= #1 4'b1111;
 
     cpu_dat_r <= {cpu_cacheline_hi[cpu_adr_blk], cpu_cacheline_lo[cpu_adr_blk]};
+
+    if (cacheline_clr) cpu_cacheline_dirty <= #1 1'b1;
 
     // state machine
     case (cpu_sm_state)

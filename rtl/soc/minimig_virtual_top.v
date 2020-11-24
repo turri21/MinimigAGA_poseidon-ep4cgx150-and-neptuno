@@ -145,6 +145,7 @@ wire           turbokick;
 wire [1:0]     slow_config;
 wire           aga;
 wire           cache_inhibit;
+wire           cacheline_clr;
 wire [ 32-1:0] tg68_cad;
 wire [  7-1:0] tg68_cpustate;
 wire           tg68_nrst_out;
@@ -510,6 +511,7 @@ TG68K #(.havertg(havertg ? "true" : "false"),
   .slow_config  (slow_config      ),
   .aga          (aga              ),
   .cache_inhibit(cache_inhibit    ),
+  .cacheline_clr(cacheline_clr    ),
   .ziiram_active(board_configured[0]),
   .ziiiram_active(board_configured[1]),
   .ziiiram2_active(board_configured[2]),
@@ -567,6 +569,7 @@ wire           hostce;
 sdram_ctrl sdram (
   .cache_rst    (tg68_rst         ),
   .cache_inhibit(cache_inhibit    ),
+  .cacheline_clr(cacheline_clr    ),
   .cpu_cache_ctrl (tg68_CACR_out    ),
   .sdata        (SDRAM_DQ         ),
   .sdaddr       (SDRAM_A[12:0]    ),

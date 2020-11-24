@@ -74,6 +74,7 @@ port(
 	turbochipram  : in      std_logic;
 	turbokick     : in      std_logic;
 	cache_inhibit : out     std_logic;
+	cacheline_clr : out     std_logic;
 	--    ovr           : in      std_logic;
 	ramaddr       : out     std_logic_vector(31 downto 0);
 	cpustate      : out     std_logic_vector(6 downto 0);
@@ -342,10 +343,12 @@ PROCESS (clk, turbochipram, turbokick) BEGIN
       turbochip_d <= '0';
       turbokick_d <= '0';
       turboslow_d <= '0';
+      cacheline_clr <= '0';
     ELSIF state="01" THEN -- No mem access, so safe to switch chipram access mode
       turbochip_d <= turbochipram;
       turbokick_d <= turbokick;
       turboslow_d <= turbochipram OR aga;
+      cacheline_clr <= (turbochipram XOR turbochip_d);
     END IF;
     sel_ram_d<=sel_ram;
   END IF;

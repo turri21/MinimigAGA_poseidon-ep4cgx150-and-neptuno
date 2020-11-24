@@ -140,6 +140,7 @@ sdram_ctrl sdram_ctrl (
   .cache_rst    (reset            ),
   .reset_out    (reset_out        ),
   .cache_inhibit(cache_inhibit    ),
+  .cacheline_clr(1'b0             ),
   .cpu_cache_ctrl(4'b0011         ),
   // sdram
   .sdaddr       (DRAM_ADDR        ),
