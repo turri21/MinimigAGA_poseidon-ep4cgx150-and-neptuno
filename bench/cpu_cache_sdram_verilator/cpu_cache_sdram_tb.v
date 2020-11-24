@@ -185,14 +185,12 @@ sdram_ctrl sdram_ctrl (
   .cpustate     (tg68_cpustate    ),
   .cpuL         (tg68_clds        ),
   .cpuU         (tg68_cuds        ),
-  .cpu_dma      (                 ),
   .cpuWR        (tg68_dat_out     ),
   .cpuRD        (tg68_dat_in      ),
   .enaWRreg     (tg68_ena28       ),
   .ena7RDreg    (tg68_ena7RD      ),
   .ena7WRreg    (tg68_ena7WR      ),
-  .cpuena       (tg68_cpuena      ),
-  .enaRDreg     (                 )
+  .cpuena       (tg68_cpuena      )
 );
 
 // SDRAM

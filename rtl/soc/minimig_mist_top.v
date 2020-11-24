@@ -359,7 +359,6 @@ sdram_ctrl sdram (
   .reset_out    (reset_out        ),
   .hostRD       (                 ),
   .hostena      (                 ),
-  .enaRDreg     (                 ),
   .enaWRreg     (tg68_ena28       ),
   .ena7RDreg    (tg68_ena7RD      ),
   .ena7WRreg    (tg68_ena7WR      )

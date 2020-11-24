@@ -74,14 +74,12 @@ module sdram_ctrl(
   input  wire [  7-1:0] cpustate,
   input  wire           cpuL,
   input  wire           cpuU,
-  input  wire           cpu_dma,
   input  wire [ 16-1:0] cpuWR,
   output wire [ 16-1:0] cpuRD,
   output reg            enaWRreg,
   output reg            ena7RDreg,
   output reg            ena7WRreg,
-  output wire           cpuena,
-  output reg            enaRDreg
+  output wire           cpuena
 );
 
 
@@ -323,12 +321,10 @@ end
 //// write / read control ////
 always @ (posedge sysclk) begin
 	if(!reset_sdstate) begin
-		enaRDreg      <= #1 1'b0;
 		enaWRreg      <= #1 1'b0;
 		ena7RDreg     <= #1 1'b0;
 		ena7WRreg     <= #1 1'b0;
 	end else begin
-		enaRDreg      <= #1 1'b0;
 		enaWRreg      <= #1 1'b0;
 		ena7RDreg     <= #1 1'b0;
 		ena7WRreg     <= #1 1'b0;
