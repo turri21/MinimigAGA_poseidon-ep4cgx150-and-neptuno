@@ -664,6 +664,7 @@ userio USERIO1
 	.sol(sol),
 	.sof(sof),
 	.varbeamen(varbeamen),
+	.rtg_ena(rtg_ena),
 	.reg_address_in(reg_address),
 	.data_in(custom_data_in),
 	.data_out(user_data_out),

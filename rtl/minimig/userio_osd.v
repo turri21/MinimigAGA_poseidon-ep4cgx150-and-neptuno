@@ -12,6 +12,7 @@ module userio_osd
 	input	sol,				//start of video line
 	input	sof,				//start of video frame 
   input varbeamen,
+   input rtg_ena,
 	input	[7:0] osd_ctrl,		//keycode for OSD control (Amiga keyboard codes + additional keys coded as values > 80h)
 	input	_scs,				//SPI enable
 	input	sdi,		  		//SPI data in
@@ -49,7 +50,7 @@ module userio_osd
 
 //local signals
 reg		[10:0] horbeam;			//horizontal beamcounter
-reg		[8:0] verbeam;			//vertical beamcounter
+reg		[9:0] verbeam;			//vertical beamcounter
 reg		[7:0] osdbuf [0:2048-1];	//osd video buffer
 wire	osdframe;				//true if beamcounters within osd frame
 reg		[7:0] bufout;			//osd buffer read data
@@ -62,7 +63,7 @@ wire	wren;					//osd buffer write enable
 reg		[5:0] vpos;
 reg		vena;
 
-wire  [8:0] verbeam_osdclk;
+wire  [9:0] verbeam_osdclk;
 
 reg 	[6:0] t_memory_config = 7'b0_00_01_01;
 reg		[2:0] t_ide_config = 0;
@@ -105,7 +106,7 @@ end
 //osd local horizontal beamcounter
 always @(posedge clk)
 	if (sol && !c1 && !c3)
-		horbeam <= 11'd0;
+		horbeam <= rtg_ena ? 11'd220 : 11'd0;
 	else
 		horbeam <= horbeam + 11'd1;
 
@@ -113,9 +114,9 @@ always @(posedge clk)
 always @(posedge clk)
   if (clk7_en) begin
   	if (sof)
-  		verbeam <= 9'd0;
+  		verbeam <= 10'd0;
   	else if (sol)
-  		verbeam <= verbeam + 9'd1;
+  		verbeam <= verbeam + 10'd1;
   end
 
 always @(posedge clk)
@@ -143,7 +144,7 @@ wire [7:0] horbeam_osd = horbeam_osdclk[7:0] - (varbeamen?8'd191:8'd192);
 //vertical part..
 reg vframe;
 
-assign verbeam_osdclk = varbeamen?{1'b0, verbeam[8:1]}:verbeam;
+assign verbeam_osdclk = varbeamen?{1'b0, verbeam[9:1]}:verbeam;
 
 always @(posedge clk)
   if (clk7_en) begin
