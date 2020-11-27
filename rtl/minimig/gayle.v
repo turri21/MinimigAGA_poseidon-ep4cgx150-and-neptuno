@@ -130,6 +130,7 @@ reg		dev;			// drive select (Master/Slave)
 wire 	bsy;			// busy
 wire 	drdy;			// drive ready
 wire 	drq;			// data request
+reg  	drq_d;		// data request
 wire 	err;			// error
 wire 	[7:0] status;	// HDD status
 
@@ -154,10 +155,18 @@ assign hd_frd = fifo_rd;
 // HDD status register
 assign status = {bsy,drdy,2'b00,drq,2'b00,err};
 
-// status debug
-//reg [7:0] status_dbg /* synthesis syn_noprune */;
-//always @ (posedge clk) status_dbg <= #1 status;
-
+// cmd/status debug
+//reg [7:0] status_dbg  /* synthesis noprune */;
+//reg [7:0] dbg_ide_cmd /* synthesis noprune */;
+/*
+always @(posedge clk) begin
+	status_dbg <= #1 status;
+	if (clk7_en) begin
+		if (sel_command) // set when the CPU writes command register
+			dbg_ide_cmd <= data_in[15:8];
+	end
+end
+*/
 // HDD status register bits
 assign bsy = busy & ~drq;
 assign drdy = ~(bsy|drq);
@@ -271,7 +280,7 @@ assign gayleid = ~gayleid_cnt[1] | gayleid_cnt[0]; // Gayle ID output data
 // 7 - busy status (write zero to finish command processing: allow host access to task file registers)
 // 6
 // 5
-// 4 - intreq
+// 4 - intreq (used for writes only)
 // 3 - drq enable for pio in (PI) command type
 // 2 - drq enable for pio out (PO) command type
 // 1
@@ -291,16 +300,24 @@ always @(posedge clk)
 // IDE interrupt request register
 always @(posedge clk)
   if (clk7_en) begin
+  	drq_d <= drq;
+
   	if (reset)
   		intreq <= GND;
-  	else if (busy && hdd_status_wr && hdd_data_out[4]) // set by SPI host
-  		intreq <= VCC;
-  	else if (sel_intreq && hwr && !data_in[15]) // cleared by the CPU
-  		intreq <= GND;
+  	else begin
+			if (pio_in) begin // reads
+				if (!drq_d & drq) intreq <= VCC;
+			end else if (pio_out) begin // writes
+				if (hdd_status_wr && hdd_data_out[4]) intreq <= VCC;
+			end else if (hdd_status_wr && hdd_data_out[7]) // other command types completed
+				intreq <= VCC;
+
+			if (sel_intreq && hwr && !data_in[15]) // cleared by the CPU
+				intreq <= GND;
+		end
   end
 
-wire irq_pending = (~pio_in | drq) & intreq;
-assign irq = irq_pending & intena; // interrupt request line (INT2)
+assign irq = intreq & intena; // interrupt request line (INT2)
 
 // pio in command type
 always @(posedge clk)
@@ -367,7 +384,7 @@ assign nrdy = pio_in & sel_fifo & fifo_empty;
 //data_out multiplexer
 assign data_out = (sel_fifo && rd ? fifo_data_out : sel_status ? (!dev && hdd_ena[0]) || (dev && hdd_ena[1]) ? {status,8'h00} : 16'h00_00 : sel_tfr && rd ? {tfr_out,8'h00} : 16'h00_00)
          | (sel_cs      && rd  ? {(cs_mask[5] || intreq), cs_mask[4:0], cs, 8'h0} : 16'h00_00)
-         | (sel_intreq  && rd  ? {irq_pending, 15'b000_0000_0000_0000}            : 16'h00_00)
+         | (sel_intreq  && rd  ? {intreq,      15'b000_0000_0000_0000}            : 16'h00_00)
          | (sel_intena  && rd  ? {intena,      15'b000_0000_0000_0000}            : 16'h00_00)
          | (sel_gayleid && rd  ? {gayleid,     15'b000_0000_0000_0000}            : 16'h00_00)
          | (sel_cfg     && rd  ? {cfg,         12'b0000_0000_0000}                : 16'h00_00);
