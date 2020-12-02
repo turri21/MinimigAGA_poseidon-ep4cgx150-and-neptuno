@@ -118,6 +118,7 @@ wire  sel_cfg;      // Gayle CFG
 // internal registers
 reg		intena;			// Gayle IDE interrupt enable bit
 reg		intreq;			// Gayle IDE interrupt request bit
+reg		block_mark;	// Gayle IDE multiple block start flag
 reg		busy;			// busy status (command processing state)
 reg		pio_in;			// pio in command type is being processed
 reg		pio_out;		// pio out command type is being processed
@@ -302,11 +303,20 @@ always @(posedge clk)
   if (clk7_en) begin
   	drq_d <= drq;
 
-  	if (reset)
+  	if (reset) begin
   		intreq <= GND;
-  	else begin
+  		block_mark <= GND;
+  	end else begin
+			if (busy && hdd_status_wr && hdd_data_out[3])
+					block_mark <= VCC; // to handle IDENTIFY
+
 			if (pio_in) begin // reads
-				if (!drq_d & drq) intreq <= VCC;
+				if (hdd_status_wr && hdd_data_out[4]) 
+					block_mark <= VCC;
+				if (!drq_d & drq & block_mark) begin
+					intreq <= VCC;
+					block_mark <= GND;
+				end
 			end else if (pio_out) begin // writes
 				if (hdd_status_wr && hdd_data_out[4]) intreq <= VCC;
 			end else if (hdd_status_wr && hdd_data_out[7]) // other command types completed
