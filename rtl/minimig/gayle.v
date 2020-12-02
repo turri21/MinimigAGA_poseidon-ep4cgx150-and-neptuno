@@ -143,7 +143,8 @@ wire 	fifo_rd;
 wire 	fifo_wr;
 wire 	fifo_full;
 wire 	fifo_empty;
-wire	fifo_last;			// last word of a sector is being read
+wire	fifo_last_out;		// last word of a sector is being read
+wire	fifo_last_in;			// last word of a sector is being written
 
 // gayle id reg
 reg		[1:0] gayleid_cnt;	// sequence counter
@@ -218,18 +219,20 @@ wire	[7:0] tfr_out;
 wire	tfr_we;
 
 reg		[7:0] sector_count;	// sector counter
-wire	sector_count_dec;	// decrease sector counter
+wire	sector_count_dec_in;	// decrease sector counter (reads)
+wire	sector_count_dec_out;	// decrease sector counter (writes)
 
 always @(posedge clk)
   if (clk7_en) begin
   	if (hwr && sel_tfr && address_in[4:2] == 3'b010) // sector count register loaded by the host
   		sector_count <= data_in[15:8];
-  	else if (sector_count_dec)
+  	else if (sector_count_dec_in || sector_count_dec_out)
   		sector_count <= sector_count - 8'd1;
   end
 
-assign sector_count_dec = pio_in & fifo_last & sel_fifo & rd;
-		
+assign sector_count_dec_in  = pio_in & fifo_last_out & sel_fifo & rd;
+assign sector_count_dec_out = pio_out & fifo_last_in & sel_fifo & hwr & lwr;
+
 // task file register control
 assign tfr_we = busy ? hdd_wr : sel_tfr & hwr;
 assign tfr_sel = busy ? hdd_addr : address_in[4:2];
@@ -292,7 +295,7 @@ always @(posedge clk)
   if (clk7_en) begin
   	if (reset)
   		busy <= GND;
-  	else if (hdd_status_wr && hdd_data_out[7] || (sector_count_dec && sector_count == 8'h01))	// reset by SPI host (by clearing BSY status bit)
+  	else if (hdd_status_wr && hdd_data_out[7] || (sector_count_dec_in && sector_count == 8'h01))	// reset by SPI host (by clearing BSY status bit)
   		busy <= GND;
   	else if (sel_command) // set when the CPU writes command register
   		busy <= VCC;
@@ -351,7 +354,7 @@ always @(posedge clk)
   		pio_out <= VCC;	
   end
 		
-assign drq = (fifo_full & pio_in) | (~fifo_full & pio_out); // HDD data request status bit
+assign drq = (fifo_full & pio_in) | (~fifo_full & pio_out & sector_count != 0); // HDD data request status bit
 
 // error status
 always @(posedge clk)
@@ -385,7 +388,8 @@ gayle_fifo SECBUF1
 	.wr(fifo_wr),
 	.full(fifo_full),
 	.empty(fifo_empty),
-	.last(fifo_last)
+	.last_out(fifo_last_out),
+	.last_in(fifo_last_in)
 );
 
 // fifo is not ready for reading

@@ -9,7 +9,8 @@ module gayle_fifo
 	input	wr,						// write to fifo
 	output	full,					// fifo is full
 	output	empty,					// fifo is empty
-	output	last					// the last word of a sector is being read
+	output	last_out,				// the last word of a sector is being read
+	output	last_in					// the last word of a sector is being written
 );
 
 // local signals and registers
@@ -65,7 +66,8 @@ assign empty = empty_rd | empty_wr;
 // then it's deactivated when 512th byte is read from the fifo (hysteresis)		
 assign full = inptr[12:8]!=outptr[12:8] ? 1'b1 : 1'b0;	
 
-assign last = outptr[7:0] == 8'hFF ? 1'b1 : 1'b0;	
+assign last_out = outptr[7:0] == 8'hFF ? 1'b1 : 1'b0;
+assign last_in  = inptr [7:0] == 8'hFF ? 1'b1 : 1'b0;
 
 
 endmodule
