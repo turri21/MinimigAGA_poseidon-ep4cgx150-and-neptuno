@@ -158,9 +158,9 @@ assign hd_frd = fifo_rd;
 assign status = {bsy,drdy,2'b00,drq,2'b00,err};
 
 // cmd/status debug
-//reg [7:0] status_dbg  /* synthesis noprune */;
-//reg [7:0] dbg_ide_cmd /* synthesis noprune */;
-/*
+reg [7:0] status_dbg  /* synthesis noprune */;
+reg [7:0] dbg_ide_cmd /* synthesis noprune */;
+
 always @(posedge clk) begin
 	status_dbg <= #1 status;
 	if (clk7_en) begin
@@ -168,7 +168,7 @@ always @(posedge clk) begin
 			dbg_ide_cmd <= data_in[15:8];
 	end
 end
-*/
+
 // HDD status register bits
 assign bsy = busy & ~drq;
 assign drdy = ~(bsy|drq);
