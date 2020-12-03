@@ -297,6 +297,11 @@ unsigned char LoadConfiguration(char *filename)
 				tmpconf->secondaryhardfile[1].name[0]=0;
 				tmpconf->secondaryhardfile[1].long_name[0]=0;
 			}
+            if(tmpconf->version<CONFIG_VERSION_ROMPATH)
+			{
+				BootPrint("Config file predates Drivesounds support");
+				tmpconf->drivesounds=0;
+			}
 			if(tmpconf->version>CONFIG_VERSION)
 			{
 				BootPrint("Wrong configuration file format!\n");

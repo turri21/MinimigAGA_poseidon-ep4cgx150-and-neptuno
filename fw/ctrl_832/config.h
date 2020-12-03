@@ -3,6 +3,7 @@
 #define CONFIG_VERSION 3
 #define CONFIG_VERSION_EXTROM 2
 #define CONFIG_VERSION_ROMPATH 3
+#define CONFIG_VERSION_DRIVESOUNDS 3
 
 typedef struct
 {

@@ -508,7 +508,7 @@ void HandleUI(void)
         OsdWrite(1, s, menusub==0,0);
 		sprintf(s," Floppy disk turbo : %s",config.floppy.speed ? "on" : "off");
         OsdWrite(2, s, menusub==1,0);
-		sprintf(s," Floppy disk sounds : %s",config.drivesounds&1 ? "on" : "off");
+		sprintf(s," Floppy disk sounds : %s",config.drivesounds&DRIVESOUNDS_FLOPPY ? "on" : "off");
         OsdWrite(3, s, menusub==2,!drivesounds_loaded());
 		if(!drivesounds_loaded())
 			menumask&=0xb;
@@ -1475,7 +1475,7 @@ void HandleUI(void)
         OsdWrite(4, s, enable ? (menusub == 4) : 0 ,enable==0);
 
         strcpy(s, " Sounds : ");
-        strcat(s, config.drivesounds&2 ? "on " : "off");
+        strcat(s, config.drivesounds&DRIVESOUNDS_HDD ? "on " : "off");
         OsdWrite(5, s, menusub==5,t_enable_ide==0);
         OsdWrite(6, "", 0,0);
         OsdWrite(7, STD_BACK, menusub == 6,0);
