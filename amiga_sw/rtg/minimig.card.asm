@@ -320,6 +320,12 @@ FindCard:
         move.l  #MEMORY_SIZE,PSSO_BoardInfo_MemorySize(a2)
         move.l  #$b80100,(PSSO_BoardInfo_RegisterBase,a2)
 
+        moveq   #0,d0
+        move.w  $b8010e,d1
+        and.w   #$fff0,d1
+        sub.w   #$8320,d1   ; Is this the Chameleon/MiST RTG implementation?
+        bne     .exit
+
         move.l  $4.w,a6
         move.l  #MEMORY_SIZE,d0
         addi.l  #$00001FF,d0            ; add 512 bytes-1
@@ -433,7 +439,7 @@ InitCard:
 
         ori.w   #2,PSSO_BoardInfo_RGBFormats(a2) ; CLUT
         ori.w   #2048,PSSO_BoardInfo_RGBFormats(a2) ; R5G5B5
-
+        ori.w   #1024,PSSO_BoardInfo_RGBFormats(a2) ; R5G6B5
 
         move.w  #8,PSSO_BoardInfo_BitsPerCannon(a2)
         move.l  #MEMORY_SIZE-$40000,PSSO_BoardInfo_MemorySpaceSize(a2)
@@ -621,9 +627,18 @@ SetDAC:
 ;  the RAMDAC of your board accordingly.
 
 ;       For Minimig the DAC setting and pixel clock interact, so despite the stipulation below, we set them together.
-        tst.w   PSSO_BoardInfo_MoniSwitch(a0)
-        beq     .done
-        move.w  #5,CardData_HWTrigger(a0)
+;        tst.w   PSSO_BoardInfo_MoniSwitch(a0)
+;        beq     .done
+;        move.w  #5,CardData_HWTrigger(a0)
+        move.l  (PSSO_BoardInfo_RegisterBase,a0),a1
+;        BUG "RGBFormat %ld",d7
+        moveq   #1,d0
+        cmp.l   #10,d7
+        beq     .16bit
+        moveq   #2,d0
+.16bit
+        move.w  d0,(6,a1)
+;        move.w  d0,CardData_Control2(a0)
 ;        bsr     SetHardware
 .done
         rts
@@ -649,9 +664,9 @@ SetGC:
         move.w  d0,PSSO_BoardInfo_Border(a0)
         move.w  d0,d4 ; Border
 
-        move.w  #16,d0
-        sub.b   PSSO_ModeInfo_Depth(a1),d0
-        lsr.w   #3,d0   ; 8 bit -> 1, 16-bit -> 0
+        moveq   #0,d0
+        move.b  PSSO_ModeInfo_Depth(a1),d0
+        BUG     "Depth %ld",d0
 
         ; Since we're using the AGA registers for framing,
         ; and everything in AGA land is based around 3.545MHz colour clocks,
@@ -1086,7 +1101,7 @@ ControlWordsByFormat:
         dc.l    ControlWords_invalid    ; RGBFB_A8B8G8R8
         dc.l    ControlWords_invalid    ; RGBFB_R8G8B8A8
         dc.l    ControlWords_invalid    ; RGBFB_B8G8R8A8
-        dc.l    ControlWords_invalid    ; RGBFB_R5G6B5
+        dc.l    ControlWords_16bit      ; RGBFB_R5G6B5
         dc.l    ControlWords_16bit      ; RGBFB_R5G5B5
         dc.l    ControlWords_invalid    ; RGBFB_B5G6R5PC
         dc.l    ControlWords_invalid    ; RGBFB_B5G5R5PC
@@ -1111,7 +1126,7 @@ ControlWords_8bit:
 
         dc.w    $8001           ; clk/2 * 2
 
-        dc.w    0
+        dc.w    0,0
 
 ControlWords_16bit:
         dc.w    $0006           ; clk/7
@@ -1125,6 +1140,7 @@ ControlWords_16bit:
 
         dc.w    0
 
+
 PixelClocks_invalid equ 0
 PixelClocksByFormat:
         dc.l    PixelClocks_invalid     ; RGBFB_NONE
@@ -1137,7 +1153,7 @@ PixelClocksByFormat:
         dc.l    PixelClocks_invalid     ; RGBFB_A8B8G8R8
         dc.l    PixelClocks_invalid     ; RGBFB_R8G8B8A8
         dc.l    PixelClocks_invalid     ; RGBFB_B8G8R8A8
-        dc.l    PixelClocks_invalid     ; RGBFB_R5G6B5
+        dc.l    PixelClocks_16bit       ; RGBFB_R5G6B5
         dc.l    PixelClocks_16bit       ; RGBFB_R5G5B5
         dc.l    PixelClocks_invalid     ; RGBFB_B5G6R5PC
         dc.l    PixelClocks_invalid     ; RGBFB_B5G5R5PC
@@ -1293,6 +1309,8 @@ SetHardware:
 
         move.w  (CardData_Control,a0),d0
         move.w  d0,(4,a1)
+;        move.w  (CardData_Control2,a0),d0
+;        move.w  d0,(6,a1)
         lea     $dff000,a1
         move.w  #0,(hcenter,a1)
         move.w  (CardData_HTotal,a0),(htotal,a1)

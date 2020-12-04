@@ -298,6 +298,7 @@ TG68K tg68k (
 	.rtg_vbend(rtg_vbend),
 	.rtg_ext(rtg_ext),
 	.rtg_pixelclock(rtg_pixelwidth),
+	.rtg_16bit(rtg_16bit),
 	.rtg_clut(rtg_clut),
 	.rtg_clut_idx(rtg_clut_idx),
 	.rtg_clut_r(rtg_clut_r),
@@ -532,6 +533,7 @@ vidclkcntrl vidclkcntrl (
 
 wire rtg_ena;	// RTG screen on/off
 wire rtg_clut;	// Are we in high-colour or 8-bit CLUT mode?
+wire rtg_16bit; // Is high-colour mode 15 or 16 bit?
 
 reg [3:0] rtg_pixelctr;	// Counter, compared against rtg_pixelwidth
 wire [3:0] rtg_pixelwidth; // Number of clocks per fetch - 1
@@ -609,8 +611,8 @@ end
 assign rtg_blank = rtg_vblank | hblank_out;
 
 assign rtg_clut_idx = rtg_clut_in_sel_d ? rtg_dat[7:0] : rtg_dat[15:8];
-assign rtg_r={rtg_dat[14:10],rtg_dat[14:12]};
-assign rtg_g={rtg_dat[9:5],rtg_dat[9:7]} ;
+assign rtg_r=rtg_16bit ? {rtg_dat[15:11],rtg_dat[15:13]} : {rtg_dat[14:10],rtg_dat[14:12]};
+assign rtg_g=rtg_16bit ? {rtg_dat[10:5],rtg_dat[10:9]} : {rtg_dat[9:5],rtg_dat[9:7]};
 assign rtg_b={rtg_dat[4:0],rtg_dat[4:2]};
 
 wire [24:4] rtg_baseaddr;

@@ -91,6 +91,7 @@ port(
 	rtg_ext : out std_logic;
 	rtg_pixelclock : out std_logic_vector(3 downto 0);
 	rtg_clut : out std_logic;
+	rtg_16bit : out std_logic;
 	rtg_clut_idx : in std_logic_vector(7 downto 0) := X"00";
 	rtg_clut_r : out std_logic_vector(7 downto 0);
 	rtg_clut_g : out std_logic_vector(7 downto 0);
@@ -380,6 +381,7 @@ port map
 	rtg_vbend => rtg_vbend,
 	rtg_ext => rtg_ext,
 	rtg_pixelclock => rtg_pixelclock,
+	rtg_16bit => rtg_16bit,
 	rtg_clut => rtg_clut,
 	rtg_clut_idx => rtg_clut_idx,
 	rtg_clut_r => rtg_clut_r,
