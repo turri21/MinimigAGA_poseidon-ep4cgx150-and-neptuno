@@ -33,12 +33,21 @@ Amiga addr         SD Bank  SD addr    Host addr   Purpose
 0x4020 - 0x409f    3        0x1a0      n/a         32-bit Fast RAM
 0x40a0 - 0x40ff    2        0x120      n/a         32-bit Fast RAM
 
-0x4100 - 0x402f    0        0x020      0x48        32-bit Fast RAM
-0x4120 - 0x403f    0        0x040      0x28        32-bit Fast RAM
+0x4100 - 0x411f    0        0x020      0x48        32-bit Fast RAM
+0x4120 - 0x413f    0        0x040      0x28        32-bit Fast RAM
 
 
-Note: Bank mapping is constant across the whole address space.
-0x20 -> 0x9f (24-bit Fast RAM) is in bank 1
-0x00 - 0x1f, 0xa0 -> 0xff (The remaining 24-bit address space) is in bank 0
-The 16 megs of 32-bit RAM is split between banks 2 and 3 the same way, with 0x20-0x9f mapping to bank 3.
+Note: Bank mapping and address mangling is constant across the whole address space.
+
+* 0x20 -> 0x9f (24-bit Fast RAM) is in bank 1, with 0x80 -> 0x9f first, followed by 0x20 -> 0x7f.
+  This simplifies the required address translation.
+
+* 0x00 - 0x1f, 0xa0 -> 0xff (The remaining 24-bit address space) is in bank 0.
+  The RAM from Amiga addresses 0xa0 -> 0xbf and 0xd8 -> 0xdf is invisible to the Amiga, so is made available
+  as extra Zorro III RAM at 0x4100.  If Slow RAM at 0xc0 -> 0xd7 is disabled, the corresponding RAM is also
+  available in the extra ZIII ram region.
+
+* The 16 meg chunk of 32-bit RAM is split between banks 2 and 3 in the same way, with
+  0x4000 -> 0x401f and 0x40a0 -> 0x40ff mapping to bank 2, and 0x4020-0x409f mapping to bank 3.
+
 

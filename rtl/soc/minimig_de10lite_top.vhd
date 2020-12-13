@@ -203,6 +203,9 @@ architecture RTL of DE10liteToplevel is
 	);
 	END COMPONENT;
 
+signal amiga_rxd : std_logic;
+signal amiga_txd : std_logic;
+
 begin
 
 HEX0<=(others=>'1');
@@ -219,6 +222,10 @@ ARDUINO_IO(11)<=sd_mosi;
 ARDUINO_IO(12)<='Z';
 sd_miso<=ARDUINO_IO(12);
 ARDUINO_IO(13)<=sd_clk;
+
+ARDUINO_IO(1) <= amiga_txd;
+ARDUINO_IO(0) <= 'Z';
+amiga_rxd <= ARDUINO_IO(0);
 
 vga_window<='1';
 
@@ -239,7 +246,7 @@ ps2_keyboard_clk <= '0' when ps2_keyboard_clk_out='0' else 'Z';
 virtual_top : COMPONENT minimig_virtual_top
 generic map
 	(
-		debug => true,
+		debug => false,
 		havertg => true,
 		haveaudio => true,
 		havec2p => true
@@ -254,8 +261,8 @@ PORT map
 		MENU_BUTTON => KEY(1),
 		CTRL_TX => rs232_txd,
 		CTRL_RX => rs232_rxd,
-		AMIGA_TX => open,
-		AMIGA_RX => '1',
+		AMIGA_TX => amiga_txd,
+		AMIGA_RX => amiga_rxd,
 		VGA_PIXEL => vga_pixel,
 		VGA_SELCS => vga_selcsync,
 		VGA_CS => vga_csync,
