@@ -59,10 +59,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "interrupts.h"
 #include "drivesounds.h"
 #include "audio.h"
+#include "rtc.h"
+#include "version.h"
 
 #include <stdio.h>
 
-const char version[] = "$VER:AYQ200607_832";
+const char version[] = MM_VERSTRING;
 
 extern adfTYPE df[4];
 
@@ -204,7 +206,6 @@ void inthandler()
 }
 
 
-
 struct cdimage cd;
 
 void setstack();
@@ -215,11 +216,31 @@ __geta4 int main(void)
 #endif
 {
 	int c=0;
+	int rtc;
 	setstack();
 	debugmsg[0]=0;
 	debugmsg2[0]=0;
 
     DISKLED_ON;
+
+	if(PLATFORM & (1<<PLATFORM_SPIRTC))
+	{
+		printf("Platform has SPI RTC support\n");
+#if 0
+		SPI_slow();
+		EnableRTC();
+		SPI(0x10);	/* Write starting at register 0 */
+		SPI(0);	/* Clear cr 1 */
+		SPI(0); /* Clear cr 2 */
+		DisableRTC();
+#endif
+		rtc=1;
+	}
+	else
+	{
+		printf("Platform lacks SPI RTC support\n");
+		rtc=0;
+	}
 
 	if(!ColdBoot())
 		BootPrintEx("ROM loading failed");
@@ -239,6 +260,9 @@ __geta4 int main(void)
 		drivesounds_fill();
 		if(c64keyboard_checkreset())
 			OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
+
+		if(rtc)
+			HandleRTC();
 
 //		cd_continueaudio(&cd);
         HandleFpga();

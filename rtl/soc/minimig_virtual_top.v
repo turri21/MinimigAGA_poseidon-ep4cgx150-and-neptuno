@@ -14,7 +14,7 @@
 
 module minimig_virtual_top
 	#(parameter hostonly=0, parameter debug = 0, parameter spimux = 0,
-		parameter havertg = 1, parameter haveaudio = 1, parameter havec2p = 1)
+		parameter havertg = 1, parameter haveaudio = 1, parameter havec2p = 1, parameter havespirtc = 0)
 (
   // clock inputs
   input wire            CLK_IN,
@@ -89,7 +89,8 @@ module minimig_virtual_top
   output wire           SD_MOSI,
   output wire           SD_CLK,
   output wire           SD_CS,
-  input wire            SD_ACK
+  input wire            SD_ACK,
+  output wire           RTC_CS
 );
 
 
@@ -215,6 +216,8 @@ wire minimig_txd;
 wire debug_rxd;
 wire debug_txd;
 
+// Realtime clock
+wire [63:0] rtc;
 
 ////////////////////////////////////////
 // toplevel assignments               //
@@ -653,7 +656,7 @@ assign SD_MOSI = SPI_DI;
 assign SPI_SS4 = SPI_CS[6];
 assign SPI_SS3 = SPI_CS[5];
 assign SPI_SS2 = SPI_CS[4];
-
+assign RTC_CS = SPI_CS[7];
 
 // Keyboard-related signals
 
@@ -747,6 +750,7 @@ minimig minimig (
 	.kbd_mouse_strobe (kbd_mouse_stb), // kbd/mouse data strobe
 	.kms_level    (1'b0             ), // kms_level        ),
 	._15khz       (_15khz           ), // scandoubler disable
+	.rtc          (rtc              ), // real-time clock
 	.pwr_led      (LED_POWER        ), // power led
 	.disk_led     (LED_DISK         ), // power led
 	.msdat_i      (PS2_MDAT_I       ), // PS2 mouse data
@@ -827,7 +831,7 @@ EightThirtyTwo_Bridge #( debug ? "true" : "false") hostcpu
 );
 
 
-cfide #(.spimux(spimux ? "true" : "false")) mycfide
+cfide #(.spimux(spimux ? "true" : "false"), .havespirtc(havespirtc ? "true" : "false")) mycfide
 ( 
 		.sysclk(CLK_114),
 		.n_reset(reset_out),
@@ -867,7 +871,9 @@ cfide #(.spimux(spimux ? "true" : "false")) mycfide
 		.amiga_req(amigahost_req),
 		.amiga_wr(tg68_cpustate[0]),
 		.amiga_ack(amigahost_ack),
-	
+
+      .rtc_q(rtc),
+
 		.clk_28(CLK_28),
 		.tick_in(aud_tick)
 	);

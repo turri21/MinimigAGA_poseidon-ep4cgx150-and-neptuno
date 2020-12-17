@@ -222,7 +222,8 @@ architecture rtl of chameleon2_toplevel is
 	COMPONENT minimig_virtual_top
 	generic
 	( debug : integer := 0;
-	  spimux : integer := 0
+	  spimux : integer := 0;
+	  havespirtc : integer := 0
 	);
 	PORT
 	(
@@ -278,10 +279,13 @@ architecture rtl of chameleon2_toplevel is
 		SD_MOSI	:	 OUT STD_LOGIC;
 		SD_CLK	:	 OUT STD_LOGIC;
 		SD_CS		:	 OUT STD_LOGIC;
-		SD_ACK	:	 IN STD_LOGIC
+		SD_ACK	:	 IN STD_LOGIC;
+		RTC_CS	:	 OUT STD_LOGIC
 	);
 	END COMPONENT;
 
+	signal rtc_cs_inv : std_logic;
+	
 begin
 -- -----------------------------------------------------------------------
 -- Unused pins
@@ -295,7 +299,7 @@ begin
 
 	-- put these here?
 	flash_cs <= '1';
-	rtc_cs <= '0';
+	rtc_cs <= not rtc_cs_inv;
 	
 	clock_ior <='1';
 	clock_iow <='1';
@@ -482,7 +486,8 @@ virtual_top : COMPONENT minimig_virtual_top
 generic map
 	(
 		debug => 0,
-		spimux => 0
+		spimux => 0,
+		havespirtc => 1
 	)
 PORT map
 	(
@@ -545,7 +550,8 @@ PORT map
 		SD_MOSI => spi_mosi,
 		SD_CLK => spi_clk,
 		SD_CS => mmc_cs,
-		SD_ACK => '1'
+		SD_ACK => '1',
+		RTC_CS => rtc_cs_inv
 	);
 	
 -- Dither the video down to 5 bits per gun.

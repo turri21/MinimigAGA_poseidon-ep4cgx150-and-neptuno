@@ -119,6 +119,11 @@ architecture rtl of chameleon_toplevel is
 	signal spi_clk : std_logic;
 	signal spi_raw_ack : std_logic;
 	
+-- RTC
+
+	signal rtc_cs : std_logic;
+	signal rtc_cs_inv : std_logic;
+	
 -- RS232 serial
 	signal rs232_rxd : std_logic;
 	signal rs232_txd : std_logic;
@@ -204,7 +209,8 @@ architecture rtl of chameleon_toplevel is
 	COMPONENT minimig_virtual_top
 	generic
 	( debug : integer := 0;
-	  spimux : integer := 0
+	  spimux : integer := 0;
+	  havespirtc : integer := 0
 	);
 	PORT
 	(
@@ -261,7 +267,8 @@ architecture rtl of chameleon_toplevel is
 		SD_MOSI	:	 OUT STD_LOGIC;
 		SD_CLK	:	 OUT STD_LOGIC;
 		SD_CS		:	 OUT STD_LOGIC;
-		SD_ACK	:	 IN STD_LOGIC
+		SD_ACK	:	 IN STD_LOGIC;
+		RTC_CS   :   OUT STD_LOGIC
 	);
 	END COMPONENT;
 
@@ -343,6 +350,7 @@ reset_n<= not reset;
 			to_usb_rx => usart_rx,
 
 		-- SPI raw signals (enable_raw_spi must be set to true)
+			rtc_cs => rtc_cs,
 			mmc_cs_n => spi_cs,
 			spi_raw_clk => spi_clk,
 			spi_raw_mosi => spi_mosi,
@@ -408,7 +416,7 @@ reset_n<= not reset;
 		joystick_b => cdtv_joyb
 	);
 
-
+rtc_cs<=not rtc_cs_inv;
 		
 runstop<='0' when c64_keys(63)='0' and c64_joy1="1111111" else '1';
 joy1<="1" & c64_joy1(6) & (c64_joy1(5 downto 0) and cdtv_joya);
@@ -421,7 +429,8 @@ virtual_top : COMPONENT minimig_virtual_top
 generic map
 	(
 		debug => 0,
-		spimux => 1
+		spimux => 1,
+		havespirtc => 1
 	)
 PORT map
 	(
@@ -485,7 +494,8 @@ PORT map
 		SD_MOSI => spi_mosi,
 		SD_CLK => spi_clk,
 		SD_CS => spi_cs,
-		SD_ACK => spi_raw_ack
+		SD_ACK => spi_raw_ack,
+		RTC_CS => rtc_cs_inv
 	);
 
 vga_window<='1';

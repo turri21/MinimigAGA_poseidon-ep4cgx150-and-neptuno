@@ -29,7 +29,8 @@ use IEEE.STD_LOGIC_UNSIGNED.all;
 
 entity cfide is
 	generic (
-		spimux : in boolean
+		spimux : in boolean;
+		havespirtc : in boolean
 	);
    port ( 
 		sysclk	: in std_logic;
@@ -71,6 +72,8 @@ entity cfide is
 		amiga_wr : in std_logic;
 		amiga_ack : out std_logic;
 		
+		rtc_q : out std_logic_vector(63 downto 0);
+
 		-- 28Mhz signals
 		clk_28	: in std_logic;
 		tick_in : in std_logic	-- 44.1KHz - makes it easy to keep timer in lockstep with audio.
@@ -90,7 +93,7 @@ signal uart_ld: std_logic;
 signal platform_select: std_logic;
 signal timer_select: std_logic;
 signal SPI_select: std_logic;
-signal part_in: std_logic_vector(15 downto 0);
+signal platformdata: std_logic_vector(15 downto 0);
 signal IOdata: std_logic_vector(15 downto 0);
 signal IOcpuena: std_logic;
 
@@ -128,6 +131,9 @@ signal amigatohost  : std_logic_vector(15 downto 0);
 signal amiga_select : std_logic;
 signal amiga_req_d : std_logic;
 
+signal rtc_select : std_logic;
+signal spirtcpresent : std_logic;
+
 begin
 
 -- Peripheral registers are only 16-bits wide.
@@ -137,9 +143,11 @@ q(15 downto 0) <=	IOdata WHEN rs232_select='1' or SPI_select='1' ELSE
 		audio_q when audio_select='1' else
 		keyboard_q when keyboard_select='1' else
 		amigatohost when amiga_select='1' else
-		part_in;
+		platformdata;
+
+spirtcpresent <= '1' when havespirtc=true else '0';
 		
-part_in <=  X"000"&"001"&menu_button; -- Reconfig not currently supported, 32 meg of RAM, menu button.
+platformdata <=  X"000"&"0" & spirtcpresent & "1" & menu_button; -- Reconfig not currently supported, 32 meg of RAM, menu button.
 IOdata <= sd_in;
 
 process(clk_28)
@@ -171,6 +179,30 @@ audio_select <='1' when addr(23)='1' and addr(7 downto 4)=X"B" else '0';
 interrupt_select <='1' when addr(23)='1' and addr(7 downto 4)=X"A" else '0';
 keyboard_select <='1' when addr(23)='1' and addr(7 downto 4)=X"9" else '0';
 amiga_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"8" else '0';
+rtc_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"7" else '0';
+
+
+-- RTC handling at 0fffff70
+
+process (clk_28,n_reset)
+begin
+	if n_reset='0' then
+		rtc_q<=(others=>'0');
+	elsif rising_edge(clk_28) then
+		if rtc_select='1' and req='1' and wr='1' then
+			case addr(3 downto 2) is
+				when "00" =>
+					rtc_q(63 downto 48)<=d;
+				when "01" =>
+					rtc_q(47 downto 32)<=d;
+				when "10" =>
+					rtc_q(31 downto 16)<=d;
+				when "11" =>
+					rtc_q(15 downto 0)<=d;
+			end case;
+		end if;
+	end if;
+end process;
 
 
 -- Amiga interface at 0fffff80
@@ -320,9 +352,9 @@ end process;
 	SD_busy <= shiftcnt(13);
 	
 	PROCESS (sysclk, n_reset, scs, sd_di, sd_dimm) BEGIN
-		IF scs(1)='0' THEN
+		IF scs(1)='0' and scs(7)='0' THEN
 			sd_di_in <= sd_di;
-		ELSE	
+		ELSE
 			sd_di_in <= sd_dimm;
 		END IF;
 		IF n_reset ='0' THEN 
@@ -461,11 +493,7 @@ process(clk_28)
 begin
   	IF rising_edge(clk_28) THEN
 		if tick_in='1' then
---		IF timeprecnt=0 THEN
---			timeprecnt <= X"E024";
 			timecnt <= timecnt+1;
---		ELSE
---			timeprecnt <= timeprecnt-1;
 		END IF;
 	end if;
 end process; 

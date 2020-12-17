@@ -58,7 +58,7 @@ COMMON_SOURCES=$(BUILD_DIR)/hardware.o $(BUILD_DIR)/config.o $(BUILD_DIR)/fat.o 
 	$(BUILD_DIR)/boot.o $(BUILD_DIR)/hdd.o $(BUILD_DIR)/main.o $(BUILD_DIR)/menu.o $(BUILD_DIR)/mmc.o $(BUILD_DIR)/spi.o \
 	$(BUILD_DIR)/osd.o $(BUILD_DIR)/rafile.o $(BUILD_DIR)/swap.o $(BUILD_DIR)/hexdump.o $(BUILD_DIR)/uart.o $(BUILD_DIR)/errors.o \
 	$(BUILD_DIR)/audiotrack.o $(BUILD_DIR)/bincue.o $(BUILD_DIR)/interrupts.o $(BUILD_DIR)/c64keys.o $(BUILD_DIR)/akiko.o \
-	$(BUILD_DIR)/audio.o $(BUILD_DIR)/drivesounds.o
+	$(BUILD_DIR)/audio.o $(BUILD_DIR)/drivesounds.o $(BUILD_DIR)/rtc.o
 
 
 # all sources
@@ -74,7 +74,12 @@ force:
 
 version.h: force
 	echo >version.h \#define MM_FIRMWARE_VERSION \"`date +%Y-%-m-%-d`\"
-	touch fpga.c
+	echo >>version.h \#define MM_VERSTRING \"\$$VER:AMR`date +%y%-m%-d`-832\"
+	echo >>version.h \#define MM_YEAR `date +%Y`
+	echo >>version.h \#define MM_MONTH `date +%m`
+	echo >>version.h \#define MM_DAY `date +%d`
+	echo >>version.h \#define MM_WEEKDAY `date +%w`
+	touch fpga.c main.c
 
 bootcustominit.h: bootcustominit.s
 	vasmm68k_mot -Fbin bootcustominit.s -o bootcustominit.bin

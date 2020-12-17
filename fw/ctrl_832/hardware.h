@@ -52,7 +52,8 @@
 #define DisableOsd()  HW_SPI(HW_SPI_CS)=0x21
 #define EnableDMode() HW_SPI(HW_SPI_CS)=0x40
 #define DisableDMode() HW_SPI(HW_SPI_CS)=0x41
-
+#define EnableRTC()   HW_SPI(HW_SPI_CS)=0x80
+#define DisableRTC()   HW_SPI(HW_SPI_CS)=0x81
 #endif
 
 #define SPI_slow()  HW_SPI(HW_SPI_SPEED)=0x3f
@@ -74,6 +75,7 @@
 #define PLATFORM (*(volatile unsigned short *)0x0fffffc2)
 #define PLATFORM_MENUBUTTON 0
 #define PLATFORM_32MEG 1
+#define PLATFORM_SPIRTC 2
 #define PLATFORM_RECONFIG 8
 
 // On write:
