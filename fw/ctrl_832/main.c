@@ -126,11 +126,23 @@ void HandleFpga(void)
 }
 
 
+void inthandler()
+{
+	int ints=GetInterrupts();
+	DisableInterrupts();
+	akiko_inthandler();
+	c64keys_inthandler();
+	EnableInterrupts();
+}
+
+
 int ColdBoot()
 {
 	int result=0;
 	/* Reset the chipset briefly to cancel AGA display modes, then Put the CPU in reset while we initialise */
 	OsdDoReset(SPI_RST_USR | SPI_RST_CPU | SPI_CPU_HLT,SPI_RST_CPU | SPI_CPU_HLT);
+
+	DisableInterrupts();
 
 	ClearError(ERROR_ALL);
 
@@ -190,21 +202,18 @@ int ColdBoot()
 			result=ApplyConfiguration(1,1);
 
 			OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
+
+			SetIntHandler(inthandler);
+			EnableInterrupts();
+
+			audio_clear();
+			if(drivesounds_loaded())
+				drivesounds_enable(config.drivesounds);
+
 		}
 	}
 	return(result);
 }
-
-
-void inthandler()
-{
-	int ints=GetInterrupts();
-	DisableInterrupts();
-	akiko_inthandler();
-	c64keys_inthandler();
-	EnableInterrupts();
-}
-
 
 struct cdimage cd;
 
@@ -247,13 +256,6 @@ __geta4 int main(void)
 
 //	cd_setcuefile(&cd,"EXODUS_THELASTWAR.CUE");
 //	cd_playaudio(&cd,4);
-
-	SetIntHandler(inthandler);
-	EnableInterrupts();
-
-	audio_clear();
-	if(drivesounds_loaded())
-		drivesounds_enable(config.drivesounds);
 
     while(1)
     {

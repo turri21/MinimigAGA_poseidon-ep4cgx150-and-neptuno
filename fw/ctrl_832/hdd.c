@@ -409,12 +409,12 @@ void ATA_ReadSectors(unsigned char* tfr, int sector, int cylinder, int head, int
 				{
 					blk=block_count;
 					// Deal with FakeRDB and the potential for a read_multiple to cross the boundary into actual data.
-					while(blk && ((lba+hdf[unit].offset<0) || (unit==0 && hdf[unit].type==HDF_FILE && lba==0))
+					while(blk && (((lba+hdf[unit].offset)<0) || (unit==0 && hdf[unit].type==HDF_FILE && lba==0))
 					{
 						if(hdf[unit].type==HDF_FILE)
 						{
 							HardFileSeek(&hdf[unit], lba + hdf[unit].offset); // Patch flags and checksum of RDB.  Actually necessary?
-							FileReadEx(&hdf[unit].file, sector_buffer, blk);
+							FileReadEx(&hdf[unit].file, sector_buffer, 1);
 							struct RigidDiskBlock *rdb = (struct RigidDiskBlock *)sector_buffer;
 							rdb->rdb_ChkSum = rdb->rdb_ChkSum + rdb->rdb_Flags - 0x12;
 							rdb->rdb_Flags=0x12;
