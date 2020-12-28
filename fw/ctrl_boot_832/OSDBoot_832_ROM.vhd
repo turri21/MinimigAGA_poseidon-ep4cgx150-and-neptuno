@@ -15,14 +15,20 @@ port (
 	-- Allow writes - defaults supplied to simplify projects that don't need to write.
 	d : in std_logic_vector(31 downto 0) := X"00000000";
 	we : in std_logic := '0';
-	bytesel : in std_logic_vector(3 downto 0) := "1111"
+	bytesel : in std_logic_vector(3 downto 0) := "1111";
+	-- Second port
+	addr2 : in std_logic_vector(maxAddrBitBRAM-2 downto 0) := (others=>'0');
+	q2 : out std_logic_vector(31 downto 0);
+	d2 : in std_logic_vector(31 downto 0) := X"00000000";
+	we2 : in std_logic := '0';
+	bytesel2 : in std_logic_vector(3 downto 0) := "1111"	
 );
 end OSDBoot_832_ROM;
 
 architecture arch of OSDBoot_832_ROM is
 
 type word_t is array (0 to 3) of std_logic_vector(7 downto 0);
-type ram_type is array (0 to 2 ** (maxAddrBitBRAM-3) - 1) of word_t;
+type ram_type is array (0 to 2 ** (maxAddrBitBRAM-1) - 1) of word_t;
 
 signal ram : ram_type :=
 (
@@ -1134,6 +1140,7 @@ attribute ramstyle: string;
 attribute ramstyle of ram: signal is "no_rw_check";
 
 signal q_local : word_t;
+signal q2_local : word_t;
 
 begin
     
@@ -1162,6 +1169,36 @@ begin
 				end if;
 			end if;
 			q_local <= ram(to_integer(unsigned(addr)));
+		end if;
+	end process;
+
+	-- Second port
+	
+	process(clk,q2_local)
+	begin
+
+		q2(31 downto 24)<=q2_local(0);
+		q2(23 downto 16)<=q2_local(1);
+		q2(15 downto 8)<=q2_local(2);
+		q2(7 downto 0)<=q2_local(3);
+
+		if(rising_edge(clk)) then 
+			if(we2 = '1') then
+				-- edit this code if using other than four bytes per word
+				if(bytesel2(3) = '1') then
+					ram(to_integer(unsigned(addr2)))(3) <= d2(7 downto 0);
+				end if;
+				if bytesel2(2) = '1' then
+					ram(to_integer(unsigned(addr2)))(2) <= d2(15 downto 8);
+				end if;
+				if bytesel2(1) = '1' then
+					ram(to_integer(unsigned(addr2)))(1) <= d2(23 downto 16);
+				end if;
+				if bytesel2(0) = '1' then
+					ram(to_integer(unsigned(addr2)))(0) <= d2(31 downto 24);
+				end if;
+			end if;
+			q2_local <= ram(to_integer(unsigned(addr2)));
 		end if;
 	end process;
 

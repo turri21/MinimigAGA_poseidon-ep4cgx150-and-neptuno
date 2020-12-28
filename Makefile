@@ -37,11 +37,15 @@ fw: Makefile dirs
 
 # fpga
 fpga: Makefile dirs
+	cd rtl/minimig; \
+	quartus_sh -t ../../tcl/build_id.tcl
 	@for BOARD in ${BOARDS}; do \
 		echo "Building $(FPGA_SRC_DIR)/$$BOARD ..."; \
 		make -C fpga/$$BOARD; \
 	done
-
+	@for BOARD in ${BOARDS}; do \
+		grep Design-wide\ TNS fpga/$$BOARD/*.sta.rpt;\
+	done
 #	@$(MAKE) -C $(FPGA_SRC_DIR) $(BUILD_OPT)
 #	@cp $(FPGA_BIN_FILES) $(FPGA_REL_DIR)/
 

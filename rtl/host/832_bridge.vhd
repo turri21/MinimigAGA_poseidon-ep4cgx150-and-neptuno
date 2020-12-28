@@ -121,11 +121,11 @@ end generate;
 bootrom: entity work.OSDBoot_832_ROM
 	generic map
 	(
-		maxAddrBitBRAM => 14
+		maxAddrBitBRAM => 12
 	)
 	PORT MAP 
 	(
-		addr => cpu_addr(14 downto 2),
+		addr => cpu_addr(12 downto 2),
 		clk   => clk,
 		d	=> cpu_q,
 		we	=> rom_wr,
