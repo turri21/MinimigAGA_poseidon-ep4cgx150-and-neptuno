@@ -16,15 +16,13 @@ DUMP    = objdump
 
 LIBDIR = $(832DIR)/lib832
 BUILD_DIR = 832obj
-COMMON_DIR = $(832DIR)/Lib
 INCLUDE_DIR = $(832DIR)/include
-STARTUP_DIR = $(832DIR)/Lib
 
 PROJECT=832OSDAD
 
 ### flags ###
 
-CFLAGS  = -+ -c99 -O=1343 -unsigned-char -D__geta4= -DNULL=0 -I. -I$(INCLUDE_DIR)/ -I$(COMMON_DIR)/ -I../OSD/
+CFLAGS  = -+ -c99 -O=1343 -unsigned-char -D__geta4= -DNULL=0 -I. -I$(INCLUDE_DIR)/ -I$(LIBDIR)/
 ASFLAGS = -eb
 LDFLAGS  = -eb -s_STACKSIZE=0x0 -s_STACKTOP=0x2000 -b 0x2000
 
@@ -49,20 +47,12 @@ OBJDIR=obj
 
 CFLAGS += -D__BUILD_USER=$(BUILD_USER) -D__BUILD_TAG=$(BUILD_TAG)
 
-### fw specific ###
 
-
-
-# common sources
-COMMON_SOURCES=$(BUILD_DIR)/hardware.o $(BUILD_DIR)/config.o $(BUILD_DIR)/fat.o $(BUILD_DIR)/fdd.o $(BUILD_DIR)/fpga.o \
+ALL_SOURCES=$(BUILD_DIR)/hardware.o $(BUILD_DIR)/config.o $(BUILD_DIR)/fat.o $(BUILD_DIR)/fdd.o $(BUILD_DIR)/fpga.o \
 	$(BUILD_DIR)/boot.o $(BUILD_DIR)/hdd.o $(BUILD_DIR)/main.o $(BUILD_DIR)/menu.o $(BUILD_DIR)/mmc.o $(BUILD_DIR)/spi.o \
 	$(BUILD_DIR)/osd.o $(BUILD_DIR)/rafile.o $(BUILD_DIR)/swap.o $(BUILD_DIR)/hexdump.o $(BUILD_DIR)/uart.o $(BUILD_DIR)/errors.o \
 	$(BUILD_DIR)/audiotrack.o $(BUILD_DIR)/bincue.o $(BUILD_DIR)/interrupts.o $(BUILD_DIR)/c64keys.o $(BUILD_DIR)/akiko.o \
 	$(BUILD_DIR)/audio.o $(BUILD_DIR)/drivesounds.o $(BUILD_DIR)/rtc.o
-
-
-# all sources
-ALL_SOURCES = $(LIBDIR)/crt0.a $(COMMON_SOURCES) $(LIBDIR)/lib832.a 
 
 
 ### build rules ###
@@ -86,7 +76,7 @@ bootcustominit.h: bootcustominit.s
 	xxd -i bootcustominit.bin > bootcustominit.h
 
 $(PROJECT).bin: Makefile $(ALL_SOURCES)
-	$(LD) $(LDFLAGS) -M $(PROJECT).map -o $@ $(ALL_SOURCES)
+	$(LD) $(LDFLAGS) -M $(PROJECT).map -o $@ $(LIBDIR)/crt0.a $(LIBDIR)/lib832.a $(ALL_SOURCES)
 
 # clean
 clean:
@@ -98,11 +88,12 @@ clean:
 %.asm: %.c
 	$(CC) $(CFLAGS) -o=$@ $<
 
-$(BUILD_DIR)/%.o: %.asm $(BUILD_DIR)
+$(BUILD_DIR)/%.o: %.asm
 	$(AS) $(ASFLAGS) -o $@ $<
 
-$(BUILD_DIR)/%.o: $(STARTUP_DIR)/%.S $(BUILD_DIR) 
-	$(AS) $(ASFLAGS) -o $@ $<
+$(BUILD_DIR)/%.o: %.c
+	$(CC) $(CFLAGS) $<
+	$(AS) $(ASFLAGS) -o $(BUILD_DIR)/$*.o $*.asm
 
 $(BUILD_DIR):
 	mkdir $(BUILD_DIR)
