@@ -108,7 +108,7 @@ wire [ 16-1:0] tg68_cout;
 wire [ 16-1:0] tg68_cin;
 wire           tg68_cpuena;
 wire [  4-1:0] cpu_config;
-wire     [3:0] board_configured;
+wire     [4:0] board_configured;
 wire           turbochipram;
 wire           turbokick;
 wire     [1:0] slow_config;
@@ -279,6 +279,7 @@ TG68K tg68k (
   .ziiram_active(board_configured[0]),
   .ziiiram_active(board_configured[1]),
   .ziiiram2_active(board_configured[2]),
+  .ziiiram3_active(board_configured[3]),
 //  .fastramcfg   ({&memcfg[5:4],memcfg[5:4]}),
   .eth_en       (1'b1), // TODO
   .sel_eth      (),
