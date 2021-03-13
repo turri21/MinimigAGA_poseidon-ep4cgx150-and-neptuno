@@ -144,7 +144,8 @@ architecture RTL of DE10liteToplevel is
 	( debug : boolean := false;
 		havertg : boolean := true;
 		haveaudio : boolean := true;
-		havec2p : boolean := true
+		havec2p : boolean := true;
+		ram_64meg : boolean := false
 	);
 	PORT
 	(
@@ -250,7 +251,8 @@ generic map
 		debug => true,
 		havertg => true,
 		haveaudio => true,
-		havec2p => true
+		havec2p => true,
+		ram_64meg => true
 	)
 PORT map
 	(

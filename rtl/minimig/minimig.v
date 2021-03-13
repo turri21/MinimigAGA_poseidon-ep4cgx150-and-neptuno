@@ -249,7 +249,7 @@ module minimig
 	output	[15:0]rdata, 			//right DAC data
 	//user i/o
   output  [3:0] cpu_config,
-  output  [3:0] board_configured,
+  output  [4:0] board_configured,
   output  turbochipram,
   output  turbokick,
   output  [1:0] slow_config,
@@ -270,7 +270,8 @@ module minimig
   output  rtg_ena,
   output reg ntsc = NTSC, //PAL/NTSC video mode selection
   input   ext_int2,	// External interrupt for Akiko
-  input   ext_int6	// External interrupt for AHI audio
+  input   ext_int6,	// External interrupt for AHI audio
+  input   ram_64meg
 );
 
 //--------------------------------------------------------------------------------------
@@ -1101,6 +1102,7 @@ minimig_autoconfig autoconfig
 	.sel(sel_autoconfig),
 	.fastram_config(memory_config[5:4]),
 	.m68020(cpu_config[1]),
+	.ram_64meg(ram_64meg),
 	.slowram_config(memory_config[3:2]),
 	.board_configured(board_configured),
 	.autoconfig_done(autoconfig_done)

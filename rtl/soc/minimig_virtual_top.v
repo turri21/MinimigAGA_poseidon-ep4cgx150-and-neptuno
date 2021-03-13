@@ -14,7 +14,7 @@
 
 module minimig_virtual_top
 	#(parameter hostonly=0, parameter debug = 0, parameter spimux = 0,
-		parameter havertg = 1, parameter haveaudio = 1, parameter havec2p = 1, parameter havespirtc = 0)
+		parameter havertg = 1, parameter haveaudio = 1, parameter havec2p = 1, parameter havespirtc = 0, parameter ram_64meg = 0)
 (
   // clock inputs
   input wire            CLK_IN,
@@ -140,7 +140,7 @@ wire [ 16-1:0] tg68_cout;
 wire [ 16-1:0] tg68_cin;
 wire           tg68_cpuena;
 wire [  4-1:0] cpu_config;
-wire [3:0]     board_configured;
+wire [4:0]     board_configured;
 wire           turbochipram;
 wire           turbokick;
 wire [1:0]     slow_config;
@@ -327,8 +327,8 @@ assign rtg_r=rtg_16bit ? {rtg_dat[15:11],rtg_dat[15:13]} : {rtg_dat[14:10],rtg_d
 assign rtg_g=rtg_16bit ? {rtg_dat[10:5],rtg_dat[10:9]} : {rtg_dat[9:5],rtg_dat[9:7]};
 assign rtg_b={rtg_dat[4:0],rtg_dat[4:2]};
 
-wire [24:4] rtg_baseaddr;
-wire [24:0] rtg_addr;
+wire [25:4] rtg_baseaddr;
+wire [25:0] rtg_addr;
 wire [15:0] rtg_dat;
 
 wire rtg_ramreq;
@@ -336,8 +336,8 @@ wire [15:0] rtg_fromram;
 wire rtg_fill;
 
 // Replicate the CPU's address mangling.
-wire [24:0] rtg_addr_mangled;
-assign rtg_addr_mangled[24]=rtg_addr[24];
+wire [25:0] rtg_addr_mangled;
+assign rtg_addr_mangled[25:24]=rtg_addr[25:24];
 assign rtg_addr_mangled[23]=rtg_addr[23]^(rtg_addr[22]|rtg_addr[21]);
 assign rtg_addr_mangled[22:0]=rtg_addr[22:0];
 
@@ -518,6 +518,7 @@ TG68K #(.havertg(havertg ? "true" : "false"),
   .ziiram_active(board_configured[0]),
   .ziiiram_active(board_configured[1]),
   .ziiiram2_active(board_configured[2]),
+  .ziiiram3_active(board_configured[3]),
 //  .fastramcfg   ({&memcfg[5:4],memcfg[5:4]}),
   .eth_en       (1'b1), // TODO
   .sel_eth      (),
@@ -595,7 +596,7 @@ sdram_ctrl sdram (
   .hostena      (host_ramack      ),
 
   .cpuWR        (tg68_cin         ),
-  .cpuAddr      (tg68_cad[24:1]   ),
+  .cpuAddr      (tg68_cad[25:1]   ),
   .cpuU         (tg68_cuds        ),
   .cpuL         (tg68_clds        ),
   .cpustate     (tg68_cpustate    ),
@@ -690,7 +691,8 @@ assign _ram_oe=1'b1;
 assign _ram_we=1'b1;
 `else
 
-minimig minimig (
+minimig minimig
+(
 	//m68k pins
 	.cpu_address  (tg68_adr[23:1]   ), // M68K address bus
 	.cpu_data     (tg68_dat_in      ), // M68K data bus
@@ -804,7 +806,8 @@ minimig minimig (
 	.osd_pixel_out(osd_pixel        ),
 	.rtg_ena      (rtg_ena_mm       ),
 	.ext_int2     (1'b0             ),
-	.ext_int6     (aud_int          )
+	.ext_int6     (aud_int          ),
+	.ram_64meg    (ram_64meg        )
 );
 
 assign rtg_ena = havertg && rtg_ena_mm;
