@@ -868,8 +868,8 @@ cfide #(.spimux(spimux ? "true" : "false"), .havespirtc(havespirtc ? "true" : "f
 		.amiga_key_stb(c64_translated_key_stb),
 		.c64_keys(C64_KEYS),
 
-		.amiga_addr(tg68_adr[8:1]),
-		.amiga_d(tg68_dat_out),
+		.amiga_addr(tg68_cad[8:1]),
+		.amiga_d(tg68_cin),
 		.amiga_q(amigahost_q),
 		.amiga_req(amigahost_req),
 		.amiga_wr(tg68_cpustate[0]),

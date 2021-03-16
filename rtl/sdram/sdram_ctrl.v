@@ -150,7 +150,7 @@ wire          ccache_fill;
 wire          ccachehit;
 wire          cpuLongword;
 wire          cpuCSn;
-reg  [ 8-1:0] hostslot_cnt;
+//reg  [ 8-1:0] hostslot_cnt;
 reg  [ 8-1:0] reset_cnt;
 reg           reset;
 reg           reset_sdstate;
@@ -424,8 +424,10 @@ always @(posedge sysclk) begin
 
 	rtg_slot2ok <= !refresh_pending && (slot1_type == IDLE || slot1_bank != rtgAddr[24:23]) ? 1'b1 : 1'b0;
 
-	zatn <= !(|hostslot_cnt) && hostce;
-	aud_slot1req <= slot1_type!=AUDIO && audce & !zatn;
+//	zatn <= !(|hostslot_cnt) && hostce && (slot2_type==IDLE || slot2_bank!=2'b00);
+// Don't bother throttling the host CPU - it's already lowest priority.
+	zatn <= hostce && (slot2_type==IDLE || slot2_bank!=2'b00);
+	aud_slot1req <= slot1_type!=AUDIO && audce && !zatn && (slot2_type==IDLE || slot2_bank!=2'b00);
 end
 
 //// sdram control ////
@@ -514,9 +516,9 @@ always @ (posedge sysclk) begin
 				cache_fill_2          <= #1 1'b1; // slot 2
 				slot1_write           <= #1 1'b0;
 				slot1_type            <= #1 IDLE;
-				if(|hostslot_cnt) begin
-					hostslot_cnt        <= #1 hostslot_cnt - 8'd1;
-				end
+//				if(|hostslot_cnt) begin
+//					hostslot_cnt        <= #1 hostslot_cnt - 8'd1;
+//				end
 				// we give the chipset first priority
 				// (this includes anything on the "motherboard" - chip RAM, slow RAM and Kickstart, turbo modes notwithstanding)
 				if(!chip_dma || !chipRW) begin
@@ -575,8 +577,8 @@ always @ (posedge sysclk) begin
 					sd_cmd              <= #1 CMD_ACTIVE;
 					slot1_addr          <= #1 {3'b000, audAddr};
 				end
-				else if(hostce) begin
-					hostslot_cnt        <= #1 8'b00001111;
+				else if(zatn) begin
+//					hostslot_cnt        <= #1 8'b00001111;
 					slot1_type          <= #1 HOST;
 					sdaddr              <= #1 zmAddr[22:10];
 					ba                  <= #1 2'b00;
