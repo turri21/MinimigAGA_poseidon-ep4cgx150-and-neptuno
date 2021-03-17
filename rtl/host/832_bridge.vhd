@@ -133,9 +133,9 @@ bootrom: entity work.OSDBoot_832_ROM
 		q		=> rom_d
 	);
 
-rom_select <= '1' when cpu_addr(23 downto 13)=X"00"&"000" ELSE '0';
+rom_select <= '1' when cpu_addr(24 downto 13)=X"000"&"000" ELSE '0';
 
-hw_select <= cpu_addr(23);
+hw_select <= cpu_addr(27);
 
 process(clk,nReset)
 begin

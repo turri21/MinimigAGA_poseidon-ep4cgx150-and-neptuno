@@ -171,15 +171,15 @@ sd_in(7 downto 0) <= sd_in_shift(7 downto 0);
 
 audio_q<=X"000"&"00"&audio_amiga&audio_buf;
 
-SPI_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"E" ELSE '0';
-rs232_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"F" ELSE '0';
-timer_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"D" ELSE '0';
-platform_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"C" ELSE '0';
-audio_select <='1' when addr(23)='1' and addr(7 downto 4)=X"B" else '0';
-interrupt_select <='1' when addr(23)='1' and addr(7 downto 4)=X"A" else '0';
-keyboard_select <='1' when addr(23)='1' and addr(7 downto 4)=X"9" else '0';
-amiga_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"8" else '0';
-rtc_select <= '1' when addr(23)='1' and addr(7 downto 4)=X"7" else '0';
+SPI_select <= '1' when addr(27)='1' and addr(7 downto 4)=X"E" ELSE '0';
+rs232_select <= '1' when addr(27)='1' and addr(7 downto 4)=X"F" ELSE '0';
+timer_select <= '1' when addr(27)='1' and addr(7 downto 4)=X"D" ELSE '0';
+platform_select <= '1' when addr(27)='1' and addr(7 downto 4)=X"C" ELSE '0';
+audio_select <='1' when addr(27)='1' and addr(7 downto 4)=X"B" else '0';
+interrupt_select <='1' when addr(27)='1' and addr(7 downto 4)=X"A" else '0';
+keyboard_select <='1' when addr(27)='1' and addr(7 downto 4)=X"9" else '0';
+amiga_select <= '1' when addr(27)='1' and addr(7 downto 4)=X"8" else '0';
+rtc_select <= '1' when addr(27)='1' and addr(7 downto 4)=X"7" else '0';
 
 
 -- RTC handling at 0fffff70

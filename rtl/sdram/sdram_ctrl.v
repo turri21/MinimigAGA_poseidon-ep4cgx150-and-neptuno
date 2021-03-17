@@ -42,7 +42,7 @@ module sdram_ctrl(
   inout       [ 16-1:0] sdata,
   // host
   input  wire [ 32-1:0] hostWR,
-  input  wire [ 24-1:2] hostAddr,
+  input  wire [ 25-1:2] hostAddr,
   input  wire           hostce,
   input  wire           hostwe,
   input  wire [ 4-1:0 ] hostbytesel,
@@ -150,7 +150,7 @@ wire          ccache_fill;
 wire          ccachehit;
 wire          cpuLongword;
 wire          cpuCSn;
-//reg  [ 8-1:0] hostslot_cnt;
+reg  [ 8-1:0] hostslot_cnt;
 reg  [ 8-1:0] reset_cnt;
 reg           reset;
 reg           reset_sdstate;
@@ -246,7 +246,7 @@ assign hostena=slot1_type==HOST ? cache_fill_1 : 1'b0;
 
 // map host processor's address space to 0x680000
 always @ (*) begin
-	zmAddr = {3'b000, ~hostAddr[22], ~hostAddr[21], hostAddr[20], ~hostAddr[19], hostAddr[18:2]};
+	zmAddr = {1'b0,hostAddr[24:23], ~hostAddr[22], ~hostAddr[21], hostAddr[20], ~hostAddr[19], hostAddr[18:2]};
 end
 
 ////////////////////////////////////////
@@ -399,35 +399,41 @@ always @ (posedge sysclk) begin
 	end
 end
 
-
 reg zatn;
+
 reg cpu_reservertg;
 reg cpu_slot1ok;
 reg cpu_slot2ok;
+
 reg wb_reservertg;
 reg wb_slot1ok;
 reg wb_slot2ok;
+
 reg rtg_slot2ok;
-reg aud_slot1req;
+reg aud_slot1ok;
+reg host_slot1ok;
 
 always @(posedge sysclk) begin
 
+	// CPU will defer to RTG on slot 2, and avoid using slot 2 when a refresh is pending.
 	cpu_reservertg <= rtgce && cpuAddr_r[24:23]==rtgAddr[24:23] ? 1'b1 : 1'b0;
 	cpu_slot1ok <= !zatn && (slot2_type == IDLE || slot2_bank != cpuAddr_r[24:23]) ? 1'b1 : 1'b0;
 	cpu_slot2ok <= !refresh_pending && (|cpuAddr_r[24:23]   // Reserve bank 0 for slot 1
 	               && (slot1_type == IDLE || slot1_bank != cpuAddr_r[24:23])) ? 1'b1 : 1'b0;
 
+	// Writebuffer will defer to RTG on slot 2, and avoid using slot 2 when a refresh is pending.
 	wb_reservertg <= rtgce && writebufferAddr[24:23]==rtgAddr[24:23] ? 1'b1 : 1'b0;
 	wb_slot1ok <= !zatn && (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23]) ? 1'b1 : 1'b0;
 	wb_slot2ok <= !refresh_pending && (|writebufferAddr[24:23] // Reserve bank 0 for slot 1
 	           && (slot1_type == IDLE || slot1_bank != writebufferAddr[24:23])) ? 1'b1 : 1'b0;
 
+	// Other ports need to avoid bank clashes.
 	rtg_slot2ok <= !refresh_pending && (slot1_type == IDLE || slot1_bank != rtgAddr[24:23]) ? 1'b1 : 1'b0;
+	host_slot1ok <= (slot2_type==IDLE || slot2_bank!=zmAddr[24:23]);
+	aud_slot1ok <= slot1_type!=AUDIO && !zatn && (slot2_type==IDLE || slot2_bank!=2'b00);
 
-//	zatn <= !(|hostslot_cnt) && hostce && (slot2_type==IDLE || slot2_bank!=2'b00);
-// Don't bother throttling the host CPU - it's already lowest priority.
-	zatn <= hostce && (slot2_type==IDLE || slot2_bank!=2'b00);
-	aud_slot1req <= slot1_type!=AUDIO && audce && !zatn && (slot2_type==IDLE || slot2_bank!=2'b00);
+	// Has the host been waiting an unreasonably long time?
+	zatn <= !(|hostslot_cnt) && hostce;
 end
 
 //// sdram control ////
@@ -516,9 +522,9 @@ always @ (posedge sysclk) begin
 				cache_fill_2          <= #1 1'b1; // slot 2
 				slot1_write           <= #1 1'b0;
 				slot1_type            <= #1 IDLE;
-//				if(|hostslot_cnt) begin
-//					hostslot_cnt        <= #1 hostslot_cnt - 8'd1;
-//				end
+				if(|hostslot_cnt) begin
+					hostslot_cnt        <= #1 hostslot_cnt - 8'd1;
+				end
 				// we give the chipset first priority
 				// (this includes anything on the "motherboard" - chip RAM, slow RAM and Kickstart, turbo modes notwithstanding)
 				if(!chip_dma || !chipRW) begin
@@ -567,7 +573,7 @@ always @ (posedge sysclk) begin
 					sd_cmd              <= #1 CMD_ACTIVE;
 					slot1_addr          <= #1 {cpuAddr_r[25:1], 1'b0};
 				end
-				else if(aud_slot1req) begin
+				else if(audce & aud_slot1ok) begin
 					slot1_type          <= #1 AUDIO;
 					sdaddr              <= #1 audAddr[22:10];
 					ba                  <= #1 2'b00;	// Always bank zero for audio
@@ -577,13 +583,13 @@ always @ (posedge sysclk) begin
 					sd_cmd              <= #1 CMD_ACTIVE;
 					slot1_addr          <= #1 {3'b000, audAddr};
 				end
-				else if(zatn) begin
-//					hostslot_cnt        <= #1 8'b00001111;
+				else if(hostce && host_slot1ok) begin
+					hostslot_cnt        <= #1 8'b00001111;
 					slot1_type          <= #1 HOST;
 					sdaddr              <= #1 zmAddr[22:10];
-					ba                  <= #1 2'b00;
+					ba                  <= #1 zmAddr[24:23];
 					// Always bank zero for SPI host CPU
-					slot1_bank          <= #1 2'b00;
+					slot1_bank          <= #1 zmAddr[24:23];
 					slot1_dqm           <= #1 {!hostbytesel[0],!hostbytesel[1]};
 					slot1_dqm2          <= #1 {!hostbytesel[2],!hostbytesel[3]};
 					sd_cmd              <= #1 CMD_ACTIVE;
