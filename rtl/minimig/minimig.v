@@ -421,7 +421,8 @@ wire	turbo;					//CPU is working in turbo mode
 reg		[6:0] memory_config;	//memory configuration
 reg		[3:0] floppy_config;	//floppy drives configuration (drive number and speed)
 reg		[4:0] chipset_config;	//chipset features selection
-reg		[2:0] ide_config;		//HDD & HDC config: bit #0 enables Gayle, bit #1 enables Master drive, bit #2 enables Slave drive
+reg		[2:0] ide_config0;		//HDD & HDC config: bit #0 enables Gayle primary channel, bit #1 enables Master drive, bit #2 enables Slave drive
+reg		[2:0] ide_config1;		//HDD & HDC config: bit #0 enables Gayle secondary chnnl, bit #1 enables Master drive, bit #2 enables Slave drive
 
 //gayle stuff
 wire	sel_ide;				//select IDE drive registers
@@ -639,7 +640,8 @@ paula PAULA1
 wire	[6:0] userio_memory_config;	//memory configuration
 wire	[3:0] userio_floppy_config;	//floppy drives configuration (drive number and speed)
 wire	[4:0] userio_chipset_config;	//chipset features selection
-wire	[2:0] userio_ide_config;		//HDD & HDC config: bit #0 enables Gayle, bit #1 enables Master drive, bit #2 enables Slave drive
+wire	[2:0] userio_ide_config0;		//HDD & HDC config: bit #0 enables Gayle, bit #1 enables Master drive, bit #2 enables Slave drive
+wire	[2:0] userio_ide_config1;		//HDD & HDC config: bit #0 enables Gayle, bit #1 enables Master drive, bit #2 enables Slave drive
 wire    [3:0] userio_cpu_config;
 reg     [3:0] cpu_config_reg;
 
@@ -649,7 +651,8 @@ always @(posedge clk) begin
 	memory_config <= userio_memory_config;
 	floppy_config <= userio_floppy_config;
 	chipset_config <= userio_chipset_config;
-	ide_config <= userio_ide_config;
+	ide_config0 <= userio_ide_config0;
+	ide_config1 <= userio_ide_config1;
 	cpu_config_reg <= userio_cpu_config;
 end
 
@@ -705,7 +708,8 @@ userio USERIO1
 	.floppy_config(userio_floppy_config),
 	.scanline(scanline),
   .dither(dither),
-	.ide_config(userio_ide_config),
+	.ide_config0(userio_ide_config0),
+	.ide_config1(userio_ide_config1),
 	.cpu_config(userio_cpu_config),
 	.usrrst(usrrst),
   .cpurst(cpurst),
@@ -1022,7 +1026,7 @@ gary GARY1
 	.dbs(dbs),
 	.xbs(xbs),
 	.memory_config(memory_config[3:0]),
-	.hdc_ena(ide_config[0]), // Gayle decoding enable	
+	.hdc_ena({ide_config1[0], ide_config0[0]}), // Gayle decoding enable	
 	.ram_rd(ram_rd),
 	.ram_hwr(ram_hwr),
 	.ram_lwr(ram_lwr),
@@ -1060,7 +1064,8 @@ gayle GAYLE1
 	.sel_gayle(sel_gayle),
 	.irq(gayle_irq),
   .nrdy(gayle_nrdy),
-	.hdd_ena(ide_config[2:1]),
+	.hdd0_ena(ide_config0[2:1]),
+	.hdd1_ena(ide_config1[2:1]),
 
 	.hdd_cmd_req(hdd_cmd_req),
 	.hdd_dat_req(hdd_dat_req),
