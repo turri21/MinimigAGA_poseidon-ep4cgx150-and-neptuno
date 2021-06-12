@@ -122,8 +122,9 @@ module paula_audio
   output reg  [  4-1:0] dmas,           // dma special
   output wire           left,           // audio bitstream out left
   output wire           right,          // audio bitstream out right
-  output wire [ 15-1:0] ldata,          // left DAC data
-  output wire [ 15-1:0] rdata           // right DAC data
+  output wire [ 16-1:0] ldata,          // left DAC data
+  output wire [ 16-1:0] rdata,          // right DAC data
+  input  wire           filter
 );
 
 
@@ -145,8 +146,6 @@ wire  [  7-1:0] vol0;     //channel 0 volume
 wire  [  7-1:0] vol1;     //channel 1 volume
 wire  [  7-1:0] vol2;     //channel 2 volume
 wire  [  7-1:0] vol3;     //channel 3 volume
-wire  [ 16-1:0] ldatasum;
-wire  [ 16-1:0] rdatasum;
 
 
 //address decoder
@@ -253,6 +252,9 @@ paula_audio_channel ach3
   .strhor(strhor)
 );
 
+wire [14:0] ldata_prefilter;
+wire [14:0] rdata_prefilter;
+
 
 // instantiate mixer
 paula_audio_mixer mix (
@@ -266,18 +268,34 @@ paula_audio_mixer mix (
   .vol1     (vol1),
   .vol2     (vol2),
   .vol3     (vol3),
-  .ldatasum (ldata),
-  .rdatasum (rdata)
+  .ldatasum (ldata_prefilter),
+  .rdatasum (rdata_prefilter)
 );
 
+
+wire [15:0] ldata_postfilter;
+wire [15:0] rdata_postfilter;
+
+assign ldata=ldata_postfilter;
+assign rdata=rdata_postfilter;
+
+audiofilter myaudiofilter
+(
+	.clk(clk),
+	.filter_ena(filter),
+	.audio_in_left({ldata_prefilter,1'b0}),
+	.audio_in_right({rdata_prefilter,1'b0}),
+	.audio_out_left(ldata_postfilter),
+	.audio_out_right(rdata_postfilter)
+);
 
 //instantiate sigma/delta modulator
 paula_audio_sigmadelta dac
 (
   .clk(clk),
   .clk7_en (clk7_en),
-  .ldatasum(ldata),
-  .rdatasum(rdata),
+  .ldatasum(ldata_postfilter[15:1]),
+  .rdatasum(rdata_postfilter[15:1]),
   .left(left),
   .right(right)
 );

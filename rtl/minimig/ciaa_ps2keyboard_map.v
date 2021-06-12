@@ -2,7 +2,7 @@
 //this module also handles the osd_ctrl signals
 
 
-module ps2keyboardmap
+module ciaa_ps2keyboard_map
 (
   input   clk,          //clock
   input clk7_en,
@@ -17,6 +17,7 @@ module ps2keyboardmap
   output  caps,         //amiga capslock key
   output  reg numlock = 0,  //ps/2 numlock status
   output  reg [7:0] osd_ctrl, //osd menu control
+  output  reg osd_strobe,
   output  reg _lmb,     //mouse button emulation
   output  reg _rmb,     //mouse button emulation
   output  reg [5:0] _joy2,  //joystick emulation
@@ -92,10 +93,13 @@ assign akey[7:0] = {upstroke, keyrom[6:0]};
 //keyrom[8] - OSD key, keyrom[15] - Amiga key
 always @(posedge clk) begin
   if (clk7_en) begin
+    osd_strobe<=1'b0;
     if (reset)
       osd_ctrl[7:0] <= 8'd0;
-    else if (enable2 && (keyrom[8] || keyrom[15]))
+    else if (enable2 && (keyrom[8] || keyrom[15])) begin
+		osd_strobe<=1'b1;
       osd_ctrl[7:0] <= {upstroke, keyrom[6:0]};
+	end
   end
 end
 
@@ -182,136 +186,6 @@ always @(posedge clk) begin
   end
 end
 
-always @(posedge clk)
-  if (clk7_en) begin
-  	enable2 <= enable;
-  end
-
-//latch special ps2 keycodes
-//keyrom[7] is used together with [0], [1] and [2] for ps2 special codes decoding
-//these are needed for complete decoding of the ps2 codes
-always @(posedge clk)
-  if (clk7_en) begin
-  	if (reset)//reset
-  	begin
-  		upstroke <= 1'd0;
-  		extended <= 1'd0;
-  	end
-  	else if (enable2 && keyrom[7] && keyrom[0])//extended key identifier found
-  		extended <= 1'd1;
-  	else if (enable2 && keyrom[7] && keyrom[1])//upstroke identifier found
-  		upstroke <= 1'd1;
-  	else if (enable2 && !(keyrom[7] && keyrom[2]))//other key found and it was not an ack, reset both status bits
-  	begin
-  		upstroke <= 1'd0;
-  		extended <= 1'd0;
-  	end
-  end
-
-//assign all output signals
-//keyrom[6:0] = amiga keycode
-assign disable_amiga_key = numlock && ((keyrom[7:0]==JOY2KEY_LEFT) | (keyrom[7:0]==JOY2KEY_RIGHT) | (keyrom[7:0]==JOY2KEY_UP) | (keyrom[7:0]==JOY2KEY_DOWN) | keyrom[14] | keyrom[13]);
-assign valid = keyrom[15] & (~keyrom[9] | ~numlock) & enable2 && !disable_amiga_key;
-assign ctrl = keyrom[14] && !numlock;
-assign aleft = keyrom[13] && !numlock;
-assign aright = keyrom[12];
-assign caps = keyrom[11];
-assign akey[7:0] = {upstroke, keyrom[6:0]};
-
-//osd control handling
-//keyrom[8] - OSD key, keyrom[15] - Amiga key
-always @(posedge clk) begin
-  if (clk7_en) begin
-  	if (reset)
-  		osd_ctrl[7:0] <= 8'd0;
-  	else if (enable2 && (keyrom[8] || keyrom[15]))
-  		osd_ctrl[7:0] <= {upstroke, keyrom[6:0]};
-  end
-end
-
-//freeze key for Action Replay
-always @(posedge clk) begin
-  if (clk7_en) begin
-  	if (reset)
-  		freeze <= 1'b0;
-  	else if (enable2 && keyrom[8] && keyrom[7:0]==8'h6F)
-  		freeze <= ~upstroke;
-  end
-end
-
-//numlock
-always @(posedge clk) begin
-  if (clk7_en) begin
-  	if (enable2 && keyrom[10] && ~upstroke)
-  		numlock <= ~numlock;
-  end
-end
-
-//[fire2,fire,up,down,left,right] 
-always @(posedge clk) begin
-  if (clk7_en) begin
-  	if (reset || !numlock || enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_LEFT && !upstroke)
-  		_joy2[0] <= 1'b1;
-  	else if (enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_RIGHT)
-  		_joy2[0] <= upstroke;
-  end
-end
-
-always @(posedge clk) begin
-  if (clk7_en) begin
-  	if (reset || !numlock || enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_RIGHT && !upstroke)
-  		_joy2[1] <= 1'b1;
-  	else if (enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_LEFT)
-  		_joy2[1] <= upstroke;
-  end
-end
-
-always @(posedge clk) begin
-  if (clk7_en) begin
-  	if (reset || !numlock || enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_UP && !upstroke)
-  		_joy2[2] <= 1'b1;
-  	else if (enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_DOWN)
-  		_joy2[2] <= upstroke;
-  end
-end
-
-always @(posedge clk) begin
-  if (clk7_en) begin
-  	if (reset || !numlock || enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_DOWN && !upstroke)
-  		_joy2[3] <= 1'b1;
-  	else if (enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_UP)
-  		_joy2[3] <= upstroke;
-  end
-end
-
-always @(posedge clk) begin
-  if (clk7_en) begin
-  	if (reset || !numlock)
-  		_joy2[4] <= 1'b1;
-  	else if (enable2 && keyrom[15] && keyrom[14]/*ctrl*//*keyrom[15] && keyrom[7:0]==JOY2KEY_FIRE0*/)
-  		_joy2[4] <= upstroke;
-  end
-end
-
-always @(posedge clk) begin
-  if (clk7_en) begin
-  	if (reset || !numlock)
-  		_joy2[5] <= 1'b1;
-  	else if (enable2 && keyrom[15] && keyrom[13]/*aleft*/ /*keyrom[15] && keyrom[7:0]==JOY2KEY_FIRE1*/)
-  		_joy2[5] <= upstroke;
-  end
-end
-
-// mouse button emulation
-always @(posedge clk) begin
-  if (clk7_en) begin
-  	if (reset || !numlock)
-  		_lmb <= 1'b1;
-  	else if (enable2 && keyrom[15] && keyrom[7:0]==JOY1KEY_FIRE0)
-  		_lmb <= upstroke;
-  end
-end
-
 always @(posedge clk) begin
   if (clk7_en) begin
   	if (reset || !numlock)
@@ -320,6 +194,145 @@ always @(posedge clk) begin
   		_rmb <= upstroke;
   end
 end
+
+//always @(posedge clk)
+//  if (clk7_en) begin
+//  	enable2 <= enable;
+//  end
+//
+////latch special ps2 keycodes
+////keyrom[7] is used together with [0], [1] and [2] for ps2 special codes decoding
+////these are needed for complete decoding of the ps2 codes
+//always @(posedge clk)
+//  if (clk7_en) begin
+//  	if (reset)//reset
+//  	begin
+//  		upstroke <= 1'd0;
+//  		extended <= 1'd0;
+//  	end
+//  	else if (enable2 && keyrom[7] && keyrom[0])//extended key identifier found
+//  		extended <= 1'd1;
+//  	else if (enable2 && keyrom[7] && keyrom[1])//upstroke identifier found
+//  		upstroke <= 1'd1;
+//  	else if (enable2 && !(keyrom[7] && keyrom[2]))//other key found and it was not an ack, reset both status bits
+//  	begin
+//  		upstroke <= 1'd0;
+//  		extended <= 1'd0;
+//  	end
+//  end
+//
+////assign all output signals
+////keyrom[6:0] = amiga keycode
+//assign disable_amiga_key = numlock && ((keyrom[7:0]==JOY2KEY_LEFT) | (keyrom[7:0]==JOY2KEY_RIGHT) | (keyrom[7:0]==JOY2KEY_UP) | (keyrom[7:0]==JOY2KEY_DOWN) | keyrom[14] | keyrom[13]);
+//assign valid = keyrom[15] & (~keyrom[9] | ~numlock) & enable2 && !disable_amiga_key;
+//assign ctrl = keyrom[14] && !numlock;
+//assign aleft = keyrom[13] && !numlock;
+//assign aright = keyrom[12];
+//assign caps = keyrom[11];
+//assign akey[7:0] = {upstroke, keyrom[6:0]};
+//
+////osd control handling
+////keyrom[8] - OSD key, keyrom[15] - Amiga key
+//always @(posedge clk) begin
+//  if (clk7_en) begin
+//  	if (reset)
+//  		osd_ctrl[7:0] <= 8'd0;
+//  	else if (enable2 && (keyrom[8] || keyrom[15]))
+//  		osd_ctrl[7:0] <= {upstroke, keyrom[6:0]};
+//  end
+//end
+//
+////freeze key for Action Replay
+//always @(posedge clk) begin
+//  if (clk7_en) begin
+//  	if (reset)
+//  		freeze <= 1'b0;
+//  	else if (enable2 && keyrom[8] && keyrom[7:0]==8'h6F)
+//  		freeze <= ~upstroke;
+//  end
+//end
+//
+////numlock
+//always @(posedge clk) begin
+//  if (clk7_en) begin
+//  	if (enable2 && keyrom[10] && ~upstroke)
+//  		numlock <= ~numlock;
+//  end
+//end
+//
+////[fire2,fire,up,down,left,right] 
+//always @(posedge clk) begin
+//  if (clk7_en) begin
+//  	if (reset || !numlock || enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_LEFT && !upstroke)
+//  		_joy2[0] <= 1'b1;
+//  	else if (enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_RIGHT)
+//  		_joy2[0] <= upstroke;
+//  end
+//end
+//
+//always @(posedge clk) begin
+//  if (clk7_en) begin
+//  	if (reset || !numlock || enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_RIGHT && !upstroke)
+//  		_joy2[1] <= 1'b1;
+//  	else if (enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_LEFT)
+//  		_joy2[1] <= upstroke;
+//  end
+//end
+//
+//always @(posedge clk) begin
+//  if (clk7_en) begin
+//  	if (reset || !numlock || enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_UP && !upstroke)
+//  		_joy2[2] <= 1'b1;
+//  	else if (enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_DOWN)
+//  		_joy2[2] <= upstroke;
+//  end
+//end
+//
+//always @(posedge clk) begin
+//  if (clk7_en) begin
+//  	if (reset || !numlock || enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_DOWN && !upstroke)
+//  		_joy2[3] <= 1'b1;
+//  	else if (enable2 && keyrom[15] && keyrom[7:0]==JOY2KEY_UP)
+//  		_joy2[3] <= upstroke;
+//  end
+//end
+//
+//always @(posedge clk) begin
+//  if (clk7_en) begin
+//  	if (reset || !numlock)
+//  		_joy2[4] <= 1'b1;
+//  	else if (enable2 && keyrom[15] && keyrom[14]/*ctrl*//*keyrom[15] && keyrom[7:0]==JOY2KEY_FIRE0*/)
+//  		_joy2[4] <= upstroke;
+//  end
+//end
+//
+//always @(posedge clk) begin
+//  if (clk7_en) begin
+//  	if (reset || !numlock)
+//  		_joy2[5] <= 1'b1;
+//  	else if (enable2 && keyrom[15] && keyrom[13]/*aleft*/ /*keyrom[15] && keyrom[7:0]==JOY2KEY_FIRE1*/)
+//  		_joy2[5] <= upstroke;
+//  end
+//end
+//
+//// mouse button emulation
+//always @(posedge clk) begin
+//  if (clk7_en) begin
+//  	if (reset || !numlock)
+//  		_lmb <= 1'b1;
+//  	else if (enable2 && keyrom[15] && keyrom[7:0]==JOY1KEY_FIRE0)
+//  		_lmb <= upstroke;
+//  end
+//end
+//
+//always @(posedge clk) begin
+//  if (clk7_en) begin
+//  	if (reset || !numlock)
+//  		_rmb <= 1'b1;
+//  	else if (enable2 && keyrom[15] && keyrom[7:0]==JOY1KEY_FIRE1)
+//  		_rmb <= upstroke;
+//  end
+//end
 
 // mouseemu
 reg mouse_emu_up, mouse_emu_down, mouse_emu_left, mouse_emu_right;

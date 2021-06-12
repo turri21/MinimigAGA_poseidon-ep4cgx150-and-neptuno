@@ -6,13 +6,15 @@
 module userio_ps2mouse
 (
 	input 	clk,		    	// 28MHz clock
-  input clk7_en,
+   input clk7_en,
 	input 	reset,			   	//reset 
-	inout	ps2mdat,			//mouse PS/2 data
-	inout	ps2mclk,			//mouse PS/2 clk
-  input [5:0] mou_emu,
-  input sof,
-  output  reg [7:0]zcount,  // mouse Z counter
+	input	ps2mdat_i,			//mouse PS/2 data
+	input	ps2mclk_i,			//mouse PS/2 clk
+	output	ps2mdat_o,			//mouse PS/2 data
+	output	ps2mclk_o,			//mouse PS/2 clk
+   input [5:0] mou_emu,
+   input sof,
+   output  reg [7:0]zcount,  // mouse Z counter
 	output	reg [7:0]ycount,	//mouse Y counter
 	output	reg [7:0]xcount,	//mouse X counter
 	output	reg _mleft,			//left mouse button output
@@ -50,14 +52,15 @@ reg  [12-1:0] mcmd;
 
 
 // bidirectional open collector IO buffers
-assign ps2mclk = (mclkout) ? 1'bz : 1'b0;
-assign ps2mdat = (mdatout) ? 1'bz : 1'b0;
+// AMR - had to move this to the toplevel for TC64.
+assign ps2mclk_o = (mclkout);//  ? 1'bz : 1'b0;
+assign ps2mdat_o = (mdatout);// ? 1'bz : 1'b0;
 
 // input synchronization of external signals
 always @ (posedge clk) begin
   if (clk7_en) begin
-    mdatr[1:0] <= #1 {mdatr[0],   ps2mdat};
-    mclkr[2:0] <= #1 {mclkr[1:0], ps2mclk};
+    mdatr[1:0] <= #1 {mdatr[0],   ps2mdat_i};
+    mclkr[2:0] <= #1 {mclkr[1:0], ps2mclk_i};
   end
 end
 

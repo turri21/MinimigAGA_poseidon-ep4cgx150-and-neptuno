@@ -4,7 +4,7 @@
 module agnus_blitter_adrgen
 (
 	input	clk,					// bus clock
-  input clk7_en,
+	input clk7_en,
 	input	reset,					// reset
 	input	[1:0] ptrsel,			// pointer register selection
 	input	[1:0] modsel,			// modulo register selection

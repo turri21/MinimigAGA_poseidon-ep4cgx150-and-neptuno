@@ -54,8 +54,10 @@ module ciaa_ps2keyboard
 	input 	clk,		   		//bus clock
   input clk7_en,
 	input 	reset,			   	//reset (system reset in)
-	inout	ps2kdat,			//keyboard PS/2 data
-	inout	ps2kclk,			//keyboard PS/2 clk
+	input	ps2kdat_i,			//keyboard PS/2 data
+	input	ps2kclk_i,			//keyboard PS/2 clk
+	output	ps2kdat_o,			//keyboard PS/2 data
+	output	ps2kclk_o,			//keyboard PS/2 clk
 	input	leda,				//keyboard led a in
 	input	ledb,				//keyboard led b in
   output  aflock,   // auto fire toggle
@@ -63,7 +65,8 @@ module ciaa_ps2keyboard
 	output	[7:0] keydat,		//keyboard data out
 	output	reg keystrobe,		//keyboard data out strobe
 	input	keyack,				//keyboard data out acknowledge
-	output	[7:0] osd_ctrl,		//on-screen-display controll
+	output	[7:0] osd_ctrl,		//on-screen-display control
+	output	osd_strobe,
 	output	_lmb,				//emulated left mouse button
 	output	_rmb,				//emulated right mouse button
 	output	[5:0] _joy2,		//joystick emulation
@@ -71,6 +74,8 @@ module ciaa_ps2keyboard
   output [5:0] mou_emu,
   output [5:0] joy_emu
 );
+
+//assign active = prready;
 
 //local signals
 reg		pclkout; 				//ps2 clk out
@@ -96,15 +101,16 @@ reg		psled2;					//ps2 send led code 2
 wire	psready;				//ps2 send ready
 wire	valid;					//valid amiga key code at keymap output
 
+// AMR - had to change this for TC64
 //bidirectional open collector IO buffers
-assign ps2kclk = pclkout ? 1'bz : 1'b0;
-assign ps2kdat = pdatout ? 1'bz : 1'b0;
+assign ps2kclk_o = pclkout;// ? 1'bz : 1'b0;
+assign ps2kdat_o = pdatout;// ? 1'bz : 1'b0;
 
 //input synchronization of external signals
 always @(posedge clk) begin
   if (clk7_en) begin
-  	pdatb <= ps2kdat;
-  	pclkb <= ps2kclk;
+  	pdatb <= ps2kdat_i;
+  	pclkb <= ps2kclk_i;
   	pclkc <= pclkb;
   end
 end						
@@ -287,6 +293,7 @@ ciaa_ps2keyboard_map km1
 	.caps(caps),
 	.numlock(numlock),
 	.osd_ctrl(osd_ctrl),
+	.osd_strobe(osd_strobe),
 	._lmb(_lmb),
 	._rmb(_rmb),
 	._joy2(_joy2),

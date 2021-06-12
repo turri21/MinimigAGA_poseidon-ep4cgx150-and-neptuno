@@ -1,111 +1,101 @@
-## Generated SDC file "constraints.sdc"
 
-## Copyright (C) 1991-2011 Altera Corporation
-## Your use of Altera Corporation's design tools, logic functions
-## and other software and tools, and its AMPP partner logic
-## functions, and any output files from any of the foregoing
-## (including device programming or simulation files), and any
-## associated documentation or information are expressly subject
-## to the terms and conditions of the Altera Program License
-## Subscription Agreement, Altera MegaCore Function License
-## Agreement, or other applicable license agreement, including,
-## without limitation, that your use is for the sole purpose of
-## programming logic devices manufactured by Altera and sold by
-## Altera or its authorized distributors. Please refer to the
-## applicable agreement for further details.
-
-
-## VENDOR "Altera"
-## PROGRAM "Quartus II"
-## VERSION "Version 11.1 Build 216 11/23/2011 Service Pack 1 SJ Web Edition"
-
-## DATE "Fri Jul 06 23:05:47 2012"
-
-##
-## DEVICE "EP3C25E144C8"
-##
-
-
-#**************************************************************
-# Time Information
-#**************************************************************
-
+# time information
 set_time_format -unit ns -decimal_places 3
 
 
+#create clocks
+create_clock -name pll_in_clk -period 37.037 [get_ports {CLOCK_27[0]}]
+create_clock -name spi_clk -period 41.666 -waveform { 20.8 41.666 } [get_ports {SPI_SCK}]
 
-#**************************************************************
-# Create Clock
-#**************************************************************
-
-create_clock -name {clk_27} -period 37.037 -waveform { 0.000 18.500 } [get_ports {CLOCK_27[0]}]
-create_clock -name {SPI_SCK} -period 1.000 -waveform { 0.000 0.500 } [get_ports {SPI_SCK}]
-create_clock -name {amiga_clk:amiga_clk|clk7_cnt[1]} -period 1.000 -waveform { 0.000 0.500 } [get_registers {amiga_clk:amiga_clk|clk7_cnt[1]}]
-create_clock -name {user_io:user_io|kbd_mouse_strobe} -period 1.000 -waveform { 0.000 0.500 } [get_registers {user_io:user_io|kbd_mouse_strobe}]
-
-#**************************************************************
-# Create Generated Clock
-#**************************************************************
-
+# pll clocks
 derive_pll_clocks
-create_generated_clock -name sdclk_pin -source [get_pins {amiga_clk|amiga_clk_i|altpll_component|pll|clk[2]}] [get_ports {SDRAM_CLK}]
-
-#**************************************************************
-# Set Clock Latency
-#**************************************************************
 
 
-#**************************************************************
-# Set Clock Uncertainty
-#**************************************************************
-
-derive_clock_uncertainty;
-
-#**************************************************************
-# Set Input Delay
-#**************************************************************
-
-set_input_delay -clock sdclk_pin -max 6.4 [get_ports SDRAM_DQ*]
-set_input_delay -clock sdclk_pin -min 3.2 [get_ports SDRAM_DQ*]
-
-#**************************************************************
-# Set Output Delay
-#**************************************************************
-
-set_output_delay -clock sdclk_pin -max 1.5 [get_ports SDRAM_*]
-set_output_delay -clock sdclk_pin -min -0.8 [get_ports SDRAM_*]
-
-#**************************************************************
-# Set Clock Groups
-#**************************************************************
+# generated clocks
 
 
-
-#**************************************************************
-# Set False Path
-#**************************************************************
-
-
-
-#**************************************************************
-# Set Multicycle Path
-#**************************************************************
-
-set_multicycle_path -from [get_clocks {sdclk_pin}] -to [get_clocks {amiga_clk|amiga_clk_i|altpll_component|pll|clk[2]}] -setup -end 2
+# name PLL clocks
+set clk_sdram "amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[0]"
+set clk_114   "amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[1]"
+set clk_28    "amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[2]"
 
 
-#**************************************************************
-# Set Maximum Delay
-#**************************************************************
+# name SDRAM ports
+set sdram_outputs [get_ports {SDRAM_DQ[*] SDRAM_A[*] SDRAM_DQML SDRAM_DQMH SDRAM_nWE SDRAM_nCAS SDRAM_nRAS SDRAM_nCS SDRAM_BA[*] SDRAM_CKE}]
+set sdram_inputs  [get_ports {SDRAM_DQ[*]}]
 
 
-
-#**************************************************************
-# Set Minimum Delay
-#**************************************************************
-
+# clock groups
+set_clock_groups -exclusive -group [get_clocks {amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[*]}] -group [get_clocks {spi_clk}]
+set_clock_groups -exclusive -group [get_clocks {amiga_clk|amiga_clk_i|altpll_component|auto_generated|pll1|clk[*]}] -group [get_clocks {pll_in_clk}]
 
 
-#**************************************************************
-# Set Input Transition
-#**************************************************************
+# clock uncertainty
+derive_clock_uncertainty
+
+
+# input delay
+set_input_delay -clock $clk_sdram -reference_pin [get_ports SDRAM_CLK] -max 6.4 $sdram_inputs
+set_input_delay -clock $clk_sdram -reference_pin [get_ports SDRAM_CLK] -min 3.2 $sdram_inputs
+
+#output delay
+set_output_delay -clock $clk_sdram -reference_pin [get_ports SDRAM_CLK] -max  1.5 $sdram_outputs
+set_output_delay -clock $clk_sdram -reference_pin [get_ports SDRAM_CLK] -min -0.8 $sdram_outputs
+
+set_output_delay -clock $clk_114 .5 [get_ports {VGA_R[*]}]
+set_output_delay -clock $clk_114 .5 [get_ports {VGA_G[*]}]
+set_output_delay -clock $clk_114 .5 [get_ports {VGA_B[*]}]
+
+# input delay on SPI pins
+set_input_delay -clock { spi_clk } .5 [get_ports SPI*]
+set_input_delay -clock { spi_clk } .5 [get_ports CONF_DATA0]
+
+# output delay on SPI pins
+set_output_delay -clock { spi_clk } .5 [get_ports SPI_DO]
+
+
+# false paths
+set_false_path -from * -to [get_ports {SDRAM_CLK}]
+set_false_path -from * -to [get_ports {LED}]
+set_false_path -from * -to [get_ports {UART_TX}]
+set_false_path -from [get_ports {UART_RX}] -to *
+#set_false_path -from * -to [get_ports {VGA_*}]
+set_false_path -from * -to [get_ports {VGA_VS}]
+set_false_path -from * -to [get_ports {VGA_HS}]
+set_false_path -from * -to [get_ports {AUDIO_L}]
+set_false_path -from * -to [get_ports {AUDIO_R}]
+
+
+# multicycle paths
+
+set_multicycle_path -from {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -setup 4
+set_multicycle_path -from {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold 3
+set_multicycle_path -from {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|memaddr*} -setup 3
+set_multicycle_path -from {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|memaddr*} -hold 2
+set_multicycle_path -from {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|memaddr*} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -setup 4
+set_multicycle_path -from {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|memaddr*} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold 3
+set_multicycle_path -from {TG68K:tg68k|addr[*]} -setup 3
+set_multicycle_path -from {TG68K:tg68k|addr[*]} -hold 2
+
+set_multicycle_path -from {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|dpram_256x32:dtram|altsyncram:altsyncram_component|*|q_a[*]} -to {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|cpu_cacheline_*[*][*]} -setup 2set_multicycle_path -from {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|dpram_256x32:dtram|altsyncram:altsyncram_component|*|q_a[*]} -to {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|cpu_cacheline_*[*][*]} -hold 1
+set_multicycle_path -from {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|dpram_256x32:itram|altsyncram:altsyncram_component|*|q_a[*]} -to {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|cpu_cacheline_*[*][*]} -setup 2
+set_multicycle_path -from {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|dpram_256x32:itram|altsyncram:altsyncram_component|*|q_a[*]} -to {sdram_ctrl:sdram|cpu_cache_new:cpu_cache|cpu_cacheline_*[*][*]} -hold 1
+
+set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -setup 4
+set_multicycle_path -from [get_clocks $clk_28] -to [get_clocks $clk_114] -hold 3
+
+set_multicycle_path -from [get_clocks $clk_sdram] -to [get_clocks $clk_114] -setup 2
+
+# Neither in nor out of the C2P requires single-cycle speed
+set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:\c2p:myc2p|rdptr[*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -setup -end 2
+set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:\c2p:myc2p|rdptr[*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold -end 1
+set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:\c2p:myc2p|buf[*][*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -setup -end 2
+set_multicycle_path -from {TG68K:tg68k|akiko:myakiko|cornerturn:\c2p:myc2p|buf[*][*]} -to {TG68K:tg68k|TG68KdotC_Kernel:pf68K_Kernel_inst|*} -hold -end 1
+
+# Likewise RTG and audio address have 8 cycles of downtime between bursts
+set_multicycle_path -from {VideoStream:myvs|address_high[*]} -to {sdram_ctrl:sdram|*} -setup -end 2
+set_multicycle_path -from {VideoStream:myvs|address_high[*]} -to {sdram_ctrl:sdram|*} -hold -end 1
+set_multicycle_path -from {VideoStream:myvs|outptr[*]} -to {sdram_ctrl:sdram|*} -setup -end 2
+set_multicycle_path -from {VideoStream:myvs|outptr[*]} -to {sdram_ctrl:sdram|*} -hold -end 1
+set_multicycle_path -from {VideoStream:myaudiostream|*} -to {sdram_ctrl:sdram|*} -setup -end 2
+set_multicycle_path -from {VideoStream:myaudiostream|*} -to {sdram_ctrl:sdram|*} -hold -end 1

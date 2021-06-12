@@ -93,23 +93,11 @@ module ciaa
   input   eclk,          // eclk (counter input for timer A/B)
   output   irq,           // interrupt request out
   input  [7:2] porta_in,   // porta in
-  output   [1:0] porta_out,  // porta out
-  output  kbdrst,        // keyboard reset out
-  inout  kbddat,        // ps2 keyboard data
-  inout  kbdclk,        // ps2 keyboard clock
-  input  keyboard_disabled,  // disable keystrokes
-  input kbd_mouse_strobe,
-  input [1:0] kbd_mouse_type,
-  input [7:0] kbd_mouse_data,
-  output  [7:0] osd_ctrl,    // osd control
-  output  _lmb,
-  output  _rmb,
-  output  [5:0] _joy2,
-  output  aflock,       // auto fire lock
-  output  freeze,        // Action Replay freeze key
-  input  disk_led,      // floppy disk activity LED
-  output [5:0] mou_emu,
-  output [5:0] joy_emu
+  output   [3:0] porta_out,  // porta out
+  input  [7:0] portb_in,   // portb in
+  input  key_strobe,     // keyboard data valid
+  input [7:0] key_data,  // keyboard data
+  output keyack
 );
 
 // local signals
@@ -163,111 +151,21 @@ assign  crb  = (enable && rs==4'hF) ? 1'b1 : 1'b0;
 //----------------------------------------------------------------------------------
 assign data_out = icr_out | tmra_out | tmrb_out | tmrd_out | sdr_out | pb_out | pa_out;
 
-//----------------------------------------------------------------------------------
-// instantiate keyboard module
-//----------------------------------------------------------------------------------
-wire  keystrobe;
-wire  keyack;
-wire  [7:0] keydat;
-reg    [7:0] sdr_latch;
+reg [7:0] sdr_latch;
 
-
-`ifdef MINIMIG_PS2_KEYBOARD
-
-ciaa_ps2keyboard  kbd1
-(
-  .clk(clk),
-  .clk7_en(clk7_en),
-  .reset(reset),
-  .ps2kdat(kbddat),
-  .ps2kclk(kbdclk),
-  .leda(~porta_out[1]),  // keyboard joystick LED - num lock
-  .ledb(disk_led),    // disk activity LED - scroll lock
-  .aflock(aflock),
-  .kbdrst(kbdrst),
-  .keydat(keydat[7:0]),
-  .keystrobe(keystrobe),
-  .keyack(keyack),
-  .osd_ctrl(osd_ctrl),
-  ._lmb(_lmb),
-  ._rmb(_rmb),
-  ._joy2(_joy2),
-  .freeze(freeze),
-  .mou_emu(mou_emu),
-  .joy_emu(joy_emu)
-);
-
-// sdr register
-// !!! Amiga receives keycode ONE STEP ROTATED TO THE RIGHT AND INVERTED !!!
-always @(posedge clk)
-  if (clk7_en) begin
-    if (reset)
-      sdr_latch[7:0] <= 8'h00;
-    else if (keystrobe & ~keyboard_disabled)
-      sdr_latch[7:0] <= ~{keydat[6:0],keydat[7]};
-    else if (wr & sdr)
-      sdr_latch[7:0] <= data_in[7:0];
-  end
-
-`else
-
-assign kbdrst = 1'b0;
-assign _lmb = 1'b1;
-assign _rmb = 1'b1;
-assign _joy2 = 6'b11_1111;
-assign joy_emu = 6'b11_1111;
-assign mou_emu = 6'b11_1111;
-reg freeze_reg=0;
-assign freeze = freeze_reg;
-assign aflock = 1'b0;
-
-reg [7:0] osd_ctrl_reg;
-
-reg keystrobe_reg;
-assign keystrobe = keystrobe_reg;
-
-assign osd_ctrl = osd_ctrl_reg;
-
-// generate a keystrobe which is valid exactly one clk cycle
-reg kbd_mouse_strobeD, kbd_mouse_strobeD2;
-always @(posedge clk)
-  if (clk7_en) begin
-    kbd_mouse_strobeD <= kbd_mouse_strobe;
-  end
-
-always @(posedge clk) begin
-  if (clk7n_en) begin
-    kbd_mouse_strobeD2 <= kbd_mouse_strobeD;
-    keystrobe_reg <= kbd_mouse_strobeD && !kbd_mouse_strobeD2;
-  end
-end
-
-// sdr register
-// !!! Amiga receives keycode ONE STEP ROTATED TO THE RIGHT AND INVERTED !!!
 always @(posedge clk) begin
   if (clk7_en) begin
     if (reset) begin
       sdr_latch[7:0] <= 8'h00;
-      osd_ctrl_reg[7:0] <= 8'd0;
-      freeze_reg <= #1 1'b0;
-     end else begin
-      if (keystrobe && (kbd_mouse_type == 2) && ~keyboard_disabled) begin
-        sdr_latch[7:0] <= ~{kbd_mouse_data[6:0],kbd_mouse_data[7]};
-        if (kbd_mouse_data == 8'h5f) freeze_reg <= #1 1'b1;
-        else freeze_reg <= #1 1'b0;
-      end else if (wr & sdr)
+    end else begin
+      if (key_strobe)
+        sdr_latch[7:0] <= key_data;
+      else if (wr & sdr)
         sdr_latch[7:0] <= data_in[7:0];
-
-      if(keystrobe && ((kbd_mouse_type == 2) || (kbd_mouse_type == 3)))
-        osd_ctrl_reg[7:0] <= kbd_mouse_data;
     end
   end
 end
-
-`endif
-
-
-// sdr register  read
+// sdr register read
 assign sdr_out = (!wr && sdr) ? sdr_latch[7:0] : 8'h00;
 // keyboard acknowledge
 assign keyack = (!wr && sdr) ? 1'b1 : 1'b0;
@@ -298,7 +196,7 @@ assign ser_tx_irq = &ser_tx_cnt & tmra_ovf; // signal irq when ser_tx_cnt overfl
 // porta
 //----------------------------------------------------------------------------------
 reg [7:2] porta_in2;
-reg [1:0] regporta;
+reg [3:0] regporta;
 reg [7:0] ddrporta;
 
 // synchronizing of input data
@@ -311,9 +209,9 @@ always @(posedge clk)
 always @(posedge clk)
   if (clk7_en) begin
     if (reset)
-      regporta[1:0] <= 2'd0;
+      regporta[3:0] <= 4'd0;
     else if (wr && pra)
-      regporta[1:0] <= data_in[1:0];
+      regporta[3:0] <= {data_in[7:6], data_in[1:0]};
   end
 
 // writing of ddr register
@@ -337,7 +235,7 @@ begin
 end
 
 // assignment of output port while keeping in mind that the original 8520 uses pull-ups
-assign porta_out[1:0] = (~ddrporta[1:0]) | regporta[1:0];
+assign porta_out[3:0] = {(~ddrporta[7:6] | regporta[3:2]), (~ddrporta[1:0] | regporta[1:0])};
 
 //----------------------------------------------------------------------------------
 // portb
@@ -367,7 +265,7 @@ always @(posedge clk)
 always @(*)
 begin
   if (!wr && prb)
-    pb_out[7:0] = (portb_out[7:0]);
+    pb_out[7:0] = (portb_in[7:0]);
   else if (!wr && ddrb)
     pb_out[7:0] = (ddrportb[7:0]);
   else
@@ -397,7 +295,7 @@ cia_int cnt
   .tb(tb),
   .alrm(alrm),
   .flag(1'b0),
-  .ser(keystrobe & ~keyboard_disabled | ser_tx_irq),
+  .ser(key_strobe | ser_tx_irq),
   .data_in(data_in),
   .data_out(icr_out),
   .irq(irq)

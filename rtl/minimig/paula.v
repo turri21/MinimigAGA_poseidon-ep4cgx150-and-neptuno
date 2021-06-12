@@ -103,8 +103,8 @@ module paula
 	//audio outputs
 	output	left,					//audio bitstream left
 	output	right,					//audio bitstream right
-	output	[14:0]ldata,			//left DAC data
-	output	[14:0]rdata, 			//right DAC data
+	output	[15:0]ldata,			//left DAC data
+	output	[15:0]rdata, 			//right DAC data
   // system configuration
 	input	[1:0] floppy_drives,	//number of extra floppy drives
   // direct sector read from SD card
@@ -124,7 +124,8 @@ module paula
 	output  [7:0]trackdisp,
 	output  [13:0]secdisp,
   output  floppy_fwr,
-  output  floppy_frd
+  output  floppy_frd,
+  input   filter
 );
 //--------------------------------------------------------------------------------------
 
@@ -318,7 +319,8 @@ paula_audio ad1
 	.left(left),
 	.right(right),	
 	.ldata(ldata),
-	.rdata(rdata)	
+	.rdata(rdata),
+	.filter(filter)
 );
 
 
