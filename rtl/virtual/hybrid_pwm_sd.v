@@ -70,6 +70,7 @@ wire terminated = terminate & term_ena;
 reg [13:0] initctr = 14'h3e00;
 wire init = initctr[13];
 reg [13:0] initctr_l = 14'h3e00;
+reg dump;
 
 always @(posedge clk) begin
 	if(init && dump) begin
@@ -88,7 +89,6 @@ end
 // Periodic dumping of the accumulator to kill standing tones.
 // Yes, I know, yuck.  In practice it works better than would be expected.
 reg [7:0] dumpcounter;
-reg dump;
 
 always @(posedge clk) begin
 	dump <=1'b0;
