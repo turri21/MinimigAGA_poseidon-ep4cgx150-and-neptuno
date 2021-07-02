@@ -34,6 +34,8 @@ module userio_osd
   output  reg [3:0] cpu_config = 0,
   output  reg [1:0] autofire_config = 0,
   output  reg       cd32pad = 0,
+  output  reg [1:0] audio_filter_mode = 0,
+  output  reg       pwr_led_dim_n = 0,
 	output	reg usrrst=1'b0,
   output reg cpurst=1'b1,
   output reg cpuhlt=1'b1,
@@ -294,6 +296,7 @@ localparam [5:0]
   SPI_HARDDISK0_CFG_ADR= 6'b0_101_01,
   SPI_HARDDISK1_CFG_ADR= 6'b0_101_10,
   SPI_JOYSTICK_CFG_ADR = 6'b0_110_01,
+  SPI_FEATURES_CFG_ADR = 6'b0_111_01,
   SPI_OSD_BUFFER_ADR   = 6'b0_000_11,
   SPI_MEM_WRITE_ADR    = 6'b0_001_11,
   SPI_VERSION_ADR      = 6'b1_000_10,
@@ -334,6 +337,7 @@ reg spi_floppy_cfg_sel    = 1'b0;
 reg spi_harddisk0_cfg_sel = 1'b0;
 reg spi_harddisk1_cfg_sel = 1'b0;
 reg spi_joystick_cfg_sel  = 1'b0;
+reg spi_features_cfg_sel  = 1'b0;
 reg spi_osd_buffer_sel    = 1'b0;
 reg spi_mem_write_sel     = 1'b0;
 reg spi_version_sel       = 1'b0;
@@ -350,6 +354,7 @@ always @ (*) begin
   spi_harddisk0_cfg_sel= 1'b0;
   spi_harddisk1_cfg_sel= 1'b0;
   spi_joystick_cfg_sel = 1'b0;
+  spi_features_cfg_sel = 1'b0;
   spi_osd_buffer_sel   = 1'b0;
   spi_mem_write_sel    = 1'b0;
   spi_version_sel      = 1'b0;
@@ -366,6 +371,7 @@ always @ (*) begin
     SPI_HARDDISK0_CFG_ADR: spi_harddisk0_cfg_sel= 1'b1;
     SPI_HARDDISK1_CFG_ADR: spi_harddisk1_cfg_sel= 1'b1;
     SPI_JOYSTICK_CFG_ADR : spi_joystick_cfg_sel = 1'b1;
+    SPI_FEATURES_CFG_ADR : spi_features_cfg_sel = 1'b1;
     SPI_OSD_BUFFER_ADR   : spi_osd_buffer_sel   = 1'b1;
     SPI_MEM_WRITE_ADR    : spi_mem_write_sel    = 1'b1;
     SPI_VERSION_ADR      : spi_version_sel      = 1'b1;
@@ -382,6 +388,7 @@ always @ (*) begin
       spi_harddisk0_cfg_sel= 1'b0;
       spi_harddisk1_cfg_sel= 1'b0;
       spi_joystick_cfg_sel = 1'b0;
+      spi_features_cfg_sel = 1'b0;
       spi_osd_buffer_sel   = 1'b0;
       spi_mem_write_sel    = 1'b0;
       spi_version_sel      = 1'b0;
@@ -400,6 +407,7 @@ end
 // 8'b0_100_0100 | XXXXXFFS || floppy config   | FF - drive number, S - floppy speed
 // 8'b0_101_0100 | XXXXXSMC || harddisk config | S - enable slave HDD, M - enable master HDD, C - enable HDD controler
 // 8'b0_110_0100 | XXXXXCAA || joystick config | C - CD32pad mode, AA - autofire rate
+// 8'b0_111_0100 | XXXXXPFF || features config | P - power LED dim/off at off-state, FF - audio filter mode (00=switchable with power LED, 01=always off, 10=always on)
 // 8'b0_000_1100 | XXXXXAAA_AAAAAAAA B,B,... || write OSD buffer, AAAAAAAAAAA - 11bit OSD buffer address, B - variable number of bytes
 // 8'b0_001_1100 | A_A_A_A B,B,... || write system memory, A - 32 bit memory address, B - variable number of bytes
 // 8'b1_000_1000 read RTL version
@@ -420,6 +428,7 @@ always @ (posedge clk) begin
       if (spi_harddisk0_cfg_sel)begin if (dat_cnt == 0) t_ide_config0 <= #1 wrdat[2:0]; end
       if (spi_harddisk1_cfg_sel)begin if (dat_cnt == 0) t_ide_config1 <= #1 wrdat[2:0]; end
       if (spi_joystick_cfg_sel) begin if (dat_cnt == 0) {cd32pad, autofire_config} <= #1 wrdat[2:0]; end
+      if (spi_features_cfg_sel) begin if (dat_cnt == 0) {pwr_led_dim_n, audio_filter_mode} <= #1 wrdat[2:0]; end
       //if (spi_joystick_cfg_sel) begin if (dat_cnt == 0) {autofire_config} <= #1 wrdat[1:0]; end
   //    if (spi_osd_buffer_sel)   begin if (dat_cnt == 3) highlight <= #1 wrdat[3:0]; end
   //    if (spi_mem_write_sel)    begin if (dat_cnt == 0) end

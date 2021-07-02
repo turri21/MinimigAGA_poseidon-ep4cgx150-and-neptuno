@@ -423,6 +423,8 @@ reg		[3:0] floppy_config;	//floppy drives configuration (drive number and speed)
 reg		[4:0] chipset_config;	//chipset features selection
 reg		[2:0] ide_config0;		//HDD & HDC config: bit #0 enables Gayle primary channel, bit #1 enables Master drive, bit #2 enables Slave drive
 reg		[2:0] ide_config1;		//HDD & HDC config: bit #0 enables Gayle secondary chnnl, bit #1 enables Master drive, bit #2 enables Slave drive
+wire	[1:0] audio_filter_mode;	//audio filter mode
+wire	pwr_led_dim_n;			//power LED dim at off-state
 
 //gayle stuff
 wire	sel_ide;				//select IDE drive registers
@@ -480,7 +482,7 @@ assign vblank_out = vbl_int;
 
 //assign pwrled = (_led & (led_dim | ~turbo)) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
 //assign pwr_led = (_led & led_dim) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
-assign pwr_led = (_led & !hblank_out) ? 1'b0 : 1'b1; // led dim at off-state and active turbo mode
+assign pwr_led = pwr_led_dim_n ? !_led : ((_led & !hblank_out) ? 1'b0 : 1'b1); // selectable led dim at off-state
 
 //assign memcfg = memory_config[5:0];
 
@@ -634,7 +636,7 @@ paula PAULA1
 	.secdisp(secdisp),
   .floppy_fwr (floppy_fwr),
   .floppy_frd (floppy_frd),
-  .filter(!_led)
+  .filter(~|audio_filter_mode ? !_led : audio_filter_mode[1])
 );
 
 wire	[6:0] userio_memory_config;	//memory configuration
@@ -711,6 +713,8 @@ userio USERIO1
 	.ide_config0(userio_ide_config0),
 	.ide_config1(userio_ide_config1),
 	.cpu_config(userio_cpu_config),
+	.audio_filter_mode(audio_filter_mode),
+	.pwr_led_dim_n(pwr_led_dim_n),
 	.usrrst(usrrst),
   .cpurst(cpurst),
   .cpuhlt(cpuhlt),

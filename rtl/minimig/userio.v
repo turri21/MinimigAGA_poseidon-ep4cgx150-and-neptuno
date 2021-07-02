@@ -78,6 +78,8 @@ module userio (
   output wire [  3-1:0] ide_config0,
   output wire [  3-1:0] ide_config1,
   output wire [  4-1:0] cpu_config,
+  output wire [  2-1:0] audio_filter_mode,
+  output wire           pwr_led_dim_n,
   output                usrrst,             // user reset from osd module
   output                cpurst,
   output                cpuhlt,
@@ -551,6 +553,8 @@ userio_osd osd1
   .cpu_config       (cpu_config),
   .autofire_config  (autofire_config),
   .cd32pad          (cd32pad),
+  .audio_filter_mode(audio_filter_mode),
+  .pwr_led_dim_n    (pwr_led_dim_n),
   .usrrst           (usrrst),
   .cpurst           (cpurst),
   .cpuhlt           (cpuhlt),
