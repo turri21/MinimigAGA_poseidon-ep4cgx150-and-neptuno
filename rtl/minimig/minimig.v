@@ -1056,7 +1056,7 @@ gary GARY1
 gayle GAYLE1
 (
 	.clk(clk),
-  .clk7_en(clk7_en),
+	.clk7_en(clk7_en),
 	.reset(reset),
 	.address_in(cpu_address_out),
 	.data_in(cpu_data_out),
@@ -1067,9 +1067,9 @@ gayle GAYLE1
 	.sel_ide(sel_ide),
 	.sel_gayle(sel_gayle),
 	.irq(gayle_irq),
-  .nrdy(gayle_nrdy),
-	.hdd0_ena(ide_config0[2:1]),
-	.hdd1_ena(ide_config1[2:1]),
+	.nrdy(gayle_nrdy),
+	.hdd0_ena({2{ide_config0[0]}} & ide_config0[2:1]),
+	.hdd1_ena({2{ide_config1[0]}} & ide_config1[2:1]),
 
 	.hdd_cmd_req(hdd_cmd_req),
 	.hdd_dat_req(hdd_dat_req),
@@ -1080,8 +1080,8 @@ gayle GAYLE1
 	.hdd_status_wr(hdd_status_wr),
 	.hdd_data_wr(hdd_data_wr),
 	.hdd_data_rd(hdd_data_rd),
-  .hd_fwr(hd_fwr),
-  .hd_frd(hd_frd)
+	.hd_fwr(hd_fwr),
+	.hd_frd(hd_frd)
 );
 	
 
