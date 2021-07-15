@@ -348,7 +348,7 @@ begin
 -- -----------------------------------------------------------------------
 	io_ps2iec_inst : entity work.chameleon2_io_ps2iec
 		port map (
-			clk => clk_114,
+			clk => clk_28,
 
 			ps2iec_sel => ps2iec_sel,
 			ps2iec => ps2iec,
@@ -369,7 +369,7 @@ begin
 -- -----------------------------------------------------------------------
 	io_shiftreg_inst : entity work.chameleon2_io_shiftreg
 		port map (
-			clk => clk_114,
+			clk => clk_28,
 
 			ser_out_clk => ser_out_clk,
 			ser_out_dat => ser_out_dat,

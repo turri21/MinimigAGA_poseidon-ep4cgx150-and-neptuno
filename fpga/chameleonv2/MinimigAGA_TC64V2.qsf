@@ -361,4 +361,12 @@ set_global_assignment -name QIP_FILE ../../rtl/host/host.qip
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to spi_clk
 set_instance_assignment -name FAST_INPUT_REGISTER ON -to spi_miso
 
+set_global_assignment -name ASSIGNMENT_GROUP_MEMBER ser_out_clk -section_id ser_out
+set_global_assignment -name ASSIGNMENT_GROUP_MEMBER ser_out_dat -section_id ser_out
+set_global_assignment -name ASSIGNMENT_GROUP_MEMBER ser_out_rclk -section_id ser_out
+set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to ser_out
+set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to ser_out_clk
+set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to ser_out_dat
+set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to ser_out_rclk
+
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

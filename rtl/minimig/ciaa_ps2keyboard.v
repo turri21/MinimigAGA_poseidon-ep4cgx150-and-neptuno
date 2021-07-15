@@ -71,8 +71,7 @@ module ciaa_ps2keyboard
 	output	_rmb,				//emulated right mouse button
 	output	[5:0] _joy2,		//joystick emulation
 	output	freeze,				//Action Replay freeze button
-  output [5:0] mou_emu,
-  output [5:0] joy_emu
+  output [5:0] mou_emu
 );
 
 //assign active = prready;
@@ -144,15 +143,23 @@ always @(posedge clk)
 assign pto1 = ptimer[15];//4.6ms @ 7.09Mhz
 assign pto2 = ptimer[19];//74ms @ 7.09Mhz
 
+wire [2:0] leds = {capslock,numlock,ledb};
+reg [2:0] leds_d;
+reg leds_req;
+
 //PS2 send shifter
 always @(posedge clk)
   if (clk7_en) begin
   	if (psled1)
   		psend[11:0] <= 12'b111111011010;//$ED
-  	else if (psled2)
-  		psend[11:0] <= {2'b11,~(capslock^numlock^ledb),5'b00000,capslock,numlock,ledb,1'b0};//led status
-  	else if (!psready && pclkneg)
+  	else if (psled2) begin
+  		psend[11:0] <= {2'b11,~(^leds),5'b00000,leds,1'b0};//led status
+		leds_req<=1'b0;
+  	end else if (!psready && pclkneg)
   		psend[11:0] <= {1'b0,psend[11:1]};
+	leds_d<=leds;
+	if(leds!=leds_d)
+		leds_req<=1'b1;
   end
 
 assign psready = (psend[11:0]==12'b000000000001) ? 1'd1 : 1'd0;
@@ -244,12 +251,12 @@ begin
 				if (keystrobe)//valid amiga key decoded
 					knext = 3'd6;
 				else if (!prbusy && pto2)//timeout, update leds
-					knext = 3'd0;
+					knext = leds_req ? 3'd0 : 3'd7;
 				else//stay here
 					knext = 3'd5;
  			end
 
-		6://hold of ps2 keyboard and wait for keyack or timeout
+		6://hold off ps2 keyboard and wait for keyack or timeout
 			begin
 				prreset = 1'd0;
 				ptreset = keyack;
@@ -261,6 +268,18 @@ begin
 				else//stay here
 					knext = 3'd6;
  			end
+
+		7: // Reset timers without sending LEDS (WASD firmware doesn't
+		   // like being spammed with a stream of LED updates)
+			begin
+				prreset = 1'd1;
+				ptreset = 1'd1;
+				pclkout = 1'd1;
+				psled1 = 1'd0;
+				psled2 = 1'd0;
+				knext = 3'd5;
+ 			end
+
 
 		default://we should never come here
 			begin
@@ -277,7 +296,7 @@ begin
 end
 
 //instantiate keymap to convert ps2 scan codes to amiga raw key codes
-wire ctrl,aleft,aright,caps;
+wire ctrl,aleft,aright,caps,awin,awin2;
 ciaa_ps2keyboard_map km1
 (
 	.clk(clk),
@@ -290,6 +309,8 @@ ciaa_ps2keyboard_map km1
 	.ctrl(ctrl),
 	.aleft(aleft),
 	.aright(aright),
+	.awin(awin),
+	.awin2(awin2),
 	.caps(caps),
 	.numlock(numlock),
 	.osd_ctrl(osd_ctrl),
@@ -298,8 +319,7 @@ ciaa_ps2keyboard_map km1
 	._rmb(_rmb),
 	._joy2(_joy2),
 	.freeze(freeze),
-  .mou_emu(mou_emu),
-  .joy_emu(joy_emu)
+  .mou_emu(mou_emu)
 );
 
 //Duplicate key filter and caps lock handling.
@@ -353,7 +373,7 @@ always @(*)
 //Keyboard reset detector. 
 //Reset is accomplished by holding down the
 //ctrl or caps, left alt and right alt keys all at the same time
-reg [2:0]kbdrststatus;
+reg [4:0]kbdrststatus;
 always @(posedge clk) begin
   if (clk7_en) begin
   	//latch status of control key
@@ -371,11 +391,21 @@ always @(posedge clk) begin
   		kbdrststatus[0] <= 1'd1;
   	else if (valid && aright)
   		kbdrststatus[0] <= keydat[7];
-  end
+  	//latch status of left win key
+  	if (reset)
+  		kbdrststatus[3] <= 1'd1;
+  	else if (valid && awin)
+  		kbdrststatus[3] <= keydat[7];
+  	//latch status of right win key
+  	if (reset)
+  		kbdrststatus[4] <= 1'd1;
+  	else if (valid && awin2)
+  		kbdrststatus[4] <= keydat[7];
+	end
 end
 
-assign kbdrst = ~(kbdrststatus[2] | kbdrststatus[1] | kbdrststatus[0]);//reset if all 3 keys down
-
+assign kbdrst = !((kbdrststatus[2] | kbdrststatus[1] | kbdrststatus[0]) //reset if all 3 keys down
+						& (kbdrststatus[2] | kbdrststatus[3] | kbdrststatus[4]));
 
 endmodule
 

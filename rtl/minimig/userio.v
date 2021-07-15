@@ -300,11 +300,11 @@ assign _sjoy2[5:0] = joy2enable ? {_xjoy2[5], sel_autofire ^ _xjoy2[4], _xjoy2[3
 
 always @ (*) begin
   if (~joy2enable)
-    if (~_xjoy2[5] || (~_xjoy2[3] && ~_xjoy2[2]))
-      t_osd_ctrl = KEY_MENU;
-    else if (~_xjoy2[4])
-      t_osd_ctrl = KEY_ENTER;
-    else if (~_xjoy2[3])
+//    if (~_xjoy2[5] || (~_xjoy2[3] && ~_xjoy2[2]))	// Obsolete, dates back to original Minimig.
+//      t_osd_ctrl = KEY_MENU;
+//    else if (~_xjoy2[4])
+//      t_osd_ctrl = KEY_ENTER;
+    if (~_xjoy2[3])
       t_osd_ctrl = KEY_UP;
     else if (~_xjoy2[2])
       t_osd_ctrl = KEY_DOWN;
@@ -312,10 +312,10 @@ always @ (*) begin
       t_osd_ctrl = KEY_LEFT;
     else if (~_xjoy2[0])
       t_osd_ctrl = KEY_RIGHT;
-    else if (~_xjoy2[1] && ~_xjoy2[3])
-      t_osd_ctrl = KEY_PGUP;
-    else if (~_xjoy2[0] && ~_xjoy2[2])
-      t_osd_ctrl = KEY_PGDOWN;
+//    else if (~_xjoy2[1] && ~_xjoy2[3])
+//      t_osd_ctrl = KEY_PGUP;
+//    else if (~_xjoy2[0] && ~_xjoy2[2])
+//      t_osd_ctrl = KEY_PGDOWN;
     else
       t_osd_ctrl = osd_ctrl;
   else

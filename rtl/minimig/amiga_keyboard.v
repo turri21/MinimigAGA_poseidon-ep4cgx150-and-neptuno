@@ -96,8 +96,7 @@ ciaa_ps2keyboard  kbd1
   ._rmb(_rmb),
   ._joy2(_joy2),
   .freeze(freeze_out),
-  .mou_emu(mou_emu),
-  .joy_emu(joy_emu)
+  .mou_emu(mou_emu)
 );
 
 assign freeze = hrtmon_en && freeze_out;
@@ -161,7 +160,6 @@ assign kbdrst = 1'b0;
 assign _lmb = 1'b1;
 assign _rmb = 1'b1;
 assign _joy2 = 6'b11_1111;
-assign joy_emu = 6'b11_1111;
 assign mou_emu = 6'b11_1111;
 reg freeze_reg=0;
 assign freeze = freeze_reg;

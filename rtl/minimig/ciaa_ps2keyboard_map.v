@@ -14,6 +14,8 @@ module ciaa_ps2keyboard_map
   output  ctrl,         //amiga control key
   output  aleft,        //amiga left alt key
   output  aright,         //amiga right alt key
+  output  awin,        //amiga left alt key
+  output  awin2,         //amiga right alt key
   output  caps,         //amiga capslock key
   output  reg numlock = 0,  //ps/2 numlock status
   output  reg [7:0] osd_ctrl, //osd menu control
@@ -22,8 +24,7 @@ module ciaa_ps2keyboard_map
   output  reg _rmb,     //mouse button emulation
   output  reg [5:0] _joy2,  //joystick emulation
   output  reg freeze,     //int7 freeze button
-  output [5:0] mou_emu,
-  output reg [5:0] joy_emu
+  output [5:0] mou_emu
 );
 
 //local parameters
@@ -46,7 +47,7 @@ localparam JOY1KEY_FIRE0 = 7'h5C;
 localparam JOY1KEY_FIRE1 = 7'h5D;
 
 //local signals
-reg   [15:0] keyrom;      //rom output
+reg   [17:0] keyrom;      //rom output
 reg   enable2;        //enable signal delayed by one clock
 reg   upstroke;       //upstroke key status
 reg   extended;       //extended key status     
@@ -86,6 +87,8 @@ assign valid = keyrom[15] & (~keyrom[9] | ~numlock) & enable2 && !disable_amiga_
 assign ctrl = keyrom[14] && !numlock;
 assign aleft = keyrom[13] && !numlock;
 assign aright = keyrom[12];
+assign awin = keyrom[16];
+assign awin2 = keyrom[17];
 assign caps = keyrom[11];
 assign akey[7:0] = {upstroke, keyrom[6:0]};
 
@@ -385,6 +388,8 @@ end
 //here follows the ps2 to Amiga key romtable:
 //standard decodes
 //[6:0] = amiga key code
+//[16] = left win key
+//[17] = right win key
 //[15] = valid amiga key (present in rom)
 //decodes for special function keys :
 //[14] = control key
@@ -403,6 +408,7 @@ always @(posedge clk) begin
   if (clk7_en) begin
   	if (enable)
   	begin
+		keyrom[17:16]<=2'b00;
   		case({extended,ps2key[7:0]}) // Scan Code Set 2
   			9'h000:		keyrom[15:0] <= 16'h0000;
   			9'h001:		keyrom[15:0] <= 16'h8058;//F9
@@ -691,7 +697,7 @@ always @(posedge clk) begin
   			9'h11c:		keyrom[15:0] <= 16'h0000;
   			9'h11d:		keyrom[15:0] <= 16'h0000;
   			9'h11e:		keyrom[15:0] <= 16'h0000;
-  			9'h11f:		keyrom[15:0] <= 16'h8066;//LEFT AMIGA (LEFT GUI)
+  			9'h11f:		keyrom[17:0] <= 18'h18066;//LEFT AMIGA (LEFT GUI)
   			9'h120:		keyrom[15:0] <= 16'h0000;
   			9'h121:		keyrom[15:0] <= 16'h0000;
   			9'h122:		keyrom[15:0] <= 16'h0000;
@@ -699,7 +705,7 @@ always @(posedge clk) begin
   			9'h124:		keyrom[15:0] <= 16'h0000;
   			9'h125:		keyrom[15:0] <= 16'h0000;
   			9'h126:		keyrom[15:0] <= 16'h0000;
-  			9'h127:		keyrom[15:0] <= 16'h8067;//RIGHT AMIGA (RIGHT GUI)
+  			9'h127:		keyrom[17:0] <= 18'h28067;//RIGHT AMIGA (RIGHT GUI)
   			9'h128:		keyrom[15:0] <= 16'h0000;
   			9'h129:		keyrom[15:0] <= 16'h0000;
   			9'h12a:		keyrom[15:0] <= 16'h0000;
@@ -707,7 +713,7 @@ always @(posedge clk) begin
   			9'h12c:		keyrom[15:0] <= 16'h0000;
   			9'h12d:		keyrom[15:0] <= 16'h0000;
   			9'h12e:		keyrom[15:0] <= 16'h0000;
-  			9'h12f:		keyrom[15:0] <= 16'h8067;//RIGHT AMIGA (APPS)
+  			9'h12f:		keyrom[15:0] <= 16'h28067;// RIGHT AMIGA (APPS) (Duplicate RGUI since smaller keyboards often have only one.
   			9'h130:		keyrom[15:0] <= 16'h0000;
   			9'h131:		keyrom[15:0] <= 16'h0000;
   			9'h132:		keyrom[15:0] <= 16'h0000;
