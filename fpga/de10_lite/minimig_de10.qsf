@@ -452,7 +452,6 @@ set_global_assignment -name SDC_FILE minimig_de10lite.sdc
 set_global_assignment -name VERILOG_FILE ../../rtl/soc/minimig_virtual_top.v
 set_global_assignment -name VERILOG_FILE ../../rtl/io/i_sync.v
 set_global_assignment -name VERILOG_FILE ../../rtl/fifo/sync_fifo.v
-set_global_assignment -name QIP_FILE ../../rtl/cache/cache.qip
 set_global_assignment -name QIP_FILE ../../rtl/minimig/minimig.qip
 set_global_assignment -name QIP_FILE ../../rtl/sdram/sdram.qip
 set_global_assignment -name QIP_FILE ../../rtl/soc/tg68.qip

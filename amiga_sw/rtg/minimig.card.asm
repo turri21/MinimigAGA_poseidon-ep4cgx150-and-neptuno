@@ -17,9 +17,9 @@
 
         incdir  "text_include:"
 
-        include P96BoardInfo.i
-        include P96ModeInfo.i
-        include P96CardStruct.i
+;        include P96BoardInfo.i
+;        include P96ModeInfo.i
+;        include P96CardStruct.i
         include hardware/custom.i
 
         include lvo/exec_lib.i
@@ -30,6 +30,27 @@
         include libraries/expansionbase.i
         include hardware/intbits.i
         include exec/interrupts.i
+
+
+        incdir "dev:Picasso96Develop/PrivateInclude"
+        include boardinfo.i
+        include settings.i
+
+; CardData is a region of 16 longwords, so 64 bytes we can use as we please
+CardData_HTotal = gbi_CardData+0
+CardData_HSStart = gbi_CardData+2
+CardData_HSStop = gbi_CardData+4
+CardData_HBStop = gbi_CardData+6
+CardData_VTotal = gbi_CardData+8
+CardData_VSStart = gbi_CardData+10
+CardData_VSStop = gbi_CardData+12
+CardData_VBStop = gbi_CardData+14
+CardData_Beamcon0 = gbi_CardData+16
+CardData_Control = gbi_CardData+18
+CardData_Control2 = gbi_CardData+20
+CardData_LineCompare = gbi_CardData+22
+
+
 
 ; If you define the Debug Symbol make sure the monitor file is in
 ; sys:storage/monitors - debug output seems to crash the system if
@@ -153,12 +174,10 @@ IDString:
         dc.b    0
 expansionLibName:
         dc.b    'expansion.library',0
-intuitionLibName:
-        dc.b    'intuition.library',0
         cnop    0,4
 
 InitTable:
-        dc.l    CARD_SIZEOF     ;DataSize
+        dc.l    card_SIZEOF     ;DataSize
         dc.l    FuncTable       ;FunctionTable
         dc.l    DataTable       ;DataTable
         dc.l    InitRoutine
@@ -178,7 +197,7 @@ DataTable:
         INITWORD        LIB_VERSION,1
         INITWORD        LIB_REVISION,0
         INITLONG        LIB_IDSTRING,IDString
-        INITLONG        CARD_NAME,CardName
+        INITLONG        card_Name,CardName
         dc.w            0,0
 
 ;------------------------------------------------------------------------------
@@ -189,19 +208,13 @@ InitRoutine:
 
         movem.l a5,-(sp)
         movea.l d0,a5
-        move.l  a6,CARD_EXECBASE(a5)
-        move.l  a0,CARD_SEGMENTLIST(a5)
+        move.l  a6,card_ExecBase(a5)
+        move.l  a0,card_SegmentList(a5)
         lea     expansionLibName(pc),a1
         moveq   #0,d0
         jsr     _LVOOpenLibrary(a6)
 
-        move.l  d0,CARD_EXPANSIONBASE(a5)
-        beq.s   .fail
-
-        lea     intuitionLibName(pc),a1
-        moveq   #0,d0
-        jsr     _LVOOpenLibrary(a6)
-        move.l  d0,CARD_INTUITIONBASE(a5)
+        move.l  d0,card_ExpansionBase(a5)
         bne.s   .exit
 
 .fail
@@ -221,7 +234,7 @@ Open:
 ;------------------------------------------------------------------------------
 
         addq.w  #1,LIB_OPENCNT(a6)
-        bclr    #3,CARD_FLAGS(a6)
+        bclr    #3,card_Flags(a6)
 
 
 
@@ -247,7 +260,7 @@ Close:
         subq.w  #1,LIB_OPENCNT(a6)
         bne.b   .exit
 
-        btst    #3,CARD_FLAGS(a6)
+        btst    #3,card_Flags(a6)
         beq.b   .exit
 
         bsr.b   Expunge
@@ -261,20 +274,20 @@ Expunge:
 
         movem.l d2/a5/a6,-(sp)
         movea.l a6,a5
-        movea.l CARD_EXECBASE(a5),a6
+        movea.l card_ExecBase(a5),a6
         tst.w   LIB_OPENCNT(a5)
         beq.b   .remove
 
-        bset    #3,CARD_FLAGS(a5)
+        bset    #3,card_Flags(a5)
         moveq   #0,d0
         bra.b   .exit
 
 .remove:
-        move.l  CARD_SEGMENTLIST(a5),d2
+        move.l  card_SegmentList(a5),d2
         movea.l a5,a1
         jsr     _LVORemove(a6)
 
-        movea.l CARD_EXPANSIONBASE(a5),a1
+        movea.l card_ExpansionBase(a5),a1
         jsr     _LVOCloseLibrary(a6)
 
         moveq   #0,d0
@@ -317,15 +330,18 @@ FindCard:
         movem.l a2/a3/a6,-(sp)
         movea.l a0,a2
 
-        move.l  #MEMORY_SIZE,PSSO_BoardInfo_MemorySize(a2)
-        move.l  #$b80100,(PSSO_BoardInfo_RegisterBase,a2)
+        move.l  #MEMORY_SIZE,gbi_MemorySize(a2)
+        move.l  #$b80100,(gbi_RegisterBase,a2)
 
         moveq   #0,d0
         move.w  $b8010e,d1
         and.w   #$fff0,d1
-        sub.w   #$8320,d1   ; Is this the Chameleon/MiST RTG implementation?
+        cmp.w   #$8320,d1   ; Is this the Chameleon/MiST RTG implementation?
+        beq     .compat     ; First version still works, but suboptimally
+        cmp.w   #$8321,d1
         bne     .exit
 
+.compat
         move.l  $4.w,a6
         move.l  #MEMORY_SIZE,d0
         addi.l  #$00001FF,d0            ; add 512 bytes-1
@@ -343,7 +359,7 @@ FindCard:
         bne.b   .ok
 
         ; If allocation failed, try a smaller chunk.
-        move.l  #MEMORY_SIZE/2,PSSO_BoardInfo_MemorySize(a2)
+        move.l  #MEMORY_SIZE/2,gbi_MemorySize(a2)
         move.l  #MEMORY_SIZE/2,d0
         addi.l  #$1ff,d0
         move.l  #MEMF_FAST|MEMF_REVERSE,d1
@@ -355,22 +371,12 @@ FindCard:
 .ok
         addi.l  #$000001FF,d0           ; add 512-1
         andi.l  #$FFFFFE00,d0           ; and with ~(512-1) to align memory
-        move.l  d0,PSSO_BoardInfo_MemoryBase(a2)
+        move.l  d0,gbi_MemoryBase(a2)
 
         moveq   #-1,d0
 .exit:
         movem.l (sp)+,a2/a3/a6
         rts
-
-
-ScreenToFrontPatch:
-        cmp.l   ib_FirstScreen(a6),a0
-        beq     .skip
-        move.l  OrigScreenToFront,-(a7)
-.skip
-        rts
-OrigScreenToFront:
-        dc.l    0
 
 
 ; This turns out to cause memory corruption and crashes the host CPU
@@ -420,117 +426,112 @@ InitCard:
         movem.l a2/a5/a6,-(sp)
         movea.l a0,a2
 
-        move.l  CARD_INTUITIONBASE(a6),a1
-        lea     ScreenToFrontPatch(pc),a0
-        move.l  a0,d0
-        move.l  #_LVOScreenToFront,a0
-        move.l  4,a6
-        jsr     _LVOSetFunction(a6)
-        lea     OrigScreenToFront(pc),a0
-        move.l  d0,(a0)
-
-        move.w  #0,CardData_HWTrigger(a2)
-
         lea     CardName(pc),a1
-        move.l  a1,PSSO_BoardInfo_BoardName(a2)
-        move.l  #10,PSSO_BoardInfo_BoardType(a2)
-        move.l  #0,PSSO_BoardInfo_GraphicsControllerType(a2)
-        move.l  #0,PSSO_BoardInfo_PaletteChipType(a2)
+        move.l  a1,gbi_BoardName(a2)
+        move.l  #10,gbi_BoardType(a2)
+        move.l  #0,gbi_GraphicsControllerType(a2)
+        move.l  #0,gbi_PaletteChipType(a2)
 
-        ori.w   #2,PSSO_BoardInfo_RGBFormats(a2) ; CLUT
-        ori.w   #2048,PSSO_BoardInfo_RGBFormats(a2) ; R5G5B5
-        ori.w   #1024,PSSO_BoardInfo_RGBFormats(a2) ; R5G6B5
+        ori.w   #2,gbi_RGBFormats(a2) ; CLUT
+        ori.w   #2048,gbi_RGBFormats(a2) ; R5G5B5
+        ori.w   #1024,gbi_RGBFormats(a2) ; R5G6B5
 
-        move.w  #8,PSSO_BoardInfo_BitsPerCannon(a2)
-        move.l  #MEMORY_SIZE-$40000,PSSO_BoardInfo_MemorySpaceSize(a2)
-        move.l  PSSO_BoardInfo_MemoryBase(a2),d0
-        move.l  d0,PSSO_BoardInfo_MemorySpaceBase(a2)
+        move.w  #8,gbi_BitsPerCannon(a2)
+        move.l  #MEMORY_SIZE-$40000,gbi_MemorySpaceSize(a2)
+        move.l  gbi_MemoryBase(a2),d0
+        move.l  d0,gbi_MemorySpaceBase(a2)
         addi.l  #MEMORY_SIZE-$4000,d0
-        move.l  d0,PSSO_BoardInfo_MouseSaveBuffer(a2)
+        move.l  d0,gbi_MouseSaveBuffer(a2)
 
-        ori.l   #(1<<20),PSSO_BoardInfo_Flags(a2)       ; BIF_INDISPLAYCHAIN
-;       ori.l   #(1<<1),PSSO_BoardInfo_Flags(a2)        ; BIF_NOMEMORYMODEMIX
+;        ori.l   #(1<<20),gbi_Flags(a2)
+        ori.l   #BIF_INDISPLAYCHAIN,gbi_Flags(a2)
+;       ori.l   #BIF_NOMEMORYMODEMIX,gbi_Flags_Flags(a2)        ; BIF_NOMEMORYMODEMIX
+        ori.l   #BIF_VGASCREENSPLIT,gbi_Flags(a2)
 
         lea     SetSwitch(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetSwitch(a2)
+        move.l  a1,gbi_SetSwitch(a2)
         lea     SetDAC(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetDAC(a2)
+        move.l  a1,gbi_SetDAC(a2)
         lea     SetGC(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetGC(a2)
+        move.l  a1,gbi_SetGC(a2)
         lea     SetPanning(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetPanning(a2)
+        move.l  a1,gbi_SetPanning(a2)
         lea     CalculateBytesPerRow(pc),a1
-        move.l  a1,PSSO_BoardInfo_CalculateBytesPerRow(a2)
+        move.l  a1,gbi_CalculateBytesPerRow(a2)
         lea     CalculateMemory(pc),a1
-        move.l  a1,PSSO_BoardInfo_CalculateMemory(a2)
+        move.l  a1,gbi_CalculateMemory(a2)
         lea     GetCompatibleFormats(pc),a1
-        move.l  a1,PSSO_BoardInfo_GetCompatibleFormats(a2)
+        move.l  a1,gbi_GetCompatibleFormats(a2)
         lea     SetColorArray(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetColorArray(a2)
+        move.l  a1,gbi_SetColorArray(a2)
         lea     SetDPMSLevel(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetDPMSLevel(a2)
+        move.l  a1,gbi_SetDPMSLevel(a2)
         lea     SetDisplay(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetDisplay(a2)
+        move.l  a1,gbi_SetDisplay(a2)
         lea     SetMemoryMode(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetMemoryMode(a2)
+        move.l  a1,gbi_SetMemoryMode(a2)
         lea     SetWriteMask(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetWriteMask(a2)
+        move.l  a1,gbi_SetWriteMask(a2)
         lea     SetReadPlane(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetReadPlane(a2)
+        move.l  a1,gbi_SetReadPlane(a2)
         lea     SetClearMask(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetClearMask(a2)
+        move.l  a1,gbi_SetClearMask(a2)
         lea     WaitVerticalSync(pc),a1
-        move.l  a1,PSSO_BoardInfo_WaitVerticalSync(a2)
+        move.l  a1,gbi_WaitVerticalSync(a2)
 ;       lea     (Reserved5,pc),a1
-;       move.l  a1,(PSSO_BoardInfo_Reserved5,a2)
+;       move.l  a1,(gbi_Reserved5,a2)
         lea     SetClock(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetClock(a2)
+        move.l  a1,gbi_SetClock(a2)
         lea     ResolvePixelClock(pc),a1
-        move.l  a1,PSSO_BoardInfo_ResolvePixelClock(a2)
+        move.l  a1,gbi_ResolvePixelClock(a2)
         lea     GetPixelClock(pc),a1
-        move.l  a1,PSSO_BoardInfo_GetPixelClock(a2)
+        move.l  a1,gbi_GetPixelClock(a2)
+
+        lea     SetSplitPosition(pc),a1
+        move.l  a1,gbi_SetSplitPosition(a2)
+        move.w  #-1,(CardData_LineCompare,a0)
 
 ;        lea     AllocCardMem(pc),a1
-;        move.l  a1,PSSO_BoardInfo_AllocCardMem(a2)
+;        move.l  a1,gbi_AllocCardMem(a2)
 ;        lea     FreeCardMem(pc),a1
-;        move.l  a1,PSSO_BoardInfo_FreeCardMem(a2)
+;        move.l  a1,gbi_FreeCardMem(a2)
 
-        move.l  #113440000,PSSO_BoardInfo_MemoryClock(a2)
+        move.l  #113440000,gbi_MemoryClock(a2)
 
-        move.l  #0,(PSSO_BoardInfo_PixelClockCount+0,a2)
-        move.l  #13,(PSSO_BoardInfo_PixelClockCount+4,a2)
-        move.l  #6,(PSSO_BoardInfo_PixelClockCount+8,a2)
-        move.l  #0,(PSSO_BoardInfo_PixelClockCount+12,a2)
-        move.l  #0,(PSSO_BoardInfo_PixelClockCount+16,a2)
+        move.l  #0,(gbi_PixelClockCount+0,a2)
+        move.l  #13,(gbi_PixelClockCount+4,a2)
+        move.l  #6,(gbi_PixelClockCount+8,a2)
+        move.l  #0,(gbi_PixelClockCount+12,a2)
+        move.l  #0,(gbi_PixelClockCount+16,a2)
 ;- Planar
 ;- Chunky
 ;- HiColor
 ;- Truecolor
 ;- Truecolor + Alpha
 
-        move.w  #4095,(PSSO_BoardInfo_MaxHorValue+0,a2)
-        move.w  #4095,(PSSO_BoardInfo_MaxVerValue+0,a2)
-        move.w  #4095,(PSSO_BoardInfo_MaxHorValue+2,a2)
-        move.w  #4095,(PSSO_BoardInfo_MaxVerValue+2,a2)
-        move.w  #4095,(PSSO_BoardInfo_MaxHorValue+4,a2)
-        move.w  #4095,(PSSO_BoardInfo_MaxVerValue+4,a2)
-        move.w  #4095,(PSSO_BoardInfo_MaxHorValue+6,a2)
-        move.w  #4095,(PSSO_BoardInfo_MaxVerValue+6,a2)
-        move.w  #4095,(PSSO_BoardInfo_MaxHorValue+8,a2)
-        move.w  #4095,(PSSO_BoardInfo_MaxVerValue+8,a2)
+        move.w  #4095,(gbi_MaxHorValue+0,a2)
+        move.w  #4095,(gbi_MaxVerValue+0,a2)
+        move.w  #4095,(gbi_MaxHorValue+2,a2)
+        move.w  #4095,(gbi_MaxVerValue+2,a2)
+        move.w  #4095,(gbi_MaxHorValue+4,a2)
+        move.w  #4095,(gbi_MaxVerValue+4,a2)
+        move.w  #4095,(gbi_MaxHorValue+6,a2)
+        move.w  #4095,(gbi_MaxVerValue+6,a2)
+        move.w  #4095,(gbi_MaxHorValue+8,a2)
+        move.w  #4095,(gbi_MaxVerValue+8,a2)
 
-        move.w  #2048,(PSSO_BoardInfo_MaxHorResolution+0,a2)
-        move.w  #2048,(PSSO_BoardInfo_MaxVerResolution+0,a2)
-        move.w  #2048,(PSSO_BoardInfo_MaxHorResolution+2,a2)
-        move.w  #2048,(PSSO_BoardInfo_MaxVerResolution+2,a2)
-        move.w  #2048,(PSSO_BoardInfo_MaxHorResolution+4,a2)
-        move.w  #2048,(PSSO_BoardInfo_MaxVerResolution+4,a2)
-        move.w  #2048,(PSSO_BoardInfo_MaxHorResolution+6,a2)
-        move.w  #2048,(PSSO_BoardInfo_MaxVerResolution+6,a2)
-        move.w  #2048,(PSSO_BoardInfo_MaxHorResolution+8,a2)
-        move.w  #2048,(PSSO_BoardInfo_MaxVerResolution+8,a2)
+        move.w  #2048,(gbi_MaxHorResolution+0,a2)
+        move.w  #2048,(gbi_MaxVerResolution+0,a2)
+        move.w  #2048,(gbi_MaxHorResolution+2,a2)
+        move.w  #2048,(gbi_MaxVerResolution+2,a2)
+        move.w  #2048,(gbi_MaxHorResolution+4,a2)
+        move.w  #2048,(gbi_MaxVerResolution+4,a2)
+        move.w  #2048,(gbi_MaxHorResolution+6,a2)
+        move.w  #2048,(gbi_MaxVerResolution+6,a2)
+        move.w  #2048,(gbi_MaxHorResolution+8,a2)
+        move.w  #2048,(gbi_MaxVerResolution+8,a2)
 
-        lea     PSSO_BoardInfo_HardInterrupt(a2),a1
+        lea     gbi_HardInterrupt(a2),a1
         lea     VBL_ISR(pc),a0
         move.l  a0,IS_CODE(a1)
         moveq   #INTB_VERTB,d0
@@ -538,37 +539,37 @@ InitCard:
         jsr     _LVOAddIntServer(a6)
 
 ;       FIXME - disable vblank interrupt for now.
-;       ori.l   #(1<<4),PSSO_BoardInfo_Flags(a2)        ; BIF_VBLANKINTERRUPT
+;       ori.l   #(1<<4),gbi_Flags(a2)        ; BIF_VBLANKINTERRUPT
 ;       lea     SetInterrupt(pc),a1
-;       move.l  a1,PSSO_BoardInfo_SetInterrupt(a2)
+;       move.l  a1,gbi_SetInterrupt(a2)
 
         ifd     HasBlitter
-        ori.l   #(1<<15),PSSO_BoardInfo_Flags(a2)       ; BIF_BLITTER
+        ori.l   #(1<<15),gbi_Flags(a2)       ; BIF_BLITTER
         lea     BlitRectNoMaskComplete(pc),a1
-        move.l  a1,PSSO_BoardInfo_BlitRectNoMaskComplete(a2)
+        move.l  a1,gbi_BlitRectNoMaskComplete(a2)
         lea     BlitRect(pc),a1
-        move.l  a1,PSSO_BoardInfo_BlitRect(a2)
+        move.l  a1,gbi_BlitRect(a2)
         lea     WaitBlitter(pc),a1
-        move.l  a1,PSSO_BoardInfo_WaitBlitter(a2)
+        move.l  a1,gbi_WaitBlitter(a2)
         ENDC
 
         ifd     HasSprite
-        ori.l   #(1<<0),PSSO_BoardInfo_Flags(a2)        ; BIF_HARDWARESPRITE
+        ori.l   #(1<<0),gbi_Flags(a2)        ; BIF_HARDWARESPRITE
         lea     SetSprite(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetSprite(a2)
+        move.l  a1,gbi_SetSprite(a2)
         lea     SetSpritePosition(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetSpritePosition(a2)
+        move.l  a1,gbi_SetSpritePosition(a2)
         lea     SetSpriteImage(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetSpriteImage(a2)
+        move.l  a1,gbi_SetSpriteImage(a2)
         lea     SetSpriteColor(pc),a1
-        move.l  a1,PSSO_BoardInfo_SetSpriteColor(a2)
+        move.l  a1,gbi_SetSpriteColor(a2)
         ENDC
 
-        ori.l   #(1<<3),PSSO_BoardInfo_Flags(a2)        ; BIF_CACHEMODECHANGE
-        move.l  PSSO_BoardInfo_MemoryBase(a2),(PSSO_BoardInfo_MemorySpaceBase,a2)
-        move.l  PSSO_BoardInfo_MemorySize(a2),(PSSO_BoardInfo_MemorySpaceSize,a2)
+        ori.l   #(1<<3),gbi_Flags(a2)        ; BIF_CACHEMODECHANGE
+        move.l  gbi_MemoryBase(a2),(gbi_MemorySpaceBase,a2)
+        move.l  gbi_MemorySize(a2),(gbi_MemorySpaceSize,a2)
 
-        movea.l PSSO_BoardInfo_RegisterBase(a2),a0
+        movea.l gbi_RegisterBase(a2),a0
 
         moveq   #-1,d0
 .exit:
@@ -592,25 +593,26 @@ SetSwitch:
         movem.l d1-d6/a0-a6,-(a7)
 
         BUG     "SetSwitch %ld",d0
-        move.w  PSSO_BoardInfo_MoniSwitch(a0),d1
+        move.w  gbi_MoniSwitch(a0),d1
         andi.w  #$FFFE,d1
-        tst.b   d0
-        beq.b   .off
 
-;        ori.w   #$0001,d1
-.off:
-        move.w  PSSO_BoardInfo_MoniSwitch(a0),d7
+        move.w  gbi_MoniSwitch(a0),d7
         cmp.w   d7,d0
         beq     .done
-        move.w  d0,PSSO_BoardInfo_MoniSwitch(a0)
+        move.w  d0,gbi_MoniSwitch(a0)
 
         tst.b   d0
-        beq.s   .done
+        bne.s   .trigger
 
-        move.w  #5,CardData_HWTrigger(a0)
-;        bsr     SetHardware
+        ; Hide the RTG screen
+        bset    #13,d0
+        lea     $dff000,a1
+        move.w  d0,(beamcon0,a1)
+;        move.w  #0,(beamcon0,a1) ; This messes up the PAL/NTSC bit
+        bra.s   .done
 
-;        andi.l  #$1,d1
+.trigger
+
 .done:
         move.l  d7,d0
         andi.w  #$0001,d0
@@ -627,16 +629,12 @@ SetDAC:
 ;  the RAMDAC of your board accordingly.
 
 ;       For Minimig the DAC setting and pixel clock interact, so despite the stipulation below, we set them together.
-;        tst.w   PSSO_BoardInfo_MoniSwitch(a0)
-;        beq     .done
-;        move.w  #5,CardData_HWTrigger(a0)
-        move.l  (PSSO_BoardInfo_RegisterBase,a0),a1
-;        BUG "RGBFormat %ld",d7
         moveq   #1,d0
         cmp.l   #10,d7
         beq     .16bit
         moveq   #2,d0
 .16bit
+        move.l  (gbi_RegisterBase,a0),a1
         move.w  d0,(6,a1)
 ;        move.w  d0,CardData_Control2(a0)
 ;        bsr     SetHardware
@@ -660,25 +658,25 @@ SetGC:
 
         movem.l d2-d7,-(sp)
 
-        move.l  a1,PSSO_BoardInfo_ModeInfo(a0)
-        move.w  d0,PSSO_BoardInfo_Border(a0)
+        move.l  a1,gbi_ModeInfo(a0)
+        move.w  d0,gbi_Border(a0)
         move.w  d0,d4 ; Border
 
         moveq   #0,d0
-        move.b  PSSO_ModeInfo_Depth(a1),d0
+        move.b  gmi_Depth(a1),d0
         BUG     "Depth %ld",d0
 
         ; Since we're using the AGA registers for framing,
         ; and everything in AGA land is based around 3.545MHz colour clocks,
         ; we need to divide the various parameters accordingly.
-        move.l  PSSO_ModeInfo_PixelClock(a1),d7
+        move.l  gmi_PixelClock(a1),d7
         divu    #35450,d7
         and.l   #$ffff,d7
 
         BUG     "Pixel clock divider %ld",d7
 
         move.w  #100,d0
-        move.w  PSSO_ModeInfo_HorTotal(a1),d1
+        move.w  gmi_HorTotal(a1),d1
         mulu    d0,d1
         divu    d7,d1
         ext.l   d1
@@ -686,27 +684,27 @@ SetGC:
         move.w  d1,CardData_HTotal(a0)
         BUG     "HTotal: %ld",d1
 
-        move.w  PSSO_ModeInfo_HorSyncStart(a1),d2
+        move.w  gmi_HorSyncStart(a1),d2
         mulu    d0,d2
         divu    d7,d2
         ext.l   d2
         move.w  d2,CardData_HSStart(a0)
         BUG     "HSStart: %ld",d2
 
-        move.w  PSSO_ModeInfo_HorSyncSize(a1),d3
-        add.w   PSSO_ModeInfo_HorSyncStart(a1),d3
+        move.w  gmi_HorSyncSize(a1),d3
+        add.w   gmi_HorSyncStart(a1),d3
         mulu    d0,d3
         divu    d7,d3
         ext.l   d3
         move.w  d3,CardData_HSStop(a0)
         BUG     "HSStop: %ld",d3
 
-        move.w  PSSO_ModeInfo_HorTotal(a1),d4
-        move.w  PSSO_ModeInfo_Width(a1),d1
+        move.w  gmi_HorTotal(a1),d4
+        move.w  gmi_Width(a1),d1
 ;        add.w   #31,d1      ; Round up to multiple of 32
 ;        and.w   #$ffe0,d1
 ;        sub.w   d1,d4
-        sub.w   PSSO_ModeInfo_Width(a1),d4
+        sub.w   gmi_Width(a1),d4
         mulu    d0,d4
         divu    d7,d4
         ext.l   d4
@@ -715,44 +713,42 @@ SetGC:
         BUG     "HBStop: %ld",d4
 
 
-        move.w  PSSO_ModeInfo_VerTotal(a1),d0
+        move.w  gmi_VerTotal(a1),d0
         subq.w  #1,d0
         move.w  d0,CardData_VTotal(a0)
         BUG     "VTotal = %ld",d0
 
-        move.w  PSSO_ModeInfo_VerSyncStart(a1),d1
+        move.w  gmi_VerSyncStart(a1),d1
         move.w  d1,CardData_VSStart(a0)
         BUG     "VSStart: %ld",d1
 
         move.w  d1,d2
-        add.w   PSSO_ModeInfo_VerSyncSize(a1),d2
+        add.w   gmi_VerSyncSize(a1),d2
         move.w  d2,CardData_VSStop(a0)
         BUG     "VSStop: %ld",d2
 
-        move.w  PSSO_ModeInfo_VerTotal(a1),d3
-        sub.w   PSSO_ModeInfo_Height(a1),d3
+        move.w  gmi_VerTotal(a1),d3
+        sub.w   gmi_Height(a1),d3
 ;        addq.w  #1,d3
         move.w  d3,CardData_VBStop(a0)
         BUG     "VBStop: %ld",d3
 
-        move.w  PSSO_ModeInfo_first_union(a1),d4
+        move.w  gmi_Clock(a1),d4
         lsl     #6,d3
         or.w    d3,d4
         move.w  d4,CardData_Control(a0)
         BUG     "Mode: %lx",d4
 
         move.w  #$1bc0,d1
-        move.b  PSSO_ModeInfo_Flags(a1),d0
+        move.b  gmi_Flags(a1),d0
         lsr.b   #3,d0   ; Shift and mask sync polarity...
         and.w   #3,d0
         or.w    d0,d1
         move.w  d1,CardData_Beamcon0(a0)
         BUG     "BEAMCON0 %lx",d1
 
-        tst.w   PSSO_BoardInfo_MoniSwitch(a0)
+        tst.w   gbi_MoniSwitch(a0)
         beq     .done
-        move.w  #5,CardData_HWTrigger(a0)
-;        bsr     SetHardware
 .done
         movem.l (sp)+,d2-d7
         rts
@@ -776,6 +772,8 @@ SetPanning:
 ;  fields of the CRTC registers.
 
 ;  On Minimig we simply set the start address.
+;  and also set the card start address for screen dragging
+
         move.l  a1,d0
         move.l  d0,d1
         and.l   #$00ffffff,d1
@@ -783,12 +781,18 @@ SetPanning:
         beq     .skip
         or.l    #$1000000,d1
 .skip
-        move.l  d1,a1
 
-        BUG "Start address: %lx",a1
+        movea.l gbi_RegisterBase(a0),a1
+        move.l  d1,(a1)
 
-        movea.l PSSO_BoardInfo_RegisterBase(a0),a0
-        move.l  a1,(a0)
+        move.l  gbi_MemoryBase(a0),d0
+        move.l  d0,d1
+        and.l   #$00ffffff,d1
+        and.l   #$ff000000,d0
+        beq     .skip2
+        or.l    #$1000000,d1
+.skip2
+        move.l  d1,(8,a1)
 
         rts
 
@@ -870,8 +874,8 @@ SetColorArray:
 
 ;       BUG     "SetColorArray ( %ld / %ld )",d0,d1
 
-        lea     PSSO_BoardInfo_CLUT(a0),a1
-        movea.l PSSO_BoardInfo_RegisterBase(a0),a0
+        lea     gbi_CLUT(a0),a1
+        movea.l gbi_RegisterBase(a0),a0
 
         lea     (a1,d0.w),a1
         lea     (a1,d0.w*2),a1
@@ -936,7 +940,7 @@ SetReadPlane:
 SetClearMask:
 ;------------------------------------------------------------------------------
 
-        move.b  d0,PSSO_BoardInfo_ClearMask(a0)
+        move.b  d0,gbi_ClearMask(a0)
         rts
 
 ;------------------------------------------------------------------------------
@@ -957,7 +961,7 @@ Reserved5:
 ;------------------------------------------------------------------------------
 ;       BUG     "Reserved5"
 
-;       movea.l PSSO_BoardInfo_RegisterBase(a0),a0
+;       movea.l gbi_RegisterBase(a0),a0
 ;       btst.b  #7,VDE_DisplayStatus(a0)        ;Vertical retrace
 ;       sne     d0
 ;       extb.l  d0
@@ -969,11 +973,11 @@ SetClock:
 
 ;       For minimig this gets set at the same time as all the other parameters
 
-;       movea.l PSSO_BoardInfo_ModeInfo(a0),a1
-;       movea.l PSSO_BoardInfo_RegisterBase(a0),a0
-;       move.b  PSSO_ModeInfo_second_union(a1),d0
+;       movea.l gbi_ModeInfo(a0),a1
+;       movea.l gbi_RegisterBase(a0),a0
+;       move.b  gmi_second_union(a1),d0
 ;       lsl.w   #8,d0
-;       move.b  PSSO_ModeInfo_first_union(a1),d0
+;       move.b  gmi_Clock(a1),d0
 ;       move.w  d0,VDE_ClockDivider(a0)
 ;       BUG     "VDE_ClockDivider = %lx",d0
         rts
@@ -1028,11 +1032,11 @@ ResolvePixelClock:
 .get_current:
         move.l  (-4,a0),d1
 .done:
-        move.l  d1,PSSO_ModeInfo_PixelClock(a1)
+        move.l  d1,gmi_PixelClock(a1)
         move.l  ControlWordsByFormat(pc,d7.l*4),d1
         move.l  d1,a0
         move.w  (a0,d0.w*2),d1
-        move.w  d1,PSSO_ModeInfo_first_union(a1)        ; two consecutive bytes
+        move.w  d1,gmi_Clock(a1)        ; two consecutive bytes
         movem.l (sp)+,d2/d3
         rts
 .err:
@@ -1198,7 +1202,7 @@ SetInterrupt:
 
 ;       bchg.b  #1,$bfe001
 
-;       movea.l PSSO_BoardInfo_RegisterBase(a0),a1
+;       movea.l gbi_RegisterBase(a0),a1
 ;       tst.b   d0
 ;       beq.b   .disable
 
@@ -1223,23 +1227,16 @@ VBL_ISR:
 ;------------------------------------------------------------------------------
 
        movem.l a1/a6,-(sp)
-       movea.l PSSO_BoardInfo_RegisterBase(a1),a6
+       movea.l gbi_RegisterBase(a1),a6
 
-        move.w  PSSO_BoardInfo_MoniSwitch(a1),d1
+        move.w  gbi_MoniSwitch(a1),d1
         beq     .skip
-
-;        move.w  CardData_HWTrigger(a1),d0
-;        beq     .skip
-;        subq    #1,d0
-;        bne     .skip
 
         move.l  a1,a0
         bsr     SetHardware
 
         moveq   #0,d0
 .skip
-        move.w  d0,CardData_HWTrigger(a1)
-
 ;       move.w  VDE_InterruptEnable(a6),d0
 ;       tst.b   d0
 ;       beq.b   .no_soft_int
@@ -1248,8 +1245,8 @@ VBL_ISR:
 ;       andi.w  #$0001,d0
 ;       beq.b   .no_soft_int
 
-;       movea.l PSSO_BoardInfo_ExecBase(a1),a6
-;       lea     PSSO_BoardInfo_SoftInterrupt(a1),a1
+;       movea.l gbi_ExecBase(a1),a6
+;       lea     gbi_SoftInterrupt(a1),a1
 ;       jsr     _LVOCause(a6)
 
 ;       bchg.b  #1,$bfe001
@@ -1305,13 +1302,19 @@ GetBytesPerPixel:
 SetHardware:
         movem.l d0/a1,-(a7)
 ;        BUG     "Setting hardware registers"
-        move.l  (PSSO_BoardInfo_RegisterBase,a0),a1
+        move.l  (gbi_RegisterBase,a0),a1
 
         move.w  (CardData_Control,a0),d0
         move.w  d0,(4,a1)
 ;        move.w  (CardData_Control2,a0),d0
 ;        move.w  d0,(6,a1)
+
         lea     $dff000,a1
+
+        move.w  (CardData_Beamcon0,a0),d0
+        bset    #13,d0  ; Set LPENDIS bit
+        move.w  d0,(beamcon0,a1)
+
         move.w  #0,(hcenter,a1)
         move.w  (CardData_HTotal,a0),(htotal,a1)
         move.w  #0,(hbstrt,a1)
@@ -1329,7 +1332,31 @@ SetHardware:
 
         move.w  (CardData_Beamcon0,a0),(beamcon0,a1)
 
+        move.w  (CardData_LineCompare,a0),(bplhstrt,a1)
+
         movem.l (a7)+,d0/a1
+        rts
+
+;==============================================================================
+
+SetSplitPosition:   ; A0 - BoardInfo, d0 - ypos
+
+        ; Move ypos to bplhstrt hardware register
+        ; Also store to bi->YSplit
+        ; 0 -> disabled. Store -1 to hw.
+
+        move.w  d0,(gbi_YSplit,a0);
+        sub.w   #1,d0
+        bpl .store
+        move.w  d0,(CardData_LineCompare,a0)
+        rts
+
+.store
+        move.w  (CardData_VBStop,a0),d1
+        subq    #2,d1
+        add.w   d1,d0
+        move.w  d0,(CardData_LineCompare,a0)
+
         rts
 
 ProgEnd:

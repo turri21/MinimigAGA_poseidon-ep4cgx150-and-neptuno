@@ -268,6 +268,7 @@ module minimig
   output  osd_blank_out,	// Let the toplevel dither module handle drawing the OSD.
   output  osd_pixel_out,
   output  rtg_ena,
+  output  rtg_linecompare,
   output reg ntsc = NTSC, //PAL/NTSC video mode selection
   input   ext_int2,	// External interrupt for Akiko
   input   ext_int6,	// External interrupt for AHI audio
@@ -570,7 +571,9 @@ agnus AGNUS1
 	.floppy_speed(floppy_config[0]),
 	.turbo(turbo),
 	.rtg_ena(rtg_ena),
+	.rtg_linecompare(rtg_linecompare),
 	.hblank_out(hblank_out)
+//	.vblank_out(vblank_out)
 );
 
 //instantiate paula

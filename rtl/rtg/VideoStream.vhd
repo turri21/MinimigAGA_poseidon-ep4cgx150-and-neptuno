@@ -34,11 +34,10 @@ type samplebuffer is array(0 to 511) of std_logic_vector(15 downto 0);
 signal samplebuf : samplebuffer;
 signal inptr : unsigned(8 downto 0);
 signal outptr : unsigned(8 downto 0);
+signal watermark : unsigned(5 downto 0);
 signal address : unsigned(25 downto 0);
 signal address_high : unsigned(25 downto 4);
 signal address_low : unsigned(2 downto 0);
-signal first_fill : std_logic;
-signal fill_d : std_logic;
 signal full : std_logic;
 
 begin
@@ -46,48 +45,33 @@ begin
 -- The req signal should be high any time the output process
 -- is in the same half of the buffer as the fill process.
 
--- req<=reset_n and enable and (first_fill or (inptr(8) xor outptr(8) xor full));
-req<=reset_n and enable and (first_fill or not full);
+req<=reset_n and enable and not full;
 
 -- Fill from RAM
 a<=std_logic_vector(address_high) & std_logic_vector(address_low) & '0';
 inptr<=unsigned(address_high(9 downto 4)&address_low);
 
--- Need to drop the req signal a few cycles early when the buffer fills up.
-full <= '1' when inptr(8 downto 4) = outptr(8 downto 4) else '0';
-
---address<=address_high & inptr;
 
 process(clk)
 begin
 	if rising_edge(clk) then
-		-- Need to drop the req signal a few cycles early when the buffer fills up.
---		full<='0';
---		if inptr(8 downto 5) = outptr(8 downto 5) and inptr(4)='1' and address_low="111" then
---			full<='1';
---		end if;
 		
-		fill_d<=fill;
+		-- Need to drop the req signal a few cycles early when the buffer fills up.
+		if watermark(watermark'high downto 1)=inptr(8 downto 4) then
+			full <= '1';
+		else
+			full <= '0';
+		end if;
 
 		if reset_n='0' then
---			address<=unsigned(baseaddr);
 			address_high<=unsigned(baseaddr(25 downto 4));
 			address_low<="000";
---			inptr<=unsigned(baseaddr(9 downto 1));
-			first_fill<='1';
 			samplebuf(to_integer(inptr))<=(others=>'0');
 		elsif fill='1' then
 			samplebuf(to_integer(inptr))<=d;
---			inptr<=inptr+1;
 			address_low<=address_low+1;
---			if fill_d="1" 
 			if address_low="111" then -- carry to addr_high
 				address_high<=address_high+1;
-			end if;
---			address<=address+2;
---			if address(9)/=baseaddr(9) then
-			if inptr(8)/=baseaddr(9) then
-				first_fill<='0';
 			end if;
 		end if;
 	end if;
@@ -103,10 +87,9 @@ begin
 			outptr<=outptr+1;
 		end if;
 		if reset_n='0' then
---			outptr<=(others=>'0');
---			outptr(8)<=baseaddr(9);
 			outptr<=unsigned(baseaddr(9 downto 1));
 		end if;
+		watermark<=outptr(outptr'high downto 3)-2;
 		q<=samplebuf(to_integer(outptr));
 	end if;
 end process;

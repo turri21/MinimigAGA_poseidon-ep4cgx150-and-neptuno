@@ -96,7 +96,9 @@ module agnus
   input  floppy_speed,        // allocates refresh slots for disk DMA
   input  turbo,            // alows blitter to take extra DMA slots
   output rtg_ena,
-  output hblank_out
+  output rtg_linecompare,
+  output hblank_out,
+  output vblank_out
 );
 
 //register names and adresses
@@ -485,8 +487,11 @@ agnus_beamcounter  bc1
   .harddis_out(harddis),
   .varbeamen_out(varbeamen),
   .rtg_ena(rtg_ena),
+  .rtg_linecompare(rtg_linecompare),
   .hblank_out(hblank_out)
 );
+
+assign vblank_out = vbl;
 
 //horizontal strobe for Denise
 //in real Amiga Denise's hpos counter seems to be advanced by 4 CCKs in regards to Agnus' one

@@ -14,7 +14,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              //
 // GNU General Public License for more details.                               //
 //                                                                            //
-// You should have received a copy of the GNU General Public License          //
+// You should hfave received a copy of the GNU General Public License          //
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.      //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +46,7 @@ module agnus_beamcounter
 	output	_csync,					// composite sync
 	output	reg blank,				// video blanking
 	output	vbl,					// vertical blanking
-	output	vblend,					// last line of vertival blanking
+	output	vblend,					// last line of vertical blanking
 	output	eol,					// end of video line
 	output	eof,					// end of video frame
 	output	reg vbl_int,			// vertical interrupt request (for Paula)
@@ -54,6 +54,7 @@ module agnus_beamcounter
 	output harddis_out,
 	output varbeamen_out,
 	output rtg_ena,
+	output rtg_linecompare,
 	output reg hblank_out
 );
 
@@ -64,7 +65,6 @@ reg		lace;
 //local signals for beam counters and sync generator
 reg		long_frame_r;		// 1 : long frame (313 lines); 0 : normal frame (312 lines)
 wire		long_frame;
-reg		pal;			// pal mode switch
 reg		long_line;		// long line signal for NTSC compatibility (actually long lines are not supported yet)
 reg		vser;			// vertical sync serration pulses for composite sync
 
@@ -86,6 +86,7 @@ parameter	HSSTRT   = 9'h1DE;
 parameter	BEAMCON0 = 9'h1DC;
 parameter	VSSTRT   = 9'h1E0;
 parameter	HCENTER  = 9'h1E2;
+parameter	BPLHSTRT = 9'h1D4; // UHRES vstart - never implemented on real hardware - use for RTG split
 
 parameter	HBSTRT_VAL      = 17+4+4-12;// horizontal blanking start
 parameter	HSSTRT_VAL      = 29+4+4;	// front porch = 1.6us (29)
@@ -131,32 +132,42 @@ always @(*)
 	else
 		data_out[15:0] = 0;
 
+
 // BEAMCON0 register
 reg [15:0] beamcon0_reg;
+reg [15:0] beamcon0_sh;
 always @ (posedge clk) begin
   if (clk7_en) begin
-    if (reset)
+    if (reset) begin
       beamcon0_reg <= #1 {10'b0, ~ntsc, 5'b0};
-    else if ((reg_address_in[8:1] == BEAMCON0[8:1]) && ecs)
-      beamcon0_reg <= #1 data_in[15:0];
+      beamcon0_sh <= #1 {10'b0, ~ntsc, 5'b0};
+	 end else if ((reg_address_in[8:1] == BEAMCON0[8:1]) && ecs) begin
+		// Write to shadow register only in RTG mode when lpendis or displaydual are high
+		if(data_in[13] || data_in[6])
+			beamcon0_sh <= #1 data_in;
+		else // Otherwise update the non-shadowed reg 
+			beamcon0_reg <= #1 data_in[15:0];
+    end
   end
 end
 
+
+// Multiplex between standard and shadow regs depending on whether RTG is on.
 wire harddis      = beamcon0_reg[14];
-wire lpendis      = beamcon0_reg[13];
-wire varvben      = beamcon0_reg[12];
+wire lpendis      = beamcon0_sh[13];
+wire varvben      = displaydual ? beamcon0_sh[12] : beamcon0_reg[12];
 wire loldis       = beamcon0_reg[11];
 wire cscben       = beamcon0_reg[10];
-wire varvsyen     = beamcon0_reg[ 9];
-wire varhsyen     = beamcon0_reg[ 8];
-wire varbeamen    = beamcon0_reg[ 7];
-wire displaydual  = beamcon0_reg[ 6];
+wire varvsyen     = displaydual ? beamcon0_sh[9] :beamcon0_reg[ 9];
+wire varhsyen     = displaydual ? beamcon0_sh[8] :beamcon0_reg[ 8];
+wire varbeamen    = displaydual ? beamcon0_sh[7] :beamcon0_reg[ 7];
+wire displaydual  = beamcon0_sh[ 6];
 wire displaypal   = beamcon0_reg[ 5];
-wire varcsyen     = beamcon0_reg[ 4];
-wire blanken      = beamcon0_reg[ 3];
-wire csynctrue    = beamcon0_reg[ 2];
-wire vsynctrue    = beamcon0_reg[ 1];
-wire hsynctrue    = beamcon0_reg[ 0];
+wire varcsyen     = displaydual ? beamcon0_sh[4] :beamcon0_reg[ 4];
+wire blanken      = displaydual ? beamcon0_sh[3] :beamcon0_reg[ 3];
+wire csynctrue    = displaydual ? beamcon0_sh[2] :beamcon0_reg[ 2];
+wire vsynctrue    = displaydual ? beamcon0_sh[1] :beamcon0_reg[ 1];
+wire hsynctrue    = displaydual ? beamcon0_sh[0] :beamcon0_reg[ 0];
 
 assign hsyncpol = hsynctrue;
 assign vsyncpol = vsynctrue;
@@ -180,16 +191,9 @@ always @(posedge clk)
   		lace <= data_in[2];
   end
 
-//BEAMCON0 register
-always @(posedge clk)
-  if (clk7_en) begin
-  	if (reset)
-  		pal <= ~ntsc;
-  	else if (reg_address_in[8:1]==BEAMCON0[8:1] && ecs)
-  		pal <= data_in[5];
-  end
 
 // programmable display mode regs
+// AMR - shadow copies for RTG
 reg [ 8:0] htotal_reg;
 reg [ 8:0] hsstrt_reg;
 reg [ 8:0] hsstop_reg;
@@ -202,6 +206,21 @@ reg [10:0] vsstop_reg;
 reg [10:0] vbstrt_reg;
 reg [10:0] vbstop_reg;
 
+reg [ 8:0] htotal_sh;
+reg [ 8:0] hsstrt_sh;
+reg [ 8:0] hsstop_sh;
+reg [ 8:0] hcenter_sh;
+reg [ 8:0] hbstrt_sh; // not correct size, this should have [10:0]
+reg [ 8:0] hbstop_sh;
+reg [10:0] vtotal_sh;
+reg [10:0] vsstrt_sh;
+reg [10:0] vsstop_sh;
+reg [10:0] vbstrt_sh;
+reg [10:0] vbstop_sh;
+
+// AMR - Register for never-implemented-on-real-hardware Dual mode - we use as line compare
+reg [10:0] bplhstrt_reg;
+
 always @ (posedge clk) begin
   if (clk7_en) begin
     if (reset) begin
@@ -211,25 +230,44 @@ always @ (posedge clk) begin
       hcenter_reg <= #1 HCENTER_VAL;
       hbstrt_reg  <= #1 HBSTRT_VAL;
       hbstop_reg  <= #1 HBSTOP_VAL;
-      vtotal_reg  <= #1 pal ? VTOTAL_PAL_VAL : VTOTAL_NTSC_VAL;
+      vtotal_reg  <= #1 displaypal ? VTOTAL_PAL_VAL : VTOTAL_NTSC_VAL;
       vsstrt_reg  <= #1 VSSTRT_VAL;
       vsstop_reg  <= #1 VSSTOP_VAL;
       vbstrt_reg  <= #1 VBSTRT_VAL;
-      vbstop_reg  <= #1 pal ? VBSTOP_PAL_VAL : VBSTOP_NTSC_VAL;
+      vbstop_reg  <= #1 displaypal ? VBSTOP_PAL_VAL : VBSTOP_NTSC_VAL;
     end else begin
-      case (reg_address_in[8:1])
-        HTOTAL [8:1] : htotal_reg  <= #1 {data_in[ 7:0], 1'b0};
-        HSSTRT [8:1] : hsstrt_reg  <= #1 {data_in[ 7:0], 1'b0};
-        HSSTOP [8:1] : hsstop_reg  <= #1 {data_in[ 7:0], 1'b0};
-        HCENTER[8:1] : hcenter_reg <= #1 {data_in[ 7:0], 1'b0};
-        HBSTRT [8:1] : hbstrt_reg  <= #1 {data_in[ 7:0], 1'b0}; // TODO fix this
-        HBSTOP [8:1] : hbstop_reg  <= #1 {data_in[ 7:0], 1'b0};
-        VTOTAL [8:1] : vtotal_reg  <= #1 displaydual ? vtotal_reg : {data_in[10:0]}; // Block update to vtotal when RTG is on
-        VSSTRT [8:1] : vsstrt_reg  <= #1 {data_in[10:0]};
-        VSSTOP [8:1] : vsstop_reg  <= #1 {data_in[10:0]};
-        VBSTRT [8:1] : vbstrt_reg  <= #1 {data_in[10:0]};
-        VBSTOP [8:1] : vbstop_reg  <= #1 {data_in[10:0]};
-      endcase
+		if(!displaydual || !lpendis) begin  // Normal registers when RTG is off, or lpendis is low
+			case (reg_address_in[8:1])
+			  BPLHSTRT[8:1]: bplhstrt_reg  <= #1 {data_in[10:0]};
+			  HTOTAL [8:1] : htotal_reg  <= #1 {data_in[ 7:0], 1'b0};
+			  HSSTRT [8:1] : hsstrt_reg  <= #1 {data_in[ 7:0], 1'b0};
+			  HSSTOP [8:1] : hsstop_reg  <= #1 {data_in[ 7:0], 1'b0};
+			  HCENTER[8:1] : hcenter_reg <= #1 {data_in[ 7:0], 1'b0};
+			  HBSTRT [8:1] : hbstrt_reg  <= #1 {data_in[ 7:0], 1'b0}; // TODO fix this
+			  HBSTOP [8:1] : hbstop_reg  <= #1 {data_in[ 7:0], 1'b0};
+			  VTOTAL [8:1] : vtotal_reg  <= #1 {data_in[10:0]};
+			  VSSTRT [8:1] : vsstrt_reg  <= #1 {data_in[10:0]};
+			  VSSTOP [8:1] : vsstop_reg  <= #1 {data_in[10:0]};
+			  VBSTRT [8:1] : vbstrt_reg  <= #1 {data_in[10:0]};
+			  VBSTOP [8:1] : vbstop_reg  <= #1 {data_in[10:0]};
+			endcase
+		end
+		if(displaydual && lpendis) begin  // Shadow regs when RTG is on and lpendis is high
+			case (reg_address_in[8:1])
+			  BPLHSTRT[8:1]: bplhstrt_reg  <= #1 {data_in[10:0]};
+			  HTOTAL [8:1] : htotal_sh  <= #1 {data_in[ 7:0], 1'b0};
+			  HSSTRT [8:1] : hsstrt_sh  <= #1 {data_in[ 7:0], 1'b0};
+			  HSSTOP [8:1] : hsstop_sh  <= #1 {data_in[ 7:0], 1'b0};
+			  HCENTER[8:1] : hcenter_sh <= #1 {data_in[ 7:0], 1'b0};
+			  HBSTRT [8:1] : hbstrt_sh  <= #1 {data_in[ 7:0], 1'b0}; // TODO fix this
+			  HBSTOP [8:1] : hbstop_sh  <= #1 {data_in[ 7:0], 1'b0};
+			  VTOTAL [8:1] : vtotal_sh  <= #1 {data_in[10:0]};
+			  VSSTRT [8:1] : vsstrt_sh  <= #1 {data_in[10:0]};
+			  VSSTOP [8:1] : vsstop_sh  <= #1 {data_in[10:0]};
+			  VBSTRT [8:1] : vbstrt_sh  <= #1 {data_in[10:0]};
+			  VBSTOP [8:1] : vbstop_sh  <= #1 {data_in[10:0]};
+			endcase
+		end
     end
   end
 end
@@ -247,17 +285,17 @@ wire [10:0] vsstop;
 wire [10:0] vbstrt;
 wire [10:0] vbstop;
 
-assign htotal  =             varbeamen ? htotal_reg  : HTOTAL_VAL << 1;
-assign hsstrt  = varhsyen && varbeamen ? hsstrt_reg  : HSSTRT_VAL;
-assign hsstop  = varhsyen && varbeamen ? hsstop_reg  : HSSTOP_VAL;
-assign hcenter = varhsyen && varbeamen ? hcenter_reg : HCENTER_VAL;
-assign hbstrt  =             varbeamen ? hbstrt_reg  : HBSTRT_VAL;
-assign hbstop  =             varbeamen ? hbstop_reg  : HBSTOP_VAL;
-assign vtotal  =             varbeamen ? vtotal_reg  : pal ? VTOTAL_PAL_VAL : VTOTAL_NTSC_VAL;
-assign vsstrt  = varvsyen && varbeamen ? vsstrt_reg  : VSSTRT_VAL;
-assign vsstop  = varvsyen && varbeamen ? vsstop_reg  : VSSTOP_VAL;
-assign vbstrt  = varvben  && varbeamen ? vbstrt_reg  : VBSTRT_VAL;
-assign vbstop  = varvben  && varbeamen ? vbstop_reg  : pal ? VBSTOP_PAL_VAL : VBSTOP_NTSC_VAL;
+assign htotal  =             varbeamen ? (displaydual ? htotal_sh : htotal_reg)  : HTOTAL_VAL << 1;
+assign hsstrt  = varhsyen && varbeamen ? (displaydual ? hsstrt_sh : hsstrt_reg)  : HSSTRT_VAL;
+assign hsstop  = varhsyen && varbeamen ? (displaydual ? hsstop_sh : hsstop_reg)  : HSSTOP_VAL;
+assign hcenter = varhsyen && varbeamen ? (displaydual ? hcenter_sh : hcenter_reg) : HCENTER_VAL;
+assign hbstrt  =             varbeamen ? (displaydual ? hbstrt_sh : hbstrt_reg)  : HBSTRT_VAL;
+assign hbstop  =             varbeamen ? (displaydual ? hbstop_sh : hbstop_reg)  : HBSTOP_VAL;
+assign vtotal  =             varbeamen ? (displaydual ? vtotal_sh : vtotal_reg)  : displaypal ? VTOTAL_PAL_VAL : VTOTAL_NTSC_VAL;
+assign vsstrt  = varvsyen && varbeamen ? (displaydual ? vsstrt_sh : vsstrt_reg)  : VSSTRT_VAL;
+assign vsstop  = varvsyen && varbeamen ? (displaydual ? vsstop_sh : vsstop_reg)  : VSSTOP_VAL;
+assign vbstrt  = varvben  && varbeamen ? (displaydual ? vbstrt_sh : vbstrt_reg)  : VBSTRT_VAL;
+assign vbstop  = varvben  && varbeamen ? (displaydual ? vbstop_sh : vbstop_reg)  : displaypal ? VBSTOP_PAL_VAL : VBSTOP_NTSC_VAL;
 
 assign htotal_out    = htotal;
 assign harddis_out   = harddis || varbeamen || varvben;
@@ -297,7 +335,7 @@ always @(cck)
 always @(posedge clk)
   if (clk7_en) begin
   	if (end_of_line)
-  		if (pal || (loldis && varbeamen))
+  		if (displaypal || (loldis && varbeamen))
   			long_line <= 1'b0;
   		else if (!(loldis && varbeamen))
   			long_line <= ~long_line;
@@ -437,6 +475,9 @@ assign vbl = vbl_reg; // TODO
 
 //vertical blanking end (last line)
 assign vblend = vpos==vbstop ? 1'b1 : 1'b0;
+
+// line compare:
+assign rtg_linecompare = vpos==bplhstrt_reg ? 1'b1 : 1'b0;
 
 // We don't want to delay hblank by 12 7Mhz clks in RTG mode
 // Rather than use two lots of comaparators, delay the chipset

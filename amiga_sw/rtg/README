@@ -12,7 +12,7 @@ Installation
 
 * Install P96 using its installer.  You'll be prompted to pick a card
   (any card!) - it shouldn't matter which you choose, but I'll
-  assume for the rest of these instructions that you chose PicassoIV)
+  assume for the rest of these instructions that you chose PicassoIV.
 
   The P96 installer will create a new monitor file in Devs:Monitors
 

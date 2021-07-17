@@ -87,6 +87,7 @@ port(
 	CACR_out      : buffer  std_logic_vector(3 downto 0);
 	VBR_out       : buffer  std_logic_vector(31 downto 0);
 	-- RTG interface
+	rtg_base : out std_logic_vector(25 downto 4);
 	rtg_addr : out std_logic_vector(25 downto 4);
 	rtg_vbend : out std_logic_vector(6 downto 0);
 	rtg_ext : out std_logic;
@@ -398,6 +399,7 @@ port map
 	host_ack => host_ack,
 	host_q => host_q,
 	rtg_addr => rtg_addr,
+	rtg_base => rtg_base,
 	rtg_vbend => rtg_vbend,
 	rtg_ext => rtg_ext,
 	rtg_pixelclock => rtg_pixelclock,

@@ -1,3 +1,29 @@
+-- Partial implementation of Akiko.
+-- Copyright 2020, 2021 by Alastair M. Robinson
+--
+-- Contains the Chunky2Planar converter and ID register,
+-- and an interface for handing off the remaining registers
+-- to the host CPU.
+--
+-- Also hosts some extra registers for RTG and audio, even though they
+-- don't logically belong here, to keep the logic footprint as small
+-- as possible.
+--
+-- This program is free software: you can redistribute it and/or modify
+-- it under the terms of the GNU General Public License as published by
+-- the Free Software Foundation, either version 3 of the License, or
+-- (at your option) any later version.
+--
+-- This program is distributed in the hope that they will
+-- be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+-- of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-- GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License
+-- along with this program.  If not, see <https://www.gnu.org/licenses/>
+
+
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.numeric_std.ALL;
@@ -24,6 +50,7 @@ port (
 	host_q : in std_logic_vector(15 downto 0);
 	-- RTG signals
 	rtg_addr : out std_logic_vector(25 downto 4);
+	rtg_base : out std_logic_vector(25 downto 4);
 	rtg_vbend : out std_logic_vector(6 downto 0);
 	rtg_ext : out std_logic;
 	rtg_pixelclock : out std_logic_vector(3 downto 0);
@@ -181,6 +208,10 @@ begin
 							rtg_ext<=d(14);
 						when X"3" =>	-- PixelFormat - 16bit (0) 
 							rtg_16bit<=d(0);
+						when X"4" =>	-- High word of 2nd address (for screendragging)
+							rtg_base(25 downto 16)<=d(9 downto 0);
+						when X"5" =>	-- Low word
+							rtg_base(15 downto 4)<=d(15 downto 4);
 						when others =>
 							null;
 					end case;
@@ -205,7 +236,7 @@ q <=
 	else host_q when host_sel='1'
 	else ahi_q when ahi_sel='1'
 	else id_q when id_sel='1'
-	else X"8320" when rtg_sel='1' -- just ID number from RTG registers
+	else X"8321" when rtg_sel='1' -- just ID number from RTG registers
 	else X"ffff";
 
 process(clk)

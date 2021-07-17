@@ -1,9 +1,23 @@
 /********************************************/
+/* Virtual toplevel for Minimig, based on   */
 /* minimig_mist_top.v                       */
-/* MiST Board Top File                      */
 /*                                          */
 /* 2012-2015, rok.krajnc@gmail.com          */
+/* 2020-2021, Alastair M. Robinson          */
 /********************************************/
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that they will
+// be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+// of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>
 
 
 // board type define
@@ -246,6 +260,7 @@ reg [3:0] rtg_pixelctr;	// Counter, compared against rtg_pixelwidth
 wire [3:0] rtg_pixelwidth; // Number of clocks per fetch - 1
 wire [7:0] rtg_clut_idx;	// The currently selected colour in indexed mode
 wire rtg_pixel;	// Strobe the next pixel from the FIFO
+wire rtg_linecompare; // Used for screen splitting / dragging
 
 wire hblank_out;
 wire vblank_out;
@@ -306,12 +321,26 @@ always @(posedge CLK_114) begin
 	end
 end
 
+reg vblank_d;
+reg linecompare_d;
+wire linecompare_trigger = rtg_linecompare & !linecompare_d;
+reg [3:0] linecompare_fillmask_ctr;
+wire linecompare_fillmask=|linecompare_fillmask_ctr;
 always @(posedge CLK_28)
 begin
 	// Handle vblank manually, since the OS makes it awkward to use the chipset for this.
   cs_reg    <= #1 cs;
   vs_reg    <= #1 vs;
   hs_reg    <= #1 hs;
+  linecompare_d<=rtg_linecompare;
+  vblank_d<=vblank_out;
+
+  // When we change the RTG address we must ensure any existing transaction has finished
+	if(|linecompare_fillmask_ctr)
+		linecompare_fillmask_ctr=linecompare_fillmask_ctr-1;
+	if(linecompare_trigger)
+		linecompare_fillmask_ctr=4'hf;
+  
 	if(vblank_out) begin
 		rtg_vblank<=1'b1;
 		rtg_vbcounter<=5'b0;
@@ -328,6 +357,7 @@ assign rtg_g=rtg_16bit ? {rtg_dat[10:5],rtg_dat[10:9]} : {rtg_dat[9:5],rtg_dat[9
 assign rtg_b={rtg_dat[4:0],rtg_dat[4:2]};
 
 wire [25:4] rtg_baseaddr;
+wire [25:4] rtg_baseaddr2;
 wire [25:0] rtg_addr;
 wire [15:0] rtg_dat;
 
@@ -344,16 +374,16 @@ assign rtg_addr_mangled[22:0]=rtg_addr[22:0];
 VideoStream myvs
 (
 	.clk(CLK_114),
-	.reset_n((!vblank_out) & rtg_ena),
+	.reset_n(rtg_ena & !vblank_out & !linecompare_fillmask),
 	.enable(rtg_ena),
-	.baseaddr({rtg_baseaddr[24:4],4'b0}),
+	.baseaddr({rtg_linecompare ? rtg_baseaddr2[24:4] : rtg_baseaddr[24:4],4'b0}),
 	// SDRAM interface
 	.a(rtg_addr),
 	.req(rtg_ramreq),
 	.d(rtg_fromram),
 	.fill(rtg_fill & havertg),
 	// Display interface
-	.rdreq(rtg_pixel & havertg),
+	.rdreq(rtg_pixel & havertg & !rtg_linecompare), // Allow one blank line for fetch to get ahead of display
 	.q(rtg_dat)
 );
 
@@ -534,6 +564,7 @@ TG68K #(.havertg(havertg ? "true" : "false"),
   .VBR_out      (tg68_VBR_out     ),
   // RTG signals
 	.rtg_addr(rtg_baseaddr),
+	.rtg_base(rtg_baseaddr2),
 	.rtg_vbend(rtg_vbend),
 	.rtg_ext(rtg_ext),
 	.rtg_pixelclock(rtg_pixelwidth),
@@ -805,6 +836,7 @@ minimig minimig
 	.osd_blank_out(osd_window       ),  // Let the toplevel dither module handle drawing the OSD.
 	.osd_pixel_out(osd_pixel        ),
 	.rtg_ena      (rtg_ena_mm       ),
+	.rtg_linecompare (rtg_linecompare),
 	.ext_int2     (1'b0             ),
 	.ext_int6     (aud_int          ),
 	.ram_64meg    (ram_64meg        )
