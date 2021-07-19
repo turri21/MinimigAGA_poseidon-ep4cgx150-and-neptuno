@@ -69,6 +69,12 @@ const char *supporters[]=
 	"Harry Fisch",
 	"Sonke Smiletzki",
 	"Tad Watson",
+	"Espen Skog",
+	"Tarjei S. Tjonn",
+	"Alynna Trypnotk",
+	"Paul Honig",
+	"DJ Hard Rich",
+
 
 	"+ all other contributors.",
 	"Thanks also to Espen Skog,",
@@ -897,9 +903,8 @@ void ConfigScanlines(unsigned char scanlines)
 void ConfigIDE(unsigned char gayle, unsigned char master, unsigned char slave)
 {
     EnableOsd();
-    //SPI(OSDCMDCFGIDE | (slave ? 4 : 0) | (master ? 2 : 0) | (gayle ? 1 : 0));
-    SPI(OSD_CMD_HDD);
-    SPI((slave ? 4 : 0) | (master ? 2 : 0) | (gayle ? 1 : 0));
+    SPI(OSD_CMD_HDD0 + ((gayle>>1)<<2));
+	SPI((slave ? 4 : 0) | (master ? 2 : 0) | (gayle & 0x01));
     DisableOsd();
 }
 

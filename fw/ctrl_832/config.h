@@ -31,6 +31,9 @@ typedef struct
     char long_name[16];
 } hardfileTYPE;
 
+#define ENABLE_IDE_PRIMARY 1
+#define ENABLE_IDE_SECONDARY 2
+
 typedef struct
 {
     char          id[8];
@@ -69,8 +72,8 @@ extern char DebugMode;
 int UploadKickstart(unsigned long dir,char *name);
 char UploadActionReplay();
 void SetConfigurationFilename(int config);	// Set configuration filename by slot number
-unsigned char LoadConfiguration(char *filename);	// Can supply NULL to use filename previously set by slot number
-unsigned char SaveConfiguration(char *filename);	// Can supply NULL to use filename previously set by slot number
+unsigned char LoadConfiguration(fileTYPE *cfgfile);	// Can supply NULL to use filename previously set by slot number
+unsigned char SaveConfiguration(fileTYPE *cfgfile);	// Can supply NULL to use filename previously set by slot number
 unsigned char ConfigurationExists(char *filename);
 int ApplyConfiguration(char reloadkickstart,char applydrives);
 

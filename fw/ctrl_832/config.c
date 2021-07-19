@@ -242,25 +242,29 @@ unsigned char ConfigurationExists(char *filename)
 
 static const char config_id[] = "MNMGCFGA"; /* New signature for AGA core */
 
-unsigned char LoadConfiguration(char *filename)
+unsigned char LoadConfiguration(fileTYPE *cfgfile)
 {
 	int updatekickstart=0;
 	int result=0;
     unsigned int key;
 
-	if(!filename)
-		filename=configfilename;	// Use slot-based filename if none provided.
+	if(!cfgfile)
+	{
+		cfgfile=&file;
+		ChangeDirectory(0); // Slot-based config files always live in the root directory.
+		if(!FileOpen(cfgfile,configfilename))
+			cfgfile=0;
+	}
 
     // load configuration data
-	ChangeDirectory(0); // Config files always live in the root directory
-    if (FileOpen(&file, filename))
+    if(cfgfile)
     {
 		configTYPE *tmpconf=(configTYPE *)&sector_buffer;
 		BootPrint("Opened configuration file\n");
-        printf("Configuration file size: %lu\r", file.size);
-        if (file.size <= sizeof(config))
+        printf("Configuration file size: %lu\r", cfgfile->size);
+        if (cfgfile->size <= sizeof(config))
         {
-            FileRead(&file, sector_buffer);
+            FileRead(cfgfile, sector_buffer);
 
 			// A few more sanity checks...
 			if(tmpconf->floppy.drives<=4) 
@@ -353,66 +357,47 @@ int ApplyConfiguration(char reloadkickstart, char applydrives)
 	int rstval=0;
 	int result=0;
 	int romsize=0;
+	int unit;
 //	printf("c1: %x\n",CheckSum());
 
 	// Whether or not we uploaded a kickstart image we now need to set various parameters from the config.
 
 	if(applydrives)
 	{
-		if(OpenHardfile(0))
+		for(unit=0;unit<HDF_COUNT;unit++)
 		{
-		//		printf("c2: %x\n",CheckSum());
-			switch(hdf[0].type) // Customise message for SD card access
+			if(OpenHardfile(unit))
 			{
-				case (HDF_FILE | HDF_SYNTHRDB):
-					sprintf(s, "\nHardfile 1 (with fake RDB): %.8s.%.3s", hdf[1].file.name, &hdf[1].file.name[8]);
-					break;
-				case HDF_FILE:
-					sprintf(s, "\nHardfile 0: %.8s.%.3s", hdf[0].file.name, &hdf[0].file.name[8]);
-					break;
-				case HDF_CARD:
-					sprintf(s, "\nHardfile 0: using entire SD card");
-					break;
-				default:
-					sprintf(s, "\nHardfile 0: using SD card partition %d",hdf[0].type-HDF_CARD);	// Number from 1
-					break;
+			//		printf("c2: %x\n",CheckSum());
+				switch(hdf[unit].type) // Customise message for SD card access
+				{
+					case (HDF_FILE | HDF_SYNTHRDB):
+						sprintf(s, "\nHardfile 0 (with fake RDB): %.8s.%.3s", hdf[unit].file.name, &hdf[unit].file.name[8]);
+						break;
+					case HDF_FILE:
+						sprintf(s, "\nHardfile 0: %.8s.%.3s", hdf[unit].file.name, &hdf[unit].file.name[8]);
+						break;
+					case HDF_CARD:
+						sprintf(s, "\nHardfile 0: using entire SD card");
+						break;
+					default:
+						sprintf(s, "\nHardfile 0: using SD card partition %d",hdf[unit].type-HDF_CARD);	// Number from 1
+						break;
+				}
+				BootPrint(s);
+				sprintf(s, "CHS: %u.%u.%u", hdf[unit].cylinders, hdf[unit].heads, hdf[unit].sectors);
+				BootPrint(s);
+				sprintf(s, "Size: %lu MB", ((((unsigned long) hdf[unit].cylinders) * hdf[unit].heads * hdf[unit].sectors) >> 11));
+				BootPrint(s);
+				sprintf(s, "Offset: %ld", hdf[unit].offset);
+				BootPrint(s);
+			//		printf("c3: %x\n",CheckSum());
 			}
-			BootPrint(s);
-			sprintf(s, "CHS: %u.%u.%u", hdf[0].cylinders, hdf[0].heads, hdf[0].sectors);
-			BootPrint(s);
-			sprintf(s, "Size: %lu MB", ((((unsigned long) hdf[0].cylinders) * hdf[0].heads * hdf[0].sectors) >> 11));
-			BootPrint(s);
-			sprintf(s, "Offset: %ld", hdf[0].offset);
-			BootPrint(s);
-		//		printf("c3: %x\n",CheckSum());
 		}
-		if(OpenHardfile(1))
-		{
-			switch(hdf[1].type)
-			{
-				case (HDF_FILE | HDF_SYNTHRDB):
-					sprintf(s, "\nHardfile 1 (with fake RDB): %.8s.%.3s", hdf[1].file.name, &hdf[1].file.name[8]);
-					break;
-				case HDF_FILE:
-					sprintf(s, "\nHardfile 1: %.8s.%.3s", hdf[1].file.name, &hdf[1].file.name[8]);
-					break;
-				case HDF_CARD:
-					sprintf(s, "\nHardfile 1: using entire SD card");
-					break;
-				default:
-					sprintf(s, "\nHardfile 1: using SD card partition %d",hdf[1].type-HDF_CARD);	// Number from 1
-					break;
-			}
-			BootPrint(s);
-			sprintf(s, "CHS: %u.%u.%u", hdf[1].cylinders, hdf[1].heads, hdf[1].sectors);
-			BootPrint(s);
-			sprintf(s, "Size: %lu MB", ((((unsigned long) hdf[1].cylinders) * hdf[1].heads * hdf[1].sectors) >> 11));
-			BootPrint(s);
-			sprintf(s, "Offset: %ld", hdf[1].offset);
-			BootPrint(s);
-		}
-		ConfigIDE(config.enable_ide, config.hardfile[0].present && config.hardfile[0].enabled,
+		ConfigIDE(config.enable_ide&1, config.hardfile[0].present && config.hardfile[0].enabled,
 			config.hardfile[1].present && config.hardfile[1].enabled);
+		ConfigIDE((config.enable_ide>>1)|2, config.secondaryhardfile[0].present && config.secondaryhardfile[0].enabled,
+			config.secondaryhardfile[1].present && config.secondaryhardfile[1].enabled);
 	}
 
     ConfigCPU(config.cpu);
@@ -455,14 +440,18 @@ int ApplyConfiguration(char reloadkickstart, char applydrives)
 }
 
 
-unsigned char SaveConfiguration(char *filename)
+unsigned char SaveConfiguration(fileTYPE *cfgfile)
 {
-	if(!filename)
-		filename=configfilename;	// Use slot-based filename if none provided.
+	if(!cfgfile)
+	{
+		cfgfile=&file;
+		ChangeDirectory(0); // Slot-based config files always live in the root directory.
+		if(!FileOpen(cfgfile,configfilename))
+			cfgfile=0;
+	}
 
     // save configuration data
-	ChangeDirectory(0); // Config files always live in the root directory
-    if (FileOpen(&file, filename))
+    if (cfgfile)
     {
         if (file.size != sizeof(config))
         {
@@ -481,7 +470,7 @@ unsigned char SaveConfiguration(char *filename)
 		ClearError(ERROR_FILESYSTEM);
         printf("Configuration file not found!\r");
         printf("Trying to create a new one...\r");
-        strncpy(file.name, filename, 11);
+        strncpy(file.name, configfilename, 11);
         file.attributes = 0;
         file.size = sizeof(config);
         printf("Config size is %x (%x) - address is %x\n",sizeof(config),file.size,&config);

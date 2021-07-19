@@ -23,6 +23,7 @@
 #define ACMD_SET_MULTIPLE_MODE 0xC6
 #define ACMD_DIAGNOSTIC 0x90
 
+#define HDF_COUNT 4
 #define HDF_DISABLED 0
 #define HDF_FILE 1
 #define HDF_CARD 2
@@ -67,5 +68,5 @@ unsigned char GetHDFFileType(char *filename);
 extern char debugmsg[40];
 extern char debugmsg2[40];
 
-extern hdfTYPE hdf[2];
+extern hdfTYPE hdf[HDF_COUNT];
 

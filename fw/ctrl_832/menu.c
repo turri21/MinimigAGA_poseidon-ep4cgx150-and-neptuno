@@ -183,8 +183,9 @@ void HandleUI(void)
 {
     unsigned char i, c, up, down, select, menu, right, left, plus, minus;
     unsigned long len;
-    static hardfileTYPE t_hardfile[2]; // temporary copy of former hardfile configuration
-	static int t_hdfdir[2];
+	static char hardfile_firstunit;
+    static hardfileTYPE t_hardfile[4]; // temporary copy of former hardfile configuration
+	static int t_hdfdir[4];
     static char t_enable_ide; // temporary copy of former enable_ide flag.
     static unsigned char ctrl = false;
     static unsigned char lalt = false;
@@ -383,7 +384,7 @@ void HandleUI(void)
         /******************************************************************/
     case MENU_MAIN1 :
         OsdColor(OSDCOLOR_TOPLEVEL);
-		menumask=0x70;	// b01110000 Floppy turbo, Harddisk options & Exit.
+		menumask=0xf0;	// b01110000 Floppy turbo, Harddisk options & Exit.
 		OsdSetTitle("Minimig",OSD_ARROW_RIGHT);
 		helptext=helptexts[HELPTEXT_MAIN];
 
@@ -426,9 +427,9 @@ void HandleUI(void)
 			}
         }
         OsdWrite(4, " Floppy disk settings \x16", menusub == 4,0);
-        OsdWrite(5, " Hard disk settings \x16", menusub == 5,0);
-        OsdWrite(6, "", 0,0);
-        OsdWrite(7, STD_EXIT, menusub == 6,0);
+        OsdWrite(5, " Primary hard disk \x16", menusub == 5,0);
+        OsdWrite(6, " Secondary hard disk \x16", menusub == 6,0);
+        OsdWrite(7, STD_EXIT, menusub == 7,0);
 
         menustate = MENU_MAIN2;
 		parentstate=MENU_MAIN1;
@@ -471,17 +472,22 @@ void HandleUI(void)
 				parentsub=4;
 				menusub=0;
 			}
-            else if (menusub == 5)	// Go to harddrives page.
+            else if (menusub == 5 || menusub == 6)	// Go to harddrives page.
 			{
+				hardfile_firstunit=2*(menusub-5);
                 t_hardfile[0] = config.hardfile[0];
                 t_hardfile[1] = config.hardfile[1];
+                t_hardfile[2] = config.secondaryhardfile[0];
+                t_hardfile[3] = config.secondaryhardfile[1];
 				t_enable_ide=config.enable_ide;
 				t_hdfdir[0]=config.hdfdir[0];
 				t_hdfdir[1]=config.hdfdir[1];
+				t_hdfdir[2]=config.hdfdir[2];
+				t_hdfdir[3]=config.hdfdir[3];
                 menustate = MENU_SETTINGS_HARDFILE1;
 				menusub=0;
 			}
-            else if (menusub == 6)
+            else if (menusub == 7)
                 menustate = MENU_NONE1;
         }
         else if (c == KEY_BACK) // eject all floppies
@@ -791,7 +797,7 @@ void HandleUI(void)
 		helptext=helptexts[HELPTEXT_NONE];
 		if(parentstate!=menustate)	// First run?
 		{
-			menumask=0x20;
+			menumask=0x60;
 			SetConfigurationFilename(0); if(ConfigurationExists(0)) menumask|=0x01;
 			SetConfigurationFilename(1); if(ConfigurationExists(0)) menumask|=0x02;
 			SetConfigurationFilename(2); if(ConfigurationExists(0)) menumask|=0x04;
@@ -803,40 +809,35 @@ void HandleUI(void)
 		parentstate=menustate;
  		OsdSetTitle("Load",0);
 
-        OsdWrite(0, "", 0,0);
-        OsdWrite(1, "          Default", menusub == 0,(menumask & 1)==0);
-        OsdWrite(2, "          1", menusub == 1,(menumask & 2)==0);
-        OsdWrite(3, "          2", menusub == 2,(menumask & 4)==0);
-        OsdWrite(4, "          3", menusub == 3,(menumask & 8)==0);
-        OsdWrite(5, "          4", menusub == 4,(menumask & 0x10)==0);
+        OsdWrite(0, "    Default", menusub == 0,(menumask & 1)==0);
+        OsdWrite(1, "          1", menusub == 1,(menumask & 2)==0);
+        OsdWrite(2, "          2", menusub == 2,(menumask & 4)==0);
+        OsdWrite(3, "          3", menusub == 3,(menumask & 8)==0);
+        OsdWrite(4, "          4", menusub == 4,(menumask & 0x10)==0);
+        OsdWrite(5, "      Other \x16", menusub==5,0);
         OsdWrite(6, "", 0,0);
-        OsdWrite(7, STD_EXIT, menusub == 5,0);
+        OsdWrite(7, STD_EXIT, menusub == 6,0);
 
         menustate = MENU_LOADCONFIG_2;
         break;
 
     case MENU_LOADCONFIG_2 :
 
-//        if (down)
-//        {
-//            if (menusub < 3)
-//            if (menusub < 5)
-//                menusub++;
-//            menustate = MENU_LOADCONFIG_1;
-//        }
-//        else if (select)
 		if(select)
         {
 			if(menusub<5)
 			{
-		        OsdWrite(7, "      Loading config...", menusub == 5,0);
+		        OsdWrite(7, "      Loading config...", 0,0);
 				SetConfigurationFilename(menusub);
 				LoadConfiguration(NULL);
 				ApplyConfiguration(1,1);
 				OsdHide();
 				OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
-//				OsdReset(RESET_NORMAL);
 	   	        menustate = MENU_NONE1;
+			}
+			else if(menusub==5)
+			{
+                SelectFile("CFG", SCAN_DIR | SCAN_LFN, MENU_LOADCONFIG_3, MENU_MAIN2_1);				
 			}
 			else
 			{
@@ -849,7 +850,16 @@ void HandleUI(void)
             menustate = MENU_MAIN2_1;
             menusub = 0;
         }
+
         break;
+
+	case MENU_LOADCONFIG_3 :
+        OsdWrite(7, "      Loading config...", 0,0);
+		LoadConfiguration(&file);
+		ApplyConfiguration(1,1);
+		OsdHide();
+		OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
+        menustate = MENU_NONE1;
 
         /******************************************************************/
         /* file selection menu                                            */
@@ -1097,28 +1107,28 @@ void HandleUI(void)
     case MENU_SAVECONFIG_1 :
         OsdColor(OSDCOLOR_SUBMENU);
 		helptext=helptexts[HELPTEXT_NONE];
-		menumask=0x3f;
+		menumask=0x7f;
 		parentstate=menustate;
  		OsdSetTitle("Save",0);
 
-        OsdWrite(0, "", 0, 0);
 		SetConfigurationFilename(0);
 		sprintf(s,"    Default %s",ConfigurationExists(0) ? "(overwrite)" : "");
-        OsdWrite(1, s, menusub == 0,0);
+        OsdWrite(0, s, menusub == 0,0);
 		SetConfigurationFilename(1);
 		sprintf(s,"          1 %s",ConfigurationExists(0) ? "(overwrite)" : "");
-        OsdWrite(2, s, menusub == 1,0);
+        OsdWrite(1, s, menusub == 1,0);
 		SetConfigurationFilename(2);
 		sprintf(s,"          2 %s",ConfigurationExists(0) ? "(overwrite)" : "");
-        OsdWrite(3, s, menusub == 2,0);
+        OsdWrite(2, s, menusub == 2,0);
 		SetConfigurationFilename(3);
 		sprintf(s,"          3 %s",ConfigurationExists(0) ? "(overwrite)" : "");
-        OsdWrite(4, s, menusub == 3,0);
+        OsdWrite(3, s, menusub == 3,0);
 		SetConfigurationFilename(4);
 		sprintf(s,"          4 %s",ConfigurationExists(0) ? "(overwrite)" : "");
-        OsdWrite(5, s, menusub == 4,0);
+        OsdWrite(4, s, menusub == 4,0);
+        OsdWrite(5, "     Other \x16", menusub==5, 0);
         OsdWrite(6, "", 0,0);
-        OsdWrite(7, STD_EXIT, menusub == 5,0);
+        OsdWrite(7, STD_EXIT, menusub == 6,0);
 
         menustate = MENU_SAVECONFIG_2;
         break;
@@ -1152,6 +1162,10 @@ void HandleUI(void)
 				SaveConfiguration(NULL);
 		        menustate = MENU_NONE1;
 			}
+			else if(menusub==5)
+			{
+                SelectFile("CFG", SCAN_DIR | SCAN_LFN, MENU_SAVECONFIG_3, MENU_MAIN2_1);
+			}
 			else
 			{
 				menustate = MENU_MAIN2_1;
@@ -1165,7 +1179,11 @@ void HandleUI(void)
         }
         break;
 
-
+	case MENU_SAVECONFIG_3:
+        OsdWrite(7, "      Saving config...", 0,0);
+		SaveConfiguration(&file);
+		menustate = MENU_MAIN2_1;
+		break;
 
         /******************************************************************/
         /* chipset settings menu                                          */
@@ -1421,62 +1439,71 @@ void HandleUI(void)
 		helptext=helptexts[HELPTEXT_HARDFILE];
 		OsdSetTitle("Harddisks",0);
 
+		enable=t_enable_ide & (1<<(hardfile_firstunit>>1));
 		parentstate = menustate;
+
 		menumask=0x41;	// b01000001 - On/off & exit enabled by default...
-		if(t_enable_ide)
-			menumask|=0x2a;  // b00101010 - HD0 and HD1 type + sounds
-        strcpy(s, "    IDE : ");
-        strcat(s, t_enable_ide ? "on " : "off");
+		if(enable)
+			menumask|=hardfile_firstunit ? 0x0a : 0x2a;  // b00101010 - HD0 and HD1 type + sounds (for first page)
+        strcpy(s, hardfile_firstunit ? "    IDE : (secondary) " : "    IDE : (primary) ");
+        strcat(s, enable ? "on " : "off");
         OsdWrite(0, s, menusub == 0,0);
 
         strcpy(s, " Master : ");
-		if(t_hardfile[0].enabled==(HDF_FILE|HDF_SYNTHRDB))
+		if(t_hardfile[hardfile_firstunit].enabled==(HDF_FILE|HDF_SYNTHRDB))
 			strcat(s,"Hardfile (filesys)");
 		else
-	        strcat(s, config_hdf_msg[t_hardfile[0].enabled & HDF_TYPEMASK]);
-        OsdWrite(1, s, t_enable_ide ? (menusub == 1) : 0 ,t_enable_ide==0);
+	        strcat(s, config_hdf_msg[t_hardfile[hardfile_firstunit].enabled & HDF_TYPEMASK]);
+        OsdWrite(1, s, enable ? (menusub == 1) : 0 ,enable==0);
 
-        if (t_hardfile[0].present)
+        if (t_hardfile[hardfile_firstunit].present)
         {
             strcpy(s, "                                ");
-            if (t_hardfile[0].long_name[0])
-                strncpy(&s[14], t_hardfile[0].long_name, sizeof(t_hardfile[0].long_name));
+            if (t_hardfile[hardfile_firstunit].long_name[hardfile_firstunit])
+                strncpy(&s[14], t_hardfile[hardfile_firstunit].long_name, sizeof(t_hardfile[hardfile_firstunit].long_name));
             else
-                strncpy(&s[14], t_hardfile[0].name, sizeof(t_hardfile[0].name));
+                strncpy(&s[14], t_hardfile[hardfile_firstunit].name, sizeof(t_hardfile[hardfile_firstunit].name));
         }
         else
             strcpy(s, "       ** file not found **");
 
-		enable=t_enable_ide && ((t_hardfile[0].enabled&HDF_TYPEMASK)==HDF_FILE);
+		enable=(t_enable_ide & (1<<(hardfile_firstunit>>1))) && ((t_hardfile[hardfile_firstunit].enabled&HDF_TYPEMASK)==HDF_FILE);
 		if(enable)
 			menumask|=0x04;	// Make hardfile selectable
 	    OsdWrite(2, s, enable ? (menusub == 2) : 0 , enable==0);
 
+		enable=t_enable_ide & (1<<(hardfile_firstunit>>1));
+
         strcpy(s, "  Slave : ");
-		if(t_hardfile[1].enabled==(HDF_FILE|HDF_SYNTHRDB))
+		if(t_hardfile[hardfile_firstunit+1].enabled==(HDF_FILE|HDF_SYNTHRDB))
 			strcat(s,"Hardfile (filesys)");
 		else
-	        strcat(s, config_hdf_msg[t_hardfile[1].enabled & HDF_TYPEMASK]);
-        OsdWrite(3, s, t_enable_ide ? (menusub == 3) : 0 ,t_enable_ide==0);
-        if (t_hardfile[1].present)
+	        strcat(s, config_hdf_msg[t_hardfile[hardfile_firstunit+1].enabled & HDF_TYPEMASK]);
+        OsdWrite(3, s, enable ? (menusub == 3) : 0 ,enable==0);
+        if (t_hardfile[hardfile_firstunit+1].present)
         {
             strcpy(s, "                                ");
-            if (t_hardfile[1].long_name[0])
-                strncpy(&s[14], t_hardfile[1].long_name, sizeof(t_hardfile[0].long_name));
+            if (t_hardfile[hardfile_firstunit+1].long_name[0])
+                strncpy(&s[14], t_hardfile[hardfile_firstunit+1].long_name, sizeof(t_hardfile[hardfile_firstunit+1].long_name));
             else
-                strncpy(&s[14], t_hardfile[1].name, sizeof(t_hardfile[0].name));
+                strncpy(&s[14], t_hardfile[hardfile_firstunit+1].name, sizeof(t_hardfile[hardfile_firstunit+1].name));
         }
         else
             strcpy(s, "       ** file not found **");
 
-		enable=t_enable_ide && ((t_hardfile[1].enabled&HDF_TYPEMASK)==HDF_FILE);
+		enable=(t_enable_ide & (1<<(hardfile_firstunit>>1))) && ((t_hardfile[hardfile_firstunit+1].enabled&HDF_TYPEMASK)==HDF_FILE);
 		if(enable)
 			menumask|=0x10;	// Make hardfile selectable
         OsdWrite(4, s, enable ? (menusub == 4) : 0 ,enable==0);
 
-        strcpy(s, " Sounds : ");
-        strcat(s, config.drivesounds&DRIVESOUNDS_HDD ? "on " : "off");
-        OsdWrite(5, s, menusub==5,t_enable_ide==0);
+		if(hardfile_firstunit)
+			OsdWrite(5,"",0,0);
+		else
+		{
+			strcpy(s, " Sounds : ");
+			strcat(s, config.drivesounds&DRIVESOUNDS_HDD ? "on " : "off");
+			OsdWrite(5, s, menusub==5,t_enable_ide==0);
+		}
         OsdWrite(6, "", 0,0);
         OsdWrite(7, STD_BACK, menusub == 6,0);
 
@@ -1489,24 +1516,24 @@ void HandleUI(void)
         {
             if (menusub == 0)
             {
-				t_enable_ide=(t_enable_ide==0);
+				t_enable_ide^=hardfile_firstunit ? ENABLE_IDE_SECONDARY : ENABLE_IDE_PRIMARY;
 				menustate = MENU_SETTINGS_HARDFILE1;
             }
             if (menusub == 1)
             {
-				if(t_hardfile[0].enabled==HDF_FILE)
+				if(t_hardfile[hardfile_firstunit].enabled==HDF_FILE)
 				{
-					t_hardfile[0].enabled|=HDF_SYNTHRDB;
+					t_hardfile[hardfile_firstunit].enabled|=HDF_SYNTHRDB;
 				}
-				else if(t_hardfile[0].enabled==(HDF_FILE|HDF_SYNTHRDB))
+				else if(t_hardfile[hardfile_firstunit].enabled==(HDF_FILE|HDF_SYNTHRDB))
 				{
-					t_hardfile[0].enabled&=~HDF_SYNTHRDB;
-					t_hardfile[0].enabled +=1;
+					t_hardfile[hardfile_firstunit].enabled&=~HDF_SYNTHRDB;
+					t_hardfile[hardfile_firstunit].enabled +=1;
 				}
 				else
 				{
-					t_hardfile[0].enabled +=1;
-					t_hardfile[0].enabled %=HDF_CARDPART0+partitioncount;
+					t_hardfile[hardfile_firstunit].enabled +=1;
+					t_hardfile[hardfile_firstunit].enabled %=HDF_CARDPART0+partitioncount;
 				}
                 menustate = MENU_SETTINGS_HARDFILE1;
             }
@@ -1516,19 +1543,19 @@ void HandleUI(void)
             }
             else if (menusub == 3)
             {
-				if(t_hardfile[1].enabled==HDF_FILE)
+				if(t_hardfile[hardfile_firstunit+1].enabled==HDF_FILE)
 				{
-					t_hardfile[1].enabled|=HDF_SYNTHRDB;
+					t_hardfile[hardfile_firstunit+1].enabled|=HDF_SYNTHRDB;
 				}
-				else if(t_hardfile[1].enabled==(HDF_FILE|HDF_SYNTHRDB))
+				else if(t_hardfile[hardfile_firstunit+1].enabled==(HDF_FILE|HDF_SYNTHRDB))
 				{
-					t_hardfile[1].enabled&=~HDF_SYNTHRDB;
-					t_hardfile[1].enabled +=1;
+					t_hardfile[hardfile_firstunit+1].enabled&=~HDF_SYNTHRDB;
+					t_hardfile[hardfile_firstunit+1].enabled +=1;
 				}
 				else
 				{
-					t_hardfile[1].enabled +=1;
-					t_hardfile[1].enabled %=HDF_CARDPART0+partitioncount;
+					t_hardfile[hardfile_firstunit+1].enabled +=1;
+					t_hardfile[hardfile_firstunit+1].enabled %=HDF_CARDPART0+partitioncount;
 				}
 				menustate = MENU_SETTINGS_HARDFILE1;
             }
@@ -1564,24 +1591,24 @@ void HandleUI(void)
         if (menusub == 2) // master drive selected
         {
 			// Read RDB from selected drive and determine type...
-            memcpy((void*)t_hardfile[0].name, (void*)file.name, sizeof(t_hardfile[0].name));
-            memcpy((void*)t_hardfile[0].long_name, (void*)file.long_name, sizeof(t_hardfile[0].long_name));
-			t_hdfdir[0]=CurrentDirectory();
+            memcpy((void*)t_hardfile[hardfile_firstunit].name, (void*)file.name, sizeof(t_hardfile[hardfile_firstunit].name));
+            memcpy((void*)t_hardfile[hardfile_firstunit].long_name, (void*)file.long_name, sizeof(t_hardfile[hardfile_firstunit].long_name));
+			t_hdfdir[hardfile_firstunit]=CurrentDirectory();
 			switch(GetHDFFileType(file.name))
 			{
 				case HDF_FILETYPE_RDB:
-					t_hardfile[0].enabled=HDF_FILE;
-		            t_hardfile[0].present = 1;
+					t_hardfile[hardfile_firstunit].enabled=HDF_FILE;
+		            t_hardfile[hardfile_firstunit].present = 1;
 			        menustate = MENU_SETTINGS_HARDFILE1;
 					break;
 				case HDF_FILETYPE_DOS:
-					t_hardfile[0].enabled=HDF_FILE|HDF_SYNTHRDB;
-		            t_hardfile[0].present = 1;
+					t_hardfile[hardfile_firstunit].enabled=HDF_FILE|HDF_SYNTHRDB;
+		            t_hardfile[hardfile_firstunit].present = 1;
 			        menustate = MENU_SETTINGS_HARDFILE1;
 					break;
 				case HDF_FILETYPE_UNKNOWN:
-		            t_hardfile[0].present = 1;
-					if(t_hardfile[0].enabled==HDF_FILE)	// Warn if we can't detect the type
+		            t_hardfile[hardfile_firstunit].present = 1;
+					if(t_hardfile[hardfile_firstunit].enabled==HDF_FILE)	// Warn if we can't detect the type
 						menustate=MENU_SYNTHRDB1;
 					else
 						menustate=MENU_SYNTHRDB2_1;
@@ -1589,7 +1616,7 @@ void HandleUI(void)
 					break;
 				case HDF_FILETYPE_NOTFOUND:
 				default:
-		            t_hardfile[0].present = 0;
+		            t_hardfile[hardfile_firstunit].present = 0;
 			        menustate = MENU_SETTINGS_HARDFILE1;
 					break;
 			}
@@ -1598,24 +1625,24 @@ void HandleUI(void)
 
         if (menusub == 4) // slave drive selected
         {
-            memcpy((void*)t_hardfile[1].name, (void*)file.name, sizeof(t_hardfile[1].name));
-            memcpy((void*)t_hardfile[1].long_name, (void*)file.long_name, sizeof(t_hardfile[1].long_name));
-			t_hdfdir[1]=CurrentDirectory();
+            memcpy((void*)t_hardfile[hardfile_firstunit+1].name, (void*)file.name, sizeof(t_hardfile[hardfile_firstunit+1].name));
+            memcpy((void*)t_hardfile[hardfile_firstunit+1].long_name, (void*)file.long_name, sizeof(t_hardfile[hardfile_firstunit+1].long_name));
+			t_hdfdir[hardfile_firstunit+1]=CurrentDirectory();
 			switch(GetHDFFileType(file.name))
 			{
 				case HDF_FILETYPE_RDB:
-					t_hardfile[1].enabled=HDF_FILE;
-		            t_hardfile[1].present = 1;
+					t_hardfile[hardfile_firstunit+1].enabled=HDF_FILE;
+		            t_hardfile[hardfile_firstunit+1].present = 1;
 			        menustate = MENU_SETTINGS_HARDFILE1;
 					break;
 				case HDF_FILETYPE_DOS:
-					t_hardfile[1].enabled=HDF_FILE|HDF_SYNTHRDB;
-		            t_hardfile[1].present = 1;
+					t_hardfile[hardfile_firstunit+1].enabled=HDF_FILE|HDF_SYNTHRDB;
+		            t_hardfile[hardfile_firstunit+1].present = 1;
 			        menustate = MENU_SETTINGS_HARDFILE1;
 					break;
 				case HDF_FILETYPE_UNKNOWN:
-		            t_hardfile[1].present = 1;
-					if(t_hardfile[1].enabled==HDF_FILE)	// Warn if we can't detect the type...
+		            t_hardfile[hardfile_firstunit+1].present = 1;
+					if(t_hardfile[hardfile_firstunit+1].enabled==HDF_FILE)	// Warn if we can't detect the type...
 						menustate=MENU_SYNTHRDB1;
 					else
 						menustate=MENU_SYNTHRDB2_1;
@@ -1623,7 +1650,7 @@ void HandleUI(void)
 					break;
 				case HDF_FILETYPE_NOTFOUND:
 				default:
-		            t_hardfile[1].present = 0;
+		            t_hardfile[hardfile_firstunit+1].present = 0;
 			        menustate = MENU_SETTINGS_HARDFILE1;
 					break;
 			}
@@ -1632,7 +1659,9 @@ void HandleUI(void)
 
      // check if hardfile configuration has changed
     case MENU_HARDFILE_EXIT :
-         if ((memcmp(config.hardfile, t_hardfile, sizeof(t_hardfile)) != 0) || (t_enable_ide!=config.enable_ide))
+         if ((memcmp(config.hardfile, t_hardfile, sizeof(config.hardfile)) != 0)
+			|| (memcmp(config.secondaryhardfile, &t_hardfile[2], sizeof(config.secondaryhardfile)) != 0)
+				|| (t_enable_ide!=config.enable_ide))
          {
              menustate = MENU_HARDFILE_CHANGED1;
              menusub = 1;
@@ -1670,11 +1699,13 @@ void HandleUI(void)
         {
             if (menusub == 0) // yes
             {
-				int upd0=0,upd1=0;
+				int upd0=0,upd1=0,upd2=0,upd3=0;
 				if(config.enable_ide!=t_enable_ide)
 				{
 					upd0=t_hardfile[0].enabled;
 					upd1=t_hardfile[1].enabled;
+					upd2=t_hardfile[2].enabled;
+					upd3=t_hardfile[3].enabled;
 				}
                 if ((config.hardfile[0].enabled != t_hardfile[0].enabled)
 					|| (strncmp(config.hardfile[0].name, t_hardfile[0].name, sizeof(t_hardfile[0].name)) != 0))
@@ -1682,11 +1713,23 @@ void HandleUI(void)
                 if ((config.hardfile[1].enabled != t_hardfile[1].enabled)
 					|| (strncmp(config.hardfile[1].name, t_hardfile[1].name, sizeof(t_hardfile[1].name)) != 0))
 					upd1=1;
+                if ((config.secondaryhardfile[0].enabled != t_hardfile[2].enabled)
+					|| (strncmp(config.secondaryhardfile[0].name, t_hardfile[2].name, sizeof(t_hardfile[2].name)) != 0))
+					upd2=1;
+                if ((config.secondaryhardfile[1].enabled != t_hardfile[3].enabled)
+					|| (strncmp(config.secondaryhardfile[1].name, t_hardfile[3].name, sizeof(t_hardfile[3].name)) != 0))
+					upd3=1;
 
-	            memcpy(config.hardfile, t_hardfile, sizeof(t_hardfile)); // apply new configuration
+				// Apply new configuration
+				config.hardfile[0]=t_hardfile[0];
+				config.hardfile[1]=t_hardfile[1];
+				config.secondaryhardfile[0]=t_hardfile[2];
+				config.secondaryhardfile[1]=t_hardfile[3];
 				config.enable_ide=t_enable_ide; // Apply new IDE on/off
 				config.hdfdir[0]=t_hdfdir[0];
 				config.hdfdir[1]=t_hdfdir[1];
+				config.hdfdir[2]=t_hdfdir[2];
+				config.hdfdir[3]=t_hdfdir[3];
 
 				// FIXME - waiting for user-confirmation increases the window of opportunity for file corruption!
 
@@ -1696,8 +1739,16 @@ void HandleUI(void)
                 if (upd1)
                     OpenHardfile(1);
 
-                ConfigIDE(config.enable_ide, config.hardfile[0].present && config.hardfile[0].enabled,
+                if (upd2)
+                    OpenHardfile(2);
+
+                if (upd3)
+                    OpenHardfile(3);
+
+                ConfigIDE(config.enable_ide&1, config.hardfile[0].present && config.hardfile[0].enabled,
 						 config.hardfile[1].present && config.hardfile[1].enabled);
+                ConfigIDE(2|(config.enable_ide>>1), config.secondaryhardfile[0].present && config.secondaryhardfile[0].enabled,
+						 config.secondaryhardfile[1].present && config.secondaryhardfile[1].enabled);
    	            OsdReset();
 				
                 menustate = MENU_NONE1;

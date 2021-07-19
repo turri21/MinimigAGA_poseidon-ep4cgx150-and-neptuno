@@ -39,7 +39,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 
 // hardfile structure
-hdfTYPE hdf[2];
+hdfTYPE hdf[HDF_COUNT];
 
 char debugmsg[40];
 char debugmsg2[40];
@@ -165,6 +165,14 @@ void IdentifyDevice(unsigned short *pBuffer, int unit)
 	int i, x;
     unsigned long total_sectors = hdf[unit].cylinders * hdf[unit].heads * hdf[unit].sectors;
 
+	hardfileTYPE *hf;
+	if(unit<2)
+		hf=&config.hardfile[unit];
+	else if(unit<4)
+		hf=&config.secondaryhardfile[unit-2];
+	else
+		return;
+
     memset(pBuffer, 0, 512);
 
 	switch(hdf[unit].type)
@@ -191,14 +199,14 @@ void IdentifyDevice(unsigned short *pBuffer, int unit)
 			{
 				memcpy(p, "YAQUBE                                  ", 40); // model name - byte swapped
 				p += 8;
-				if (config.hardfile[unit].long_name[0])
+				if (hf->long_name[0])
 				{
-					for (i = 0; (x = config.hardfile[unit].long_name[i]) && i < 16; i++) // copy file name as model name
+					for (i = 0; (x = hf->long_name[i]) && i < 16; i++) // copy file name as model name
 						p[i] = x;
 				}
 				else
 				{
-					memcpy(p, config.hardfile[unit].name, 8); // copy file name as model name
+					memcpy(p, hf->name, 8); // copy file name as model name
 				}
 			}
 		//    SwapBytes((char*)&pBuffer[27], 40); //not for 68000
@@ -409,7 +417,7 @@ void ATA_ReadSectors(unsigned char* tfr, int sector, int cylinder, int head, int
 				{
 					blk=block_count;
 					// Deal with FakeRDB and the potential for a read_multiple to cross the boundary into actual data.
-					while(blk && (((lba+hdf[unit].offset)<0) || (unit==0 && hdf[unit].type==HDF_FILE && lba==0))
+					while(blk && ((lba+hdf[unit].offset)<0) || (unit==0 && hdf[unit].type==HDF_FILE && lba==0))
 					{
 						if(hdf[unit].type==HDF_FILE)
 						{
@@ -586,12 +594,15 @@ void HandleHDD(unsigned int c1, unsigned int c2)
         SPI(0x00);
         for (i = 0; i < 8; i++)
         {
-            SPI(0);
+			int t=SPI(0);
             tfr[i] = SPI(0);
+			if(i==6)
+				unit=((tfr[i]>>4)&1)|((t&1)<<1);
         }
         DisableFpga();
 
-        unit = tfr[6] & 0x10 ? 1 : 0; // master/slave selection
+//        unit = ((tfr[6]<<1)&2)|((tfr[6]>>4)&1); // master/slave selection
+
 		if (hdf[unit].type==HDF_DISABLED) {
 		  WriteStatus(IDE_STATUS_END | IDE_STATUS_IRQ | IDE_STATUS_ERR);
           DISKLED_OFF;
@@ -770,13 +781,20 @@ unsigned char HardFileSeek(hdfTYPE *pHDF, unsigned long lba)
 unsigned char OpenHardfile(unsigned int unit)
 {
     unsigned long time;
+	hardfileTYPE *hf;
+	if(unit<2)
+		hf=&config.hardfile[unit];
+	else if(unit<4)
+		hf=&config.secondaryhardfile[unit-2];
+	else
+		return(0);
 
-	switch(config.hardfile[unit].enabled)
+	switch(hf->enabled)
 	{
 		case HDF_FILE | HDF_SYNTHRDB:
 		case HDF_FILE:
-			hdf[unit].type=config.hardfile[unit].enabled;
-			strncpy(filename, config.hardfile[unit].name, 8);
+			hdf[unit].type=hf->enabled;
+			strncpy(filename, hf->name, 8);
 			strcpy(&filename[8], "HDF");
 
 			if (filename[0])
@@ -799,25 +817,25 @@ unsigned char OpenHardfile(unsigned int unit)
 						time = GetTimer(0) - time;
 						printf("Hardfile indexed in %lu ms\r", time >> 16);
 
-						if(config.hardfile[unit].enabled & HDF_SYNTHRDB)
+						if(hf->enabled & HDF_SYNTHRDB)
 							hdf[unit].offset=-(hdf[unit].heads*hdf[unit].sectors);
 						else
 							hdf[unit].offset=0;		
 
-						config.hardfile[unit].present = 1;
+						hf->present = 1;
 						return 1;
 					}
 				}
 				else
 				{
-					config.hardfile[unit].present = 0;
+					hf->present = 0;
 					SetError(ERROR_HDD,"Bad hardfile directory",config.hdfdir[unit],0);
 				}
 			}
 			break;
 		case HDF_CARD:
 			hdf[unit].type=HDF_CARD;
-		    config.hardfile[unit].present = 1;
+		    hf->present = 1;
 			hdf[unit].file.size=0;
 			hdf[unit].offset=0;
 		    GetHardfileGeometry(&hdf[unit]);
@@ -827,16 +845,16 @@ unsigned char OpenHardfile(unsigned int unit)
 		case HDF_CARDPART1:
 		case HDF_CARDPART2:
 		case HDF_CARDPART3:
-			hdf[unit].type=config.hardfile[unit].enabled;
+			hdf[unit].type=hf->enabled;
 			hdf[unit].partition=hdf[unit].type-HDF_CARDPART0;
-		    config.hardfile[unit].present = 1;
+		    hf->present = 1;
 			hdf[unit].file.size=0;
 			hdf[unit].offset=partitions[hdf[unit].partition].startlba;
 		    GetHardfileGeometry(&hdf[unit]);
 			return 1;
 			break;
 	}
-    config.hardfile[unit].present = 0;
+    hf->present = 0;
     return 0;
 }
 
