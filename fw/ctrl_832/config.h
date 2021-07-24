@@ -75,5 +75,6 @@ void SetConfigurationFilename(int config);	// Set configuration filename by slot
 unsigned char LoadConfiguration(fileTYPE *cfgfile);	// Can supply NULL to use filename previously set by slot number
 unsigned char SaveConfiguration(fileTYPE *cfgfile);	// Can supply NULL to use filename previously set by slot number
 unsigned char ConfigurationExists(char *filename);
+unsigned char CheckConfiguration(fileTYPE *cfgfile);
 int ApplyConfiguration(char reloadkickstart,char applydrives);
 

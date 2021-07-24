@@ -207,6 +207,9 @@ architecture rtl of chameleon2_toplevel is
 	signal amiga_reset_n : std_logic;
 	signal amiga_key : unsigned(7 downto 0);
 	signal amiga_key_stb : std_logic;
+	
+	signal reconfig : std_logic;
+	signal iecserial : std_logic;
 
 	
 	-- Sigma Delta audio
@@ -225,7 +228,9 @@ architecture rtl of chameleon2_toplevel is
 	generic
 	( debug : integer := 0;
 	  spimux : integer := 0;
-	  havespirtc : integer := 0
+	  havespirtc : integer := 0;
+	  haveiec : integer := 0;
+	  havereconfig : integer := 0
 	);
 	PORT
 	(
@@ -282,7 +287,9 @@ architecture rtl of chameleon2_toplevel is
 		SD_CLK	:	 OUT STD_LOGIC;
 		SD_CS		:	 OUT STD_LOGIC;
 		SD_ACK	:	 IN STD_LOGIC;
-		RTC_CS	:	 OUT STD_LOGIC
+		RTC_CS	:	 OUT STD_LOGIC;
+		RECONFIG	:	 OUT STD_LOGIC;
+		IECSERIAL:	 OUT STD_LOGIC	
 	);
 	END COMPONENT;
 
@@ -294,10 +301,10 @@ begin
 -- -----------------------------------------------------------------------
 	iec_clk_out <= '0';
 	iec_atn_out <= '0';
-	iec_dat_out <= not amiser_txd; -- '0';
+	iec_dat_out <= iecserial and not amiser_txd; -- '0';
 	iec_srq_out <= '0';
 	nmi_out <= '0';
-	usart_rx<='1';
+--	usart_rx<='1';
 
 	-- put these here?
 	flash_cs <= '1';
@@ -484,14 +491,16 @@ joy4<="1" & joystick4;
 
 vga_window<='1';
 
-amiser_rxd <= midi_rxd and external_rxd;
+amiser_rxd <= midi_rxd and (not iecserial or external_rxd);
 
 virtual_top : COMPONENT minimig_virtual_top
 generic map
 	(
 		debug => 0,
 		spimux => 0,
-		havespirtc => 1
+		havespirtc => 1,
+		haveiec => 1,
+		havereconfig => 1
 	)
 PORT map
 	(
@@ -555,7 +564,9 @@ PORT map
 		SD_CLK => spi_clk,
 		SD_CS => mmc_cs,
 		SD_ACK => '1',
-		RTC_CS => rtc_cs_inv
+		RTC_CS => rtc_cs_inv,
+		RECONFIG => reconfig,
+		IECSERIAL => iecserial
 	);
 	
 -- Dither the video down to 5 bits per gun.
@@ -611,6 +622,19 @@ sdaudio: component hybrid_pwm_sd
 		d_r(14 downto 0) => std_logic_vector(audio_r(14 downto 0)),
 		q_r => sigma_r
 	);
+
+usbmcu : entity work.chameleon_reconfig
+port map (
+	clk => clk_28,
+
+	reconfig => reconfig,
+	reconfig_slot => X"0",
+
+	serial_clk => usart_clk,
+	serial_rxd => usart_tx,
+	serial_txd => usart_rx,
+	serial_cts_n => usart_rts
+);
 
 end architecture;
 

@@ -145,7 +145,9 @@ architecture RTL of DE10liteToplevel is
 		havertg : boolean := true;
 		haveaudio : boolean := true;
 		havec2p : boolean := true;
-		ram_64meg : boolean := false
+		ram_64meg : boolean := false;
+		haveiec : boolean := false;
+		havereconfig : boolean := false
 	);
 	PORT
 	(
@@ -201,12 +203,17 @@ architecture RTL of DE10liteToplevel is
 		SD_MOSI	:	 OUT STD_LOGIC;
 		SD_CLK	:	 OUT STD_LOGIC;
 		SD_CS		:	 OUT STD_LOGIC;
-		SD_ACK	:	 IN STD_LOGIC
+		SD_ACK	:	 IN STD_LOGIC;
+		RECONFIG	:	 OUT STD_LOGIC;
+		IECSERIAL:	 OUT STD_LOGIC			
 	);
 	END COMPONENT;
 
 signal amiga_rxd : std_logic;
 signal amiga_txd : std_logic;
+
+signal iecserial : std_logic;
+signal reconfig : std_logic;
 
 begin
 
@@ -252,7 +259,9 @@ generic map
 		havertg => true,
 		haveaudio => true,
 		havec2p => true,
-		ram_64meg => true
+		ram_64meg => true,
+		haveiec => true,
+		havereconfig => true		
 	)
 PORT map
 	(
@@ -314,9 +323,14 @@ PORT map
 		SD_MOSI => sd_mosi,
 		SD_CLK => sd_clk,
 		SD_CS => sd_cs,
-		SD_ACK => '1'
+		SD_ACK => '1',
+		RECONFIG => reconfig,
+		IECSERIAL => iecserial
 	);
 
+LEDR(2)<=reconfig;
+LEDR(3)<=iecserial;
+	
 --VGA_HS<=not vga_hsync;
 --VGA_VS<=not vga_vsync;
 --VGA_R<=unsigned(vga_red(7 downto 4));

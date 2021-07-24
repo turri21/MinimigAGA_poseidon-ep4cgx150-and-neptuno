@@ -26,9 +26,17 @@
 
 `include "minimig_defines.vh"
 
-module minimig_virtual_top
-	#(parameter hostonly=0, parameter debug = 0, parameter spimux = 0,
-		parameter havertg = 1, parameter haveaudio = 1, parameter havec2p = 1, parameter havespirtc = 0, parameter ram_64meg = 0)
+module minimig_virtual_top	#(
+	parameter hostonly=0,
+	parameter debug = 0,
+	parameter spimux = 0,
+	parameter haveiec = 0,
+	parameter havereconfig = 0,
+	parameter havertg = 1,
+	parameter haveaudio = 1,
+	parameter havec2p = 1,
+	parameter havespirtc = 0,
+	parameter ram_64meg = 0)
 (
   // clock inputs
   input wire            CLK_IN,
@@ -104,7 +112,9 @@ module minimig_virtual_top
   output wire           SD_CLK,
   output wire           SD_CS,
   input wire            SD_ACK,
-  output wire           RTC_CS
+  output wire           RTC_CS,
+  output wire				RECONFIG,
+  output wire				IECSERIAL
 );
 
 
@@ -866,8 +876,12 @@ EightThirtyTwo_Bridge #( debug ? "true" : "false") hostcpu
 );
 
 
-cfide #(.spimux(spimux ? "true" : "false"), .havespirtc(havespirtc ? "true" : "false")) mycfide
-( 
+cfide #(
+	.spimux(spimux ? "true" : "false"),
+	.havespirtc(havespirtc ? "true" : "false"),
+	.haveiec(haveiec ? "true" : "false"),
+	.havereconfig(havereconfig ? "true" : "false")
+) mycfide ( 
 		.sysclk(CLK_114),
 		.n_reset(reset_out),
 
@@ -908,6 +922,8 @@ cfide #(.spimux(spimux ? "true" : "false"), .havespirtc(havespirtc ? "true" : "f
 		.amiga_ack(amigahost_ack),
 
       .rtc_q(rtc),
+		.reconfig(RECONFIG),
+		.iecserial(IECSERIAL),
 
 		.clk_28(CLK_28),
 		.tick_in(aud_tick)

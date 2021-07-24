@@ -639,23 +639,36 @@ void HandleUI(void)
     case MENU_MISC1 :
         OsdColor(OSDCOLOR_TOPLEVEL);
 		helptext=helptexts[HELPTEXT_MAIN];
-		menumask=0x3f;	// Reset, about and exit.
+		menumask=0x7f;	// Reset, about and exit.
  		OsdSetTitle("Misc",OSD_ARROW_LEFT);
-        OsdWrite(0, "    Reset", menusub == 0,0);
-        OsdWrite(1, "    Reboot", menusub == 1,0);
+        OsdWrite(0, "  Reset", menusub == 0,0);
+        OsdWrite(1, "  Reboot", menusub == 1,0);
         OsdWrite(2, "", 0,0);
 		if(PLATFORM&(1<<PLATFORM_RECONFIG))
-	        OsdWrite(3, "    Return to Chameleon", menusub == 2,0);
+	        OsdWrite(2, "  Return to Chameleon", menusub == 2,0);
+		else
+		{
+	        OsdWrite(2, "", 0,0);
+			menumask&=~0x04;	// Remove the Reconfigure option from the menu
+		}
+
+		if(PLATFORM&(1<<PLATFORM_IECSERIAL))
+		{
+			if(config.misc & (1<<PLATFORM_IECSERIAL))
+			    OsdWrite(3, "  Serial over IEC : On", menusub==3,0);
+			else
+			    OsdWrite(3, "  Serial over IEC : Off", menusub==3,0);
+		}
 		else
 		{
 	        OsdWrite(3, "", 0,0);
-			menumask&=~0x04;	// Remove the Reconfigure option from the menu
+			menumask&=~0x08;	// Remove the IEC option from the menu
 		}
-//        OsdWrite(3, "    (Not yet implemented)", 0,1);
-        OsdWrite(4, "    About", menusub == 3,0);
-        OsdWrite(5, "    Supporters", menusub == 4,0);
+
+        OsdWrite(4, "  About", menusub == 4,0);
+        OsdWrite(5, "  Supporters", menusub == 5,0);
         OsdWrite(6, "", 0,0);
-        OsdWrite(7, STD_EXIT, menusub == 5,0);
+        OsdWrite(7, STD_EXIT, menusub == 6,0);
 
 		parentstate = menustate;
         menustate = MENU_MISC2;
@@ -691,17 +704,32 @@ void HandleUI(void)
 				confirmfunc=Reconfigure;
 				menustate=MENU_CONFIRM1;
 			}
-            if (menusub == 3)	// About
+            if (menusub == 3)	// IEC over serial
             {
-				menusub=0;
-				menustate=MENU_ABOUT1;
+				if(config.misc & (1<<PLATFORM_IECSERIAL))
+				{
+					DisableIECSerial();
+					menustate=MENU_MISC1;
+				}
+				else
+				{
+					strcpy(s,"  Experimental - proceed?");
+					confirmfunc=EnableIECSerial;
+					menusub=0;
+					menustate=MENU_CONFIRM1;
+				}
 			}
             if (menusub == 4)	// About
             {
 				menusub=0;
+				menustate=MENU_ABOUT1;
+			}
+            if (menusub == 5)	// About
+            {
+				menusub=0;
 				menustate=MENU_SUPPORTERS1;
 			}
-            if (menusub == 5)	// Exit
+            if (menusub == 6)	// Exit
             {
 				menustate=MENU_NONE1;
 			}
@@ -855,11 +883,17 @@ void HandleUI(void)
 
 	case MENU_LOADCONFIG_3 :
         OsdWrite(7, "      Loading config...", 0,0);
-		LoadConfiguration(&file);
-		ApplyConfiguration(1,1);
-		OsdHide();
-		OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
-        menustate = MENU_NONE1;
+		if(CheckConfiguration(&file))
+		{
+			LoadConfiguration(&file);
+			ApplyConfiguration(1,1);
+			OsdHide();
+			OsdDoReset(SPI_RST_USR | SPI_RST_CPU,0);
+	        menustate = MENU_NONE1;
+		}
+		else
+			InfoMessage(" Not a valid config file!");
+		break;
 
         /******************************************************************/
         /* file selection menu                                            */
@@ -1031,7 +1065,7 @@ void HandleUI(void)
     case MENU_CONFIRM1 :
         OsdColor(OSDCOLOR_WARNING);
 		helptext=helptexts[HELPTEXT_NONE];
-		OsdSetTitle("Reset",0);
+		OsdSetTitle("Confirm",0);
 		menumask=0x03;	// Yes / No
 		parentstate=menustate;
 
@@ -1063,43 +1097,6 @@ void HandleUI(void)
         }
         break;
 
-        /******************************************************************/
-        /* reconfigure confirmation                                       */
-        /******************************************************************/
-#if 0
-    case MENU_RECONF1 :
-        OsdColor(OSDCOLOR_WARNING);
-		helptext=helptexts[HELPTEXT_NONE];
-		OsdSetTitle("Exit",0);
-		menumask=0x03;	// Yes / No
-		parentstate=menustate;
-
-        OsdWrite(0, "", 0,0);
-        OsdWrite(1, "     Return to Chameleon?", 0,0);
-        OsdWrite(2, "", 0,0);
-        OsdWrite(3, "               yes", menusub == 0,0);
-        OsdWrite(4, "               no", menusub == 1,0);
-        OsdWrite(5, "", 0,0);
-        OsdWrite(6, "", 0,0);
-        OsdWrite(7, "", 0,0);
-
-        menustate = MENU_RECONF2;
-        break;
-
-    case MENU_RECONF2 :
-
-        if (select && menusub == 0)
-        {
-            Reconfigure();
-        }
-
-        if (menu || (select && (menusub == 1))) // exit menu
-        {
-            menustate = MENU_MISC1;
-            menusub = 1;
-        }
-        break;
-#endif
         /******************************************************************/
         /* settings menu                                                  */
         /******************************************************************/
@@ -1181,8 +1178,13 @@ void HandleUI(void)
 
 	case MENU_SAVECONFIG_3:
         OsdWrite(7, "      Saving config...", 0,0);
-		SaveConfiguration(&file);
-		menustate = MENU_MAIN2_1;
+		if(CheckConfiguration(&file))
+		{
+			SaveConfiguration(&file);
+			menustate = MENU_MAIN2_1;
+		}
+		else
+			InfoMessage(" Not a valid config file!");
 		break;
 
         /******************************************************************/
@@ -2315,7 +2317,7 @@ void ShowError(char *message, unsigned char code)
 
 void InfoMessage(char *message)
 {
-    OsdWaitVBL();
+//    OsdWaitVBL();
     if (menustate != MENU_INFO)
     {
 //        OsdClear();

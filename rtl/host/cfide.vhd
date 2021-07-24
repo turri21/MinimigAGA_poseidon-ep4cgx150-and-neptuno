@@ -29,8 +29,10 @@ use IEEE.STD_LOGIC_UNSIGNED.all;
 
 entity cfide is
 	generic (
-		spimux : in boolean;
-		havespirtc : in boolean
+		spimux : in boolean := false;
+		havespirtc : in boolean := false;
+		haveiec : in boolean := false;
+		havereconfig : in boolean := false
 	);
    port ( 
 		sysclk	: in std_logic;
@@ -73,6 +75,8 @@ entity cfide is
 		amiga_ack : out std_logic;
 		
 		rtc_q : out std_logic_vector(63 downto 0);
+		reconfig : out std_logic;
+		iecserial : out std_logic;
 
 		-- 28Mhz signals
 		clk_28	: in std_logic;
@@ -132,7 +136,9 @@ signal amiga_select : std_logic;
 signal amiga_req_d : std_logic;
 
 signal rtc_select : std_logic;
+signal reconfigpresent : std_logic;
 signal spirtcpresent : std_logic;
+signal iecpresent : std_logic;
 
 begin
 
@@ -146,8 +152,10 @@ q(15 downto 0) <=	IOdata WHEN rs232_select='1' or SPI_select='1' ELSE
 		platformdata;
 
 spirtcpresent <= '1' when havespirtc=true else '0';
-		
-platformdata <=  X"000"&"0" & spirtcpresent & "1" & menu_button; -- Reconfig not currently supported, 32 meg of RAM, menu button.
+iecpresent <= '1' when haveiec=true else '0';
+reconfigpresent <= '1' when havereconfig=true else '0';
+
+platformdata <=  X"00" & "000" & iecpresent & reconfigpresent & spirtcpresent & "1" & menu_button;
 IOdata <= sd_in;
 
 process(clk_28)
@@ -286,11 +294,16 @@ end process;
 
 process(clk_28,n_reset)
 begin
-	if rising_edge(clk_28) then
+	if n_reset='0' then
+		reconfig<='0';
+		iecserial<='0';
+	elsif rising_edge(clk_28) then
 		if req='1' and wr='1' then
 		
 			if platform_select='1' then	-- Write to platform registers
 				scandoubler<=d(0);
+				reconfig<=d(3);
+				iecserial<=d(4);
 			end if;
 			
 			if audio_select='1' then

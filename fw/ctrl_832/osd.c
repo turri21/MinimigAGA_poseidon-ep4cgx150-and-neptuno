@@ -930,7 +930,8 @@ unsigned char OsdGetCtrl(void)
 
     // send command and get current ctrl status
     EnableOsd();
-    c1 = SPI(OSD_CMD_READ);
+	SPI(OSD_CMD_READ);
+    c1 = SPI(0xff);
     DisableOsd();
 
     // add front menu button

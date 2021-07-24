@@ -302,9 +302,9 @@ always @ (*) begin
   if (~joy2enable)
 //    if (~_xjoy2[5] || (~_xjoy2[3] && ~_xjoy2[2]))	// Obsolete, dates back to original Minimig.
 //      t_osd_ctrl = KEY_MENU;
-//    else if (~_xjoy2[4])
-//      t_osd_ctrl = KEY_ENTER;
-    if (~_xjoy2[3])
+    if (~_xjoy2[4])
+      t_osd_ctrl = KEY_ENTER;
+    else if (~_xjoy2[3])
       t_osd_ctrl = KEY_UP;
     else if (~_xjoy2[2])
       t_osd_ctrl = KEY_DOWN;

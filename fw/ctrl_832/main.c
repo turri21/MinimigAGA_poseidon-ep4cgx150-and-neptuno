@@ -83,28 +83,6 @@ int CheckSum(char *adr,int size)
 	return(sum);
 }
 
-#if 0
-void FatalError(unsigned long error)
-{
-    unsigned long i;
-
-    sprintf(s,"Fatal error: %lu\n", error);
-	BootPrintEx(s);
-
-    while (1)
-    {
-        for (i = 0; i < error; i++)
-        {
-            DISKLED_ON;
-            WaitTimer(250);
-            DISKLED_OFF;
-            WaitTimer(250);
-        }
-        WaitTimer(1000);
-    }
-}
-#endif
-
 
 void HandleFpga(void)
 {
@@ -235,14 +213,6 @@ __geta4 int main(void)
 	if(PLATFORM & (1<<PLATFORM_SPIRTC))
 	{
 		printf("Platform has SPI RTC support\n");
-#if 0
-		SPI_slow();
-		EnableRTC();
-		SPI(0x10);	/* Write starting at register 0 */
-		SPI(0);	/* Clear cr 1 */
-		SPI(0); /* Clear cr 2 */
-		DisableRTC();
-#endif
 		rtc=1;
 	}
 	else

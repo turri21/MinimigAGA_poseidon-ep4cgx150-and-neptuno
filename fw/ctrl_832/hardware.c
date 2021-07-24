@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 //#include "stdio.h"
 #include "hardware.h"
+#include "config.h"
 
 //void __init_hardware(void)
 //{
@@ -204,18 +205,6 @@ void WaitTimer(unsigned long time)
     while (!CheckTimer(time));
 }
 
-#if 0
-void ConfigFastRAM(unsigned short memory)
-{
-	short mem=memory&0xff7f;
-	if(memory&0x80)
-		mem|=0x8000; // Map bit 7 to bit 15 (turbo chip)
-
-	if(mem & 0x04)
-		mem |=0x3;	// Map 0x4 -> 0x7
-	PLATFORM=mem;
-}
-#endif
 
 void ConfigMisc(unsigned short misc)
 {
@@ -225,8 +214,20 @@ void ConfigMisc(unsigned short misc)
 
 void Reconfigure()
 {
-	RECONFIGURE=0;	// A write to this register triggers a reconfig
+	PLATFORM=(1<<PLATFORM_RECONFIG);
 }
 
+
+void EnableIECSerial()
+{
+	config.misc|=(1<<PLATFORM_IECSERIAL);
+	PLATFORM=config.misc;	// A write to this register triggers a reconfig
+}
+
+void DisableIECSerial()
+{
+	config.misc&=~(1<<PLATFORM_IECSERIAL);
+	PLATFORM=config.misc;	// A write to this register triggers a reconfig
+}
 
 

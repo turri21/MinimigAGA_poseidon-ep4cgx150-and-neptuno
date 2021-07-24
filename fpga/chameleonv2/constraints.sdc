@@ -63,6 +63,8 @@ set_false_path -to {red[*]}
 set_false_path -to {grn[*]}
 set_false_path -to {blu[*]}
 set_false_path -to {*sync_n}
+set_false_path -from {usart_clk usart_rts usart_tx}
+set_false_path -to {usart_rx iec_dat_out rtc_cs}
 
 
 # multicycle paths

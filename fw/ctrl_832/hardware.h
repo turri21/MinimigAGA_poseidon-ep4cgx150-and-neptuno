@@ -76,7 +76,8 @@
 #define PLATFORM_MENUBUTTON 0
 #define PLATFORM_32MEG 1
 #define PLATFORM_SPIRTC 2
-#define PLATFORM_RECONFIG 8
+#define PLATFORM_RECONFIG 3
+#define PLATFORM_IECSERIAL 4
 
 // On write:
 //   Bit 0 -> Scandoubler enable
@@ -114,5 +115,7 @@ unsigned long CheckTimer(unsigned long t);
 void WaitTimer(unsigned long time);
 void ConfigMisc(unsigned short misc);
 void Reconfigure();
+void EnableIECSerial();
+void DisableIECSerial();
 
 

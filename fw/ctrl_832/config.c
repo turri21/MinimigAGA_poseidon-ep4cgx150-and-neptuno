@@ -242,6 +242,34 @@ unsigned char ConfigurationExists(char *filename)
 
 static const char config_id[] = "MNMGCFGA"; /* New signature for AGA core */
 
+unsigned char CheckConfiguration(fileTYPE *cfgfile)
+{
+	if(cfgfile)
+	{
+		configTYPE *tmpconf=(configTYPE *)&sector_buffer;
+        if (cfgfile->size <= sizeof(config))
+        {
+            if(FileRead(cfgfile, sector_buffer))
+			{
+				// A few sanity checks...
+				if(tmpconf->floppy.drives>4)
+					return(0);
+
+	            // check file id and version
+	            if (strncmp(tmpconf->id, config_id, sizeof(config.id)) != 0)
+					return(0);
+
+	            if(tmpconf->version>CONFIG_VERSION)
+					return(0); // Config file is too new
+
+				return(1);
+			}
+        }
+	}
+	return(0);
+}
+
+
 unsigned char LoadConfiguration(fileTYPE *cfgfile)
 {
 	int updatekickstart=0;

@@ -183,6 +183,9 @@ architecture rtl of chameleon_toplevel is
 	signal hsync_n_dithered : std_logic;
 	signal vsync_n_dithered : std_logic;
 
+	signal reconfig : std_logic;
+	signal iecserial : std_logic;
+
 	
 	COMPONENT amiga_clk_altera
 	PORT
@@ -211,7 +214,9 @@ architecture rtl of chameleon_toplevel is
 	generic
 	( debug : integer := 0;
 	  spimux : integer := 0;
-	  havespirtc : integer := 0
+	  havespirtc : integer := 0;
+	  haveiec : integer := 0;
+	  havereconfig : integer := 0
 	);
 	PORT
 	(
@@ -269,7 +274,9 @@ architecture rtl of chameleon_toplevel is
 		SD_CLK	:	 OUT STD_LOGIC;
 		SD_CS		:	 OUT STD_LOGIC;
 		SD_ACK	:	 IN STD_LOGIC;
-		RTC_CS   :   OUT STD_LOGIC
+		RTC_CS   :   OUT STD_LOGIC;
+		RECONFIG	:	 OUT STD_LOGIC;
+		IECSERIAL:	 OUT STD_LOGIC	
 	);
 	END COMPONENT;
 
@@ -398,7 +405,7 @@ reset_n<= not reset;
 --			iec_atn_out => rs232_txd,
 --			iec_clk_in => rs232_rxd
 --			iec_clk_out : in std_logic := '1';
-			iec_dat_out => midi_txd,
+			iec_dat_out => (not iecserial or midi_txd),
 --			iec_srq_out : in std_logic := '1';
 --			iec_dat_in : in std_logic := '1';
 --			iec_atn_in : out std_logic;
@@ -415,7 +422,7 @@ reset_n<= not reset;
 		joystick_a => cdtv_joya,
 		joystick_b => cdtv_joyb
 	);
-
+	
 rtc_cs<=not rtc_cs_inv;
 		
 runstop<='0' when c64_keys(63)='0' and c64_joy1="1111111" else '1';
@@ -430,7 +437,9 @@ generic map
 	(
 		debug => 0,
 		spimux => 1,
-		havespirtc => 1
+		havespirtc => 1,
+		haveiec => 1,
+		havereconfig => 1
 	)
 PORT map
 	(
@@ -445,7 +454,7 @@ PORT map
 		CTRL_TX => rs232_txd,
 		CTRL_RX => rs232_rxd,
 		AMIGA_TX => midi_txd,
-		AMIGA_RX => midi_rxd and external_rxd,
+		AMIGA_RX => midi_rxd and (not iecserial or external_rxd),
 		VGA_PIXEL => vga_pixel,
 		VGA_SELCS => vga_selcsync,
 		VGA_CS => vga_csync,
@@ -495,7 +504,9 @@ PORT map
 		SD_CLK => spi_clk,
 		SD_CS => spi_cs,
 		SD_ACK => spi_raw_ack,
-		RTC_CS => rtc_cs_inv
+		RTC_CS => rtc_cs_inv,
+		RECONFIG => reconfig,
+		IECSERIAL => iecserial
 	);
 
 vga_window<='1';
@@ -551,5 +562,19 @@ audio_sd : COMPONENT hybrid_pwm_sd
 		d_r(14 downto 0) => audio_r(14 downto 0),
 		q_r => sigmaR
 	);
+
+usbmcu : entity work.chameleon_reconfig
+port map (
+	clk => clk_28,
+
+	reconfig => reconfig,
+	reconfig_slot => X"0",
+
+	serial_clk => usart_clk,
+	serial_rxd => usart_tx,
+	serial_txd => usart_rx,
+	serial_cts_n => usart_rts
+);
+
 
 end architecture;
