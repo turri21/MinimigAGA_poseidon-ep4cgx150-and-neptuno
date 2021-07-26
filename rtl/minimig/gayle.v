@@ -219,15 +219,16 @@ wire	[7:0] tfr_in;
 wire	[7:0] tfr_out;
 wire	tfr_we;
 
-reg		[7:0] sector_count;	// sector counter
+reg		[8:0] sector_count;	// sector counter
 wire	sector_count_dec_in;	// decrease sector counter (reads)
 wire	sector_count_dec_out;	// decrease sector counter (writes)
 
 always @(posedge clk)
   if (clk7_en) begin
-  	if (hwr && sel_tfr && address_in[4:2] == 3'b010) // sector count register loaded by the host
-  		sector_count <= data_in[15:8];
-  	else if (sector_count_dec_in || sector_count_dec_out)
+  	if (hwr && sel_tfr && address_in[4:2] == 3'b010) begin// sector count register loaded by the host
+  		sector_count <= {1'b0, data_in[15:8]};
+  		if (data_in[15:8] == 0) sector_count <= 9'd256;
+  	end else if (sector_count_dec_in || sector_count_dec_out)
   		sector_count <= sector_count - 8'd1;
   end
 
@@ -296,7 +297,7 @@ always @(posedge clk)
   if (clk7_en) begin
   	if (reset)
   		busy <= GND;
-  	else if (hdd_status_wr && hdd_data_out[7] || (sector_count_dec_in && sector_count == 8'h01))	// reset by SPI host (by clearing BSY status bit)
+  	else if (hdd_status_wr && hdd_data_out[7] || (sector_count_dec_in && sector_count == 9'h01))	// reset by SPI host (by clearing BSY status bit)
   		busy <= GND;
   	else if (sel_command) // set when the CPU writes command register
   		busy <= VCC;
