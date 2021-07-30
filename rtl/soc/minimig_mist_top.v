@@ -124,6 +124,9 @@ wire [  4-1:0] tg68_CACR_out;
 wire [ 32-1:0] tg68_VBR_out;
 wire           tg68_ovr;
 
+wire tg68_host_req;
+wire tg68_host_ack;
+
 // minimig
 wire           led;
 wire [ 16-1:0] ram_data;      // sram data bus
@@ -308,8 +311,13 @@ TG68K tg68k (
 	.rtg_clut_b(rtg_clut_b),
 	.audio_ena(aud_ena_cpu),
 	.audio_buf(aud_addr[15]),
-	.audio_int(aud_int)
+	.audio_int(aud_int),
+	.host_req(tg68_host_req),
+	.host_ack(tg68_host_ack)
 );
+
+assign tg68_host_ack=tg68_host_req; // Prevent lockups on reads to not-yet-implemented Akiko registers.
+
 
 sdram_ctrl sdram (
   .sysclk       (clk_114          ),

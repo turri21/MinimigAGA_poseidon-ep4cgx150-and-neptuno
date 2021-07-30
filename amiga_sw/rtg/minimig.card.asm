@@ -111,7 +111,7 @@ BUG MACRO
 ;       section ReplayRTG,code
 ****************************************************************************
 
-MEMORY_SIZE EQU $400000
+MEMORY_SIZE EQU (4<<20)
 MEMF_REPLAY EQU (1<<14)
 
 
@@ -131,7 +131,7 @@ bugprintf:
                 lea     32(sp),a1
                 lea     .putch(pc),a2
                 move.l  a6,a3
-                jsr     beacon
+;                jsr     beacon
                 jsr     -522(a6)                ; _LVORawDoFmt
 
 .skip           move.l  28(sp),a0
@@ -170,7 +170,7 @@ MinimigCard:
         dc.b    'minimig.card',0,0
         dc.b    '$VER: '
 IDString:
-        dc.b    'minimig.card 0.1 (26.06.2020)',0
+        dc.b    'minimig.card 1.2 (16.08.2021)',0
         dc.b    0
 expansionLibName:
         dc.b    'expansion.library',0
@@ -195,7 +195,7 @@ DataTable:
         INITLONG        LN_NAME,MinimigCard
         INITBYTE        LIB_FLAGS,LIBF_SUMUSED|LIBF_CHANGED
         INITWORD        LIB_VERSION,1
-        INITWORD        LIB_REVISION,0
+        INITWORD        LIB_REVISION,2
         INITLONG        LIB_IDSTRING,IDString
         INITLONG        card_Name,CardName
         dc.w            0,0
@@ -330,7 +330,9 @@ FindCard:
         movem.l a2/a3/a6,-(sp)
         movea.l a0,a2
 
-        move.l  #MEMORY_SIZE,gbi_MemorySize(a2)
+        move.l  #0,gbi_MemoryBase(a2)
+        move.l  #0,gbi_MemorySize(a2)
+;        move.l  #MEMORY_SIZE/8,gbi_MemorySize(a2)
         move.l  #$b80100,(gbi_RegisterBase,a2)
 
         moveq   #0,d0
@@ -342,36 +344,45 @@ FindCard:
         bne     .exit
 
 .compat
-        move.l  $4.w,a6
-        move.l  #MEMORY_SIZE,d0
-        addi.l  #$00001FF,d0            ; add 512 bytes-1
-        move.l  #MEMF_24BITDMA|MEMF_FAST|MEMF_REVERSE,d1        ; Try $200000 RAM first
-        jsr     _LVOAllocMem(a6)
+        move.l  $4,a6   ; Do we have any 24-bit Fast RAM?
+                        ; (This is the easiest way to ensure the FB's not in bank 0)
+        move.l  #MEMF_24BITDMA|MEMF_FAST,d1
+        jsr _LVOAvailMem(a6)
+        cmp.l   #$1c0000,d0 ; Can't use $C00000 RAM, so make sure we have more than 1.75 megs
+        bgt .ok   ; Bail out if not.
+        moveq   #0,d0
+        bra .exit
 
-        tst.l   d0
-        bne.b   .ok
+;        move.l  $4.w,a6
+;        move.l  #MEMORY_SIZE,d0
+;        addi.l  #$00001FF,d0            ; add 512 bytes-1
+;        move.l  #MEMF_24BITDMA|MEMF_FAST|MEMF_REVERSE,d1        ; Try $200000 RAM first
+;        jsr     _LVOAllocMem(a6)
 
-        move.l  #MEMORY_SIZE,d0
-        addi.l  #$1ff,d0
-        move.l  #MEMF_FAST|MEMF_REVERSE,d1
-        jsr     _LVOAllocMem(a6)
-        tst.l   d0
-        bne.b   .ok
+;        tst.l   d0
+;        bne.b   .ok
 
-        ; If allocation failed, try a smaller chunk.
-        move.l  #MEMORY_SIZE/2,gbi_MemorySize(a2)
-        move.l  #MEMORY_SIZE/2,d0
-        addi.l  #$1ff,d0
-        move.l  #MEMF_FAST|MEMF_REVERSE,d1
-        jsr     _LVOAllocMem(a6)
-        tst.l   d0
-        beq.b   .exit
+;        move.l  #MEMORY_SIZE,d0
+;        addi.l  #$1ff,d0
+;        move.l  #MEMF_FAST|MEMF_REVERSE,d1
+;        jsr     _LVOAllocMem(a6)
+;        tst.l   d0
+;        bne.b   .ok
+
+;        ; If allocation failed, try a smaller chunk.
+;        move.l  #MEMORY_SIZE/2,gbi_MemorySize(a2)
+;        move.l  #MEMORY_SIZE/2,d0
+;        addi.l  #$1ff,d0
+;        move.l  #MEMF_24BITDMA|MEMF_FAST|MEMF_REVERSE,d1
+;        jsr     _LVOAllocMem(a6)
+;        tst.l   d0
+;        beq.b   .exit
 
 
 .ok
-        addi.l  #$000001FF,d0           ; add 512-1
-        andi.l  #$FFFFFE00,d0           ; and with ~(512-1) to align memory
-        move.l  d0,gbi_MemoryBase(a2)
+;        addi.l  #$000001FF,d0           ; add 512-1
+;        andi.l  #$FFFFFE00,d0           ; and with ~(512-1) to align memory
+;        move.l  d0,gbi_MemoryBase(a2)
 
         moveq   #-1,d0
 .exit:
@@ -379,44 +390,54 @@ FindCard:
         rts
 
 
-; This turns out to cause memory corruption and crashes the host CPU
-; so I'll backtrack on this.
-;------------
-;AllocCardMem:
-;------------
-;  a0:  struct BoardInfo
-;  d0:  ulong size
-;  d1:  bool force
-;  d2:  bool system
 
-;        move.l  a6,-(a7)
-;        move.l  4,a6
-;        move.l  d0,-(a7)
-;        move.l  #MEMF_24BITDMA,d1 ; Prefer $200000 RAM
-;        or.l    #MEMF_FAST,d1     ; leaving the larger 32-bit
-;        or.l    #MEMF_REVERSE,d1  ; RAM chunk unbroken
-;        jsr     _LVOAllocVec(a6)
-;        tst.l   d0
-;        bne     .done
-;        move.l  (a7),d0
-;        move.l  #MEMF_FAST,d1
-;        or.l    #MEMF_REVERSE,d1
-;        jsr     _LVOAllocVec(a6)
-;.done
-;        add.l   #4,a7
-;        move.l  (a7)+,a6
-;        rts
+GetVideoMemory:
+    move.l  a0,-(a7)
+    move.l  #MEMORY_SIZE,d0
 
-;-----------
-;FreeCardMem:
-;-----------
-; a0 - struct BoardInfo
-; a1 - membase
-;        move.l  a6,-(a7)
-;        jsr     _LVOFreeVec(a6)
-;        move.l  (a7)+,a6
-;        rts
+.outerloop
+    move.l  (a1)+,d1
+    beq .done
+    BUG "Tooltype %s",d1
+    move.l  d1,a0
+    moveq   #0,d1
+    lea .tooltype,a2
 
+.innerloop
+    move.b  (a2)+,d2
+    beq .match
+.skipspaces
+    move.b  (a0)+,d1
+    cmp.b   #$20,d1
+    beq .skipspaces
+    and.b   #$df,d1
+    cmp.b d1,d2
+    beq .innerloop
+    bra .outerloop
+
+.match
+    move.b  (a0)+,d1
+    cmp.b   #$20,d1
+    beq .match
+
+    BUG "match %ld",d1
+
+    sub.b   #$30,d1
+    cmp.b #1,d1
+    blt .done
+    cmp.b #7,d1
+    bgt .done
+    move.l d1,d0
+    swap    d0
+    lsl.l   #4,d0
+    BUG "memory %ld",d0
+.done
+    move.l  (a7)+,a0
+    rts
+.tooltype
+    dc.b   "VIDEOMEMORY",$1d,0
+
+    even
 
 ;------------------------------------------------------------------------------
 InitCard:
@@ -424,7 +445,32 @@ InitCard:
 ;  a0:  struct BoardInfo
 
         movem.l a2/a5/a6,-(sp)
+
+        bsr GetVideoMemory
+
         movea.l a0,a2
+
+.allocloop
+        move.l  d0,gbi_MemorySize(a2)
+
+        move.l  $4.w,a6
+        addi.l  #$00001FF,d0            ; add 512 bytes-1
+        move.l  #MEMF_24BITDMA|MEMF_FAST|MEMF_REVERSE,d1        ; Try $200000 RAM first
+        jsr     _LVOAllocMem(a6)
+
+        tst.l   d0
+        bne.b   .ok
+
+        move.l  gbi_MemorySize(a2),d0
+        lsr.l   #1,d0   ; Keep halving the size until alloc succeeds.
+        bne .allocloop
+        bra .exit
+
+.ok
+        addi.l  #$000001FF,d0           ; add 512-1
+        andi.l  #$FFFFFE00,d0           ; and with ~(512-1) to align memory
+        move.l  d0,gbi_MemoryBase(a2)
+
 
         lea     CardName(pc),a1
         move.l  a1,gbi_BoardName(a2)
@@ -432,21 +478,23 @@ InitCard:
         move.l  #0,gbi_GraphicsControllerType(a2)
         move.l  #0,gbi_PaletteChipType(a2)
 
-        ori.w   #2,gbi_RGBFormats(a2) ; CLUT
-        ori.w   #2048,gbi_RGBFormats(a2) ; R5G5B5
-        ori.w   #1024,gbi_RGBFormats(a2) ; R5G6B5
+        moveq   #RGBFF_CLUT,d0
+        or.w    #RGBFF_R5G6B5,d0
+        or.w    #RGBFF_R5G5B5,d0
+        move.w  d0,gbi_RGBFormats(a2)
 
         move.w  #8,gbi_BitsPerCannon(a2)
-        move.l  #MEMORY_SIZE-$40000,gbi_MemorySpaceSize(a2)
+        move.l  gbi_MemorySize(a2),d0
+        sub.l   #$4000,d0
+        move.l  d0,gbi_MemorySpaceSize(a2)
         move.l  gbi_MemoryBase(a2),d0
         move.l  d0,gbi_MemorySpaceBase(a2)
-        addi.l  #MEMORY_SIZE-$4000,d0
+        add.l   gbi_MemorySpaceSize(a2),d0
         move.l  d0,gbi_MouseSaveBuffer(a2)
 
-;        ori.l   #(1<<20),gbi_Flags(a2)
         ori.l   #BIF_INDISPLAYCHAIN,gbi_Flags(a2)
-;       ori.l   #BIF_NOMEMORYMODEMIX,gbi_Flags_Flags(a2)        ; BIF_NOMEMORYMODEMIX
         ori.l   #BIF_VGASCREENSPLIT,gbi_Flags(a2)
+        ori.l   #BIF_GRANTDIRECTACCESS,gbi_Flags(a2)
 
         lea     SetSwitch(pc),a1
         move.l  a1,gbi_SetSwitch(a2)
@@ -509,34 +557,34 @@ InitCard:
 ;- Truecolor
 ;- Truecolor + Alpha
 
-        move.w  #4095,(gbi_MaxHorValue+0,a2)
-        move.w  #4095,(gbi_MaxVerValue+0,a2)
+        move.w  #0,(gbi_MaxHorValue+0,a2)
+        move.w  #0,(gbi_MaxVerValue+0,a2)
         move.w  #4095,(gbi_MaxHorValue+2,a2)
         move.w  #4095,(gbi_MaxVerValue+2,a2)
         move.w  #4095,(gbi_MaxHorValue+4,a2)
         move.w  #4095,(gbi_MaxVerValue+4,a2)
-        move.w  #4095,(gbi_MaxHorValue+6,a2)
-        move.w  #4095,(gbi_MaxVerValue+6,a2)
-        move.w  #4095,(gbi_MaxHorValue+8,a2)
-        move.w  #4095,(gbi_MaxVerValue+8,a2)
+        move.w  #0,(gbi_MaxHorValue+6,a2)
+        move.w  #0,(gbi_MaxVerValue+6,a2)
+        move.w  #0,(gbi_MaxHorValue+8,a2)
+        move.w  #0,(gbi_MaxVerValue+8,a2)
 
-        move.w  #2048,(gbi_MaxHorResolution+0,a2)
-        move.w  #2048,(gbi_MaxVerResolution+0,a2)
+        move.w  #0,(gbi_MaxHorResolution+0,a2)
+        move.w  #0,(gbi_MaxVerResolution+0,a2)
         move.w  #2048,(gbi_MaxHorResolution+2,a2)
         move.w  #2048,(gbi_MaxVerResolution+2,a2)
         move.w  #2048,(gbi_MaxHorResolution+4,a2)
         move.w  #2048,(gbi_MaxVerResolution+4,a2)
-        move.w  #2048,(gbi_MaxHorResolution+6,a2)
-        move.w  #2048,(gbi_MaxVerResolution+6,a2)
-        move.w  #2048,(gbi_MaxHorResolution+8,a2)
-        move.w  #2048,(gbi_MaxVerResolution+8,a2)
+        move.w  #0,(gbi_MaxHorResolution+6,a2)
+        move.w  #0,(gbi_MaxVerResolution+6,a2)
+        move.w  #0,(gbi_MaxHorResolution+8,a2)
+        move.w  #0,(gbi_MaxVerResolution+8,a2)
 
-        lea     gbi_HardInterrupt(a2),a1
-        lea     VBL_ISR(pc),a0
-        move.l  a0,IS_CODE(a1)
-        moveq   #INTB_VERTB,d0
-        move.l  $4,a6
-        jsr     _LVOAddIntServer(a6)
+;        lea     gbi_HardInterrupt(a2),a1
+;        lea     VBL_ISR(pc),a0
+;        move.l  a0,IS_CODE(a1)
+;        moveq   #INTB_VERTB,d0
+;        move.l  $4,a6
+;        jsr     _LVOAddIntServer(a6)
 
 ;       FIXME - disable vblank interrupt for now.
 ;       ori.l   #(1<<4),gbi_Flags(a2)        ; BIF_VBLANKINTERRUPT
@@ -566,8 +614,8 @@ InitCard:
         ENDC
 
         ori.l   #(1<<3),gbi_Flags(a2)        ; BIF_CACHEMODECHANGE
-        move.l  gbi_MemoryBase(a2),(gbi_MemorySpaceBase,a2)
-        move.l  gbi_MemorySize(a2),(gbi_MemorySpaceSize,a2)
+        move.l  gbi_MemoryBase(a2),gbi_MemorySpaceBase(a2)
+        move.l  gbi_MemorySize(a2),gbi_MemorySpaceSize(a2)
 
         movea.l gbi_RegisterBase(a2),a0
 
@@ -614,6 +662,7 @@ SetSwitch:
 .trigger
 
 .done:
+        bsr SetHardware
         move.l  d7,d0
         andi.w  #$0001,d0
         movem.l (a7)+,d1-d6/a0-a6
@@ -637,7 +686,7 @@ SetDAC:
         move.l  (gbi_RegisterBase,a0),a1
         move.w  d0,(6,a1)
 ;        move.w  d0,CardData_Control2(a0)
-;        bsr     SetHardware
+        bsr     SetHardware
 .done
         rts
 
@@ -747,9 +796,7 @@ SetGC:
         move.w  d1,CardData_Beamcon0(a0)
         BUG     "BEAMCON0 %lx",d1
 
-        tst.w   gbi_MoniSwitch(a0)
-        beq     .done
-.done
+        bsr     SetHardware
         movem.l (sp)+,d2-d7
         rts
 
@@ -794,6 +841,7 @@ SetPanning:
 .skip2
         move.l  d1,(8,a1)
 
+        bsr     SetHardware
         rts
 
 
@@ -805,6 +853,8 @@ CalculateBytesPerRow:
 ;  d7:  RGBFTYPE RGBFormat
 ;  This function calculates the amount of bytes needed for a line of
 ;  "Width" pixels in the given RGBFormat.
+
+;        BUG "BytesPerRow %ld,%lx\n",d0,d7
 
         cmpi.l  #16,d7
         bcc.b   .exit
@@ -913,7 +963,8 @@ SetDisplay:
 ;
 ;  NOTE: return the opposite of the state
 
-        BUG "SetDisplay %ld",d0
+;       BUG "SetDisplay %ld",d0
+        bsr SetHardware
         not.b   d0
         andi.w  #1,d0
         rts
@@ -948,7 +999,7 @@ WaitVerticalSync:
 ;------------------------------------------------------------------------------
 ;  a0:  struct BoardInfo
 ;  This function waits for the next horizontal retrace.
-        BUG     "WaitVerticalSync"
+;        BUG     "WaitVerticalSync"
 
 ; On minimig can simply use VPOSR for this
 
@@ -990,6 +1041,7 @@ ResolvePixelClock:
 ; RESULT:
 ;       d0 - pixel clock index
 
+;        BUG "resolve %ld,%lx",d0,d7
         movem.l d2/d3,-(sp)
         move.l  d0,d1                                           ; requested clock frequency
         moveq   #0,d3
@@ -998,7 +1050,6 @@ ResolvePixelClock:
         move.l  d0,a0
 
         move.l  (a0),d0
-        BUG "resolve %ld",d1
 
         moveq   #0,d0                                           ; frequency index
 .loop:
@@ -1040,6 +1091,7 @@ ResolvePixelClock:
         movem.l (sp)+,d2/d3
         rts
 .err:
+;        BUG "No pixelclocks found"
         moveq   #0,d0
         bra     .done
 
@@ -1055,7 +1107,7 @@ ResolvePixelClock:
         dc.b    0       ; RGBFB_A8B8G8R8
         dc.b    0       ; RGBFB_R8G8B8A8
         dc.b    0       ; RGBFB_B8G8R8A8
-        dc.b    0       ; RGBFB_R5G6B5
+        dc.b    2       ; RGBFB_R5G6B5
         dc.b    2       ; RGBFB_R5G5B5
         dc.b    0       ; RGBFB_B5G6R5PC
         dc.b    0       ; RGBFB_B5G5R5PC
@@ -1065,6 +1117,7 @@ ResolvePixelClock:
 ;------------------------------------------------------------------------------
 GetPixelClock:
 ;------------------------------------------------------------------------------
+;        BUG "GPC %lx",d1
         move.l  PixelClocksByFormat(pc,d7*4),d1
         beq     .skip
         move.l  d1,a0
@@ -1265,7 +1318,7 @@ VBL_ISR:
 ;------------------------------------------------------------------------------
 GetCompatibleFormats:
 ;------------------------------------------------------------------------------
-
+;        BUG "GCF %lx",d7
         moveq   #-1,d0
         rts
 
@@ -1273,7 +1326,7 @@ GetCompatibleFormats:
 ;------------------------------------------------------------------------------
 GetBytesPerPixel:
 ;------------------------------------------------------------------------------
-
+;        BUG "GBPP %lx",d7
         move.b  .BytesPerPixel(pc,d7.l),d7
         rts
 
@@ -1302,6 +1355,9 @@ GetBytesPerPixel:
 SetHardware:
         movem.l d0/a1,-(a7)
 ;        BUG     "Setting hardware registers"
+        move.w  gbi_MoniSwitch(a0),d0
+        beq     .skip
+
         move.l  (gbi_RegisterBase,a0),a1
 
         move.w  (CardData_Control,a0),d0
@@ -1333,7 +1389,7 @@ SetHardware:
         move.w  (CardData_Beamcon0,a0),(beamcon0,a1)
 
         move.w  (CardData_LineCompare,a0),(bplhstrt,a1)
-
+.skip
         movem.l (a7)+,d0/a1
         rts
 
@@ -1356,6 +1412,8 @@ SetSplitPosition:   ; A0 - BoardInfo, d0 - ypos
         subq    #2,d1
         add.w   d1,d0
         move.w  d0,(CardData_LineCompare,a0)
+
+        bsr     SetHardware
 
         rts
 

@@ -130,7 +130,7 @@ end generate;
 -- Host interface
 -- Defer any requests not handled by the Cornerturn or RTG to the host CPU
 
-host_sel <= not (rtg_sel or clut_sel or ahi_sel or ct_sel);
+host_sel <= not (rtg_sel or clut_sel or ahi_sel or ct_sel or id_sel);
 host_req <= req and host_sel;
 
 -- Audio registers
