@@ -146,7 +146,7 @@ always @ (posedge clk) begin
 		if(data_in[13] || data_in[6])
 			beamcon0_sh <= #1 data_in;
 		else // Otherwise update the non-shadowed reg 
-			beamcon0_reg <= #1 data_in[15:0];
+			beamcon0_reg <= #1 data_in;
     end
   end
 end

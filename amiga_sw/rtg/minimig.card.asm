@@ -1368,7 +1368,7 @@ SetHardware:
         lea     $dff000,a1
 
         move.w  (CardData_Beamcon0,a0),d0
-        bset    #13,d0  ; Set LPENDIS bit
+        bset    #13,d0  ; Set LPENDIS bit to enable writes to shadow regs
         move.w  d0,(beamcon0,a1)
 
         move.w  #0,(hcenter,a1)
@@ -1386,7 +1386,7 @@ SetHardware:
         move.w  (CardData_VSStop,a0),(vsstop,a1)
         move.w  (CardData_VBStop,a0),(vbstop,a1)
 
-        move.w  (CardData_Beamcon0,a0),(beamcon0,a1)
+        move.w  (CardData_Beamcon0,a0),(beamcon0,a1) ; disable writes to shadow regs
 
         move.w  (CardData_LineCompare,a0),(bplhstrt,a1)
 .skip
