@@ -149,7 +149,9 @@ begin
 		cpu_ack<='0';
 		rom_wr<='0';
 
-		addr<=cpu_addr;
+		-- Map host processor's address space to 0x680000
+		-- (makes more sense to do it here than in the SDRAM controller.)
+		addr<=(cpu_addr(31 downto 16) xor X"0068") & cpu_addr(15 downto 2);
 		q<=cpu_q;
 		sel<=cpu_sel;
 		wr<=cpu_wr;

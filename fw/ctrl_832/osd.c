@@ -74,7 +74,8 @@ const char *supporters[]=
 	"Alynna Trypnotk",
 	"Paul Honig",
 	"DJ Hard Rich",
-
+	"Dennis de Weerd",
+	"Mika Simonen",
 
 	"+ all other contributors.",
 	"Thanks also to Espen Skog,",

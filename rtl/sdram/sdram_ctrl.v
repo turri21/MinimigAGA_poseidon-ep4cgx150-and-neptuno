@@ -42,7 +42,7 @@ module sdram_ctrl(
   inout       [ 16-1:0] sdata,
   // host
   input  wire [ 32-1:0] hostWR,
-  input  wire [ 25-1:2] hostAddr,
+  input  wire [ 26-1:2] hostAddr,
   input  wire           hostce,
   input  wire           hostwe,
   input  wire [ 4-1:0 ] hostbytesel,
@@ -145,7 +145,6 @@ reg  [26-1:0] slot2_addr;
 reg  [16-1:0] sdata_reg;
 reg  [16-1:0] sdata_out;
 reg           sdata_oe;
-reg  [26-1:2] zmAddr;
 wire          ccache_fill;
 wire          ccachehit;
 wire          cpuLongword;
@@ -158,7 +157,6 @@ reg           clk7_enD;
 reg  [ 9-1:0] refreshcnt;
 reg           refresh_pending;
 reg  [ 4-1:0] sdram_state;
-reg           snoop_act;
 // writebuffer
 reg           slot1_write;
 reg           slot2_write;
@@ -244,14 +242,15 @@ assign audfill=slot1_type==AUDIO ? cache_fill_1 : 1'b0;
 assign hostRD = sdata_reg;
 assign hostena=slot1_type==HOST ? cache_fill_1 : 1'b0;
 
-// map host processor's address space to 0x680000
-always @ (*) begin
-	zmAddr = {1'b0,hostAddr[24:23], ~hostAddr[22], ~hostAddr[21], hostAddr[20], ~hostAddr[19], hostAddr[18:2]};
-end
 
 ////////////////////////////////////////
 // cpu cache
 ////////////////////////////////////////
+
+reg [26-1:0] cache_snoop_adr;
+reg [31:0] cache_snoop_dat_w;
+reg [3:0] cache_snoop_bs;
+reg snoop_act;
 
 //// cpu cache ////
 cpu_cache_new cpu_cache (
@@ -280,9 +279,9 @@ cpu_cache_new cpu_cache (
 	.sdr_write_req    (writebuffer_req),
 	.sdr_write_ack    (writebuffer_hold),
 	.snoop_act        (snoop_act),                    // snoop act (write only - just update existing data in cache)
-	.snoop_adr        ({1'b0, chipAddr, 1'b0}),       // snoop address
-	.snoop_dat_w      ({chipWR2, chipWR}),            // snoop write data
-	.snoop_bs         ({!chipU2, !chipL2, !chipU, !chipL})
+	.snoop_adr        (cache_snoop_adr),       // snoop address
+	.snoop_dat_w      (cache_snoop_dat_w),            // snoop write data
+	.snoop_bs         (cache_snoop_bs)
 );
 
 assign longword_en = cpuLongword && cpuAddr_r[3:1]!=3'b111 && cpustate[1:0]==2'b11;
@@ -429,7 +428,7 @@ always @(posedge sysclk) begin
 
 	// Other ports need to avoid bank clashes.
 	rtg_slot2ok <= !refresh_pending && (slot1_type == IDLE || slot1_bank != rtgAddr[24:23]) ? 1'b1 : 1'b0;
-	host_slot1ok <= (slot2_type==IDLE || slot2_bank!=zmAddr[24:23]);
+	host_slot1ok <= (slot2_type==IDLE || slot2_bank!=hostAddr[24:23]);
 	aud_slot1ok <= slot1_type!=AUDIO && !zatn && (slot2_type==IDLE || slot2_bank!=2'b00);
 
 	// Has the host been waiting an unreasonably long time?
@@ -537,6 +536,10 @@ always @ (posedge sysclk) begin
 					slot1_dqm2          <= #1 {chipU2,chipL2};
 					slot1_addr          <= #1 {2'b00, chipAddr, 1'b0};
 					slot1_write         <= #1 !chipRW;
+
+					cache_snoop_adr <= {2'b00, chipAddr, 1'b0}; // snoop address
+					cache_snoop_dat_w <={chipWR2, chipWR}; // snoop write data
+					cache_snoop_bs <= {!chipU2, !chipL2, !chipU, !chipL}; // Byte selects
 				end
 				// next in line is refresh
 				// (a refresh cycle blocks both access slots)
@@ -586,21 +589,22 @@ always @ (posedge sysclk) begin
 				else if(hostce && host_slot1ok) begin
 					hostslot_cnt        <= #1 8'b00001111;
 					slot1_type          <= #1 HOST;
-					sdaddr              <= #1 zmAddr[22:10];
-					ba                  <= #1 zmAddr[24:23];
+					sdaddr              <= #1 hostAddr[22:10];
+					ba                  <= #1 hostAddr[24:23];
 					// Always bank zero for SPI host CPU
-					slot1_bank          <= #1 zmAddr[24:23];
+					slot1_bank          <= #1 hostAddr[24:23];
 					slot1_dqm           <= #1 {!hostbytesel[0],!hostbytesel[1]};
 					slot1_dqm2          <= #1 {!hostbytesel[2],!hostbytesel[3]};
 					sd_cmd              <= #1 CMD_ACTIVE;
-					slot1_addr          <= #1 {zmAddr,2'b00};
+					slot1_addr          <= #1 {hostAddr[25:2],2'b00};
 					slot1_write         <= #1 hostwe;
+					cache_snoop_adr <= {hostAddr[25:2], 2'b00}; // snoop address
+					cache_snoop_dat_w <={hostWR}; // snoop write data
+					cache_snoop_bs <= {hostbytesel[2],hostbytesel[3],hostbytesel[0],hostbytesel[1]}; // Byte selects
 				end
 			end
 
 			ph2 : begin
-				if(slot1_type == CHIP && slot1_write) snoop_act <= #1 1'b1;
-
 				if(slot2_write) begin // Write cycle (2nd word)
 					sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b1, slot2_addr[25], slot2_addr[9:4]}; // auto-precharge
 					sdaddr[2:0]         <= #1 slot2_addr[3:1] + 1'd1;
@@ -615,6 +619,7 @@ always @ (posedge sysclk) begin
 			end
 
 			ph3 : begin
+				if((slot1_type == CHIP || slot1_type == HOST) && slot1_write) snoop_act <= #1 1'b1;
 				// slot 2
 				cache_fill_2                <= #1 1'b1;
 			end

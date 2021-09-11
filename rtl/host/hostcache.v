@@ -8,7 +8,7 @@ module hostcache
 (
 	input wire sysclk,
 	input wire reset_n,
-	input wire [24:2] a,
+	input wire [25:2] a,
 	output wire [31:0] q,
 	input wire req,
 	input wire wr,
@@ -86,7 +86,7 @@ assign ztag_a = zinitcache ? {1'b1,zinitctr} :
 			{3'b100,a[zcachebits:4]};
 
 wire ztag_hit;
-assign ztag_hit = ztag_q[20:0]==a[24:4];
+assign ztag_hit = ztag_q[21:0]==a[25:4];
 
 reg complete;
 
@@ -129,12 +129,12 @@ begin
 
 		zWAIT : begin
 			zreadword_burst <= 1'b0;
-			ztag_w = {4'b1111,7'b0000000,a[24:4]};
+			ztag_w = {4'b1111,6'b000000,a[25:4]};
 			if(req) begin
 				if(wr) begin// Write cycle - invalidate cacheline (FIXME - only when hit)
 					if(complete) begin
 						sdram_req<=1'b1;
-						ztag_w = {4'b0000,7'b0000000,a[24:4]};
+						ztag_w = {4'b0000,6'b000000,a[25:4]};
 						if(ztag_hit)
 							ztag_wren<=1'b1;
 						zstate<=zWRITE;
