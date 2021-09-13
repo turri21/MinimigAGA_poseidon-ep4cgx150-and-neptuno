@@ -18,7 +18,7 @@ This minimig variant has been upgraded with [AGA chipset](http://en.wikipedia.or
 * slowRAM : 0.0MB - 1.5MB
 * fastRAM : 0.0MB - 24MB
 * CPU core : 68000, 68010, 68020
-* kickstart : 1.2 - 3.1 (256kB, 512kB & 1MB kickstart ROMs currently supported)
+* kickstart : 1.2 - 3.2 (256kB, 512kB & 1MB kickstart ROMs currently supported)
 * HRTmon with custom registers mirror
 * floppy disks : 1-4 floppies (supports ADF floppy image format), with normal & turbo speeds
 * hard disks : 1-2 hard disk images (supports whole disk images, partition images, using whole SD card and using SD card partition)
@@ -26,19 +26,19 @@ This minimig variant has been upgraded with [AGA chipset](http://en.wikipedia.or
 * supports normal & scandoubled video output (15kHz / 30kHz) - can be used with a monitor or a TV with a SCART cable
 * peripherals : real Amiga / C64 joysticks connected to C64 joystick ports, CDTV infra-red controllers, PS/2 keyboards,
 PS/2 mice, Turbo Chameleon Docking Station for extra joysticks or real Amiga mouse, and MIDI in / out
-* supports basic retargetable graphics with a P96 driver
-* has an implementation of the Akiko chunky to planar converter
+* supports basic [retargetable graphics](https://en.wikipedia.org/wiki/Retargetable_graphics) with a P96 driver
+* has an implementation of the [Akiko](https://en.wikipedia.org/wiki/Amiga_custom_chips#Akiko) chunky to planar converter
 * has an extra audio channel which can be used from the Amiga to play CD-quality WAV files, or used on some platforms to emulate floppy drive sounds.
 
 
 ## Usage
 
 ### Hardware
-To use this minimig core, you will at the minimum need an SD/SDHC card, formatted with the FAT32 filesystem, a PS/2 keyboard and a compatible monitor / TV. Joysticks & mouse can be emulated on the keyboard. You will probably want to attach a set of speakers of headphones, a real Amiga or USB mouse and a real Amiga joystick.
+To use this minimig core, you will at the minimum need an SD/SDHC card, formatted with the FAT32 filesystem, a PS/2 keyboard and a compatible monitor / TV. Joysticks & mouse can be emulated on the keyboard. You will probably want to attach a set of speakers or headphones, a real Amiga or USB mouse and a real Amiga joystick.
 
 ### Software
 
-To use the core, you will also need a Kickstart ROM image file, which you can obtain by copying Kickstart ROM IC from your actual Amiga, or by buying an [Amiga Forever](http://www.amigaforever.com/) software pack. The Kickstart image should be placed on the root of the SD card with the name KICK.ROM. Minimig also supports the [AROS](http://aros.sourceforge.net/) kickstart ROM replacement.
+To use the core, you will also need a Kickstart ROM image file, which you can obtain by copying Kickstart ROM IC from your actual Amiga, or by buying an [Amiga Forever](http://www.amigaforever.com/) software pack. The Kickstart image should be placed on the root of the SD card with the name KICK.ROM. Minimig also supports the [AROS](http://aros.sourceforge.net/) Kickstart ROM replacement.
 
 The minimig can read any ADF floppy images you place on the SD card. I recommend at least Workbench 1.3 or 3.1 (AmigaOS), some of the Amigas great games (I recommend Ruff'n'Tumble) or some of the amazing demos from the vast Amiga demoscene (like State of the Art from Spaceballs).
 
@@ -65,7 +65,7 @@ Rok Krajnc's page [somuch.guru](http://somuch.guru/).
 
 Further info about minimig can be found on the [Minimig Discussion Forum](http://www.minimig.net/).
 
-The Turbo Chameleon 64 - [Individual Computers]http://wiki.icomp.de/wiki/Chameleon
+The Turbo Chameleon 64 - [Individual Computers](http://wiki.icomp.de/wiki/Chameleon)
 
 MiST board support & other cores on the [MiST Project Page](https://github.com/mist-devel/mist-board/wiki)
 
@@ -81,7 +81,7 @@ This project contains code written by:
 * Gyorgy Szombathelyi
 * Dennis van Weeren
 
-All code is copyright © 2005 - 2020 and the property of its respective authors.
+All code is copyright © 2005 - 2021 and the property of its respective authors.
 
 
 ## License
@@ -122,7 +122,7 @@ Some minimig updates are published on the [Minimig Discussion Forum](http://www.
 
 ARM firmware updates and minimig-tc64 port changes by Christian Vogelsang ([minimig_tc64](https://github.com/cnvogelg/minimig_tc64)) and A.M. Robinson ([minimig_tc64](https://github.com/robinsonb5/minimig_tc64)).
 
-MiST board & firmware by Till Harbaum ([MiST](https://code.google.com/p/mist-board/)).
+MiST board & firmware by Till Harbaum ([MiST](https://github.com/mist-devel)).
 
-TG68K.C core by Tobias Gubener.
+TG68K.C core by Tobias Gubener ([TG68K.C](https://github.com/TobiFlex/TG68K.C)).
 
