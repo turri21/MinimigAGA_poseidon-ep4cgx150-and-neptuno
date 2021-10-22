@@ -99,6 +99,8 @@ module userio (
 parameter JOY0DAT     = 9'h00a;
 parameter JOY1DAT     = 9'h00c;
 parameter SCRDAT      = 9'h1f0;
+parameter POT0DAT     = 9'h012;
+parameter POT1DAT     = 9'h014;
 parameter POTINP      = 9'h016;
 parameter POTGO       = 9'h034;
 parameter JOYTEST     = 9'h036;
@@ -120,7 +122,13 @@ reg  [15:0] _xjoy2;       // synchronized joystick 2 signals
 reg  [15:0] _tjoy2;       // synchronized joystick 2 signals
 reg  [15:0] _djoy2;       // synchronized joystick 2 signals
 wire [15:0] _sjoy2;       // synchronized joystick 2 signals
-reg   [15:0] potreg;      // POTGO write
+reg  [15:0] potreg;       // POTGO write
+reg   [8:0] pot_cnt;
+wire        pot_cnt_en = pot_cnt == 452; // about one count / scanline
+reg   [7:0] pot0x;
+reg   [7:0] pot0y;
+reg   [7:0] pot1x;
+reg   [7:0] pot1y;
 wire  [15:0] mouse0dat;      //mouse counters for first mouse
 wire  [15:0] mouse1dat;      //mouse counters for second mouse
 wire  [7:0]  mouse0scr;   // mouse scroller
@@ -162,6 +170,36 @@ always @ (posedge clk) begin
       potreg <= #1 0;
     else if (reg_address_in[8:1]==POTGO[8:1])
       potreg[15:0] <= #1 data_in[15:0];
+    else
+      potreg[0] <= 0;
+  end
+end
+
+// POT[0/1]DAT registers
+always @ (posedge clk) begin
+  if (clk7_en) begin
+    if (reset)
+      pot_cnt <= 0;
+    else if (pot_cnt_en)
+      pot_cnt <= 0;
+    else
+      pot_cnt <= pot_cnt + 1'd1;
+  end
+end
+
+// button on the pot pins
+always @ (posedge clk) begin
+  if (clk7_en) begin
+    if (reset)
+      {pot0x, pot0y, pot1x, pot1y} <= 0;
+    else if (potreg[0])
+      {pot0x, pot0y, pot1x, pot1y} <= 0;
+    else if (pot_cnt_en) begin
+      if (!potcap[0]) pot0x <= pot0x + 1'd1;
+      if (!potcap[1]) pot0y <= pot0y + 1'd1;
+      if (!potcap[2]) pot1x <= pot1x + 1'd1;
+      if (!potcap[3]) pot1y <= pot1y + 1'd1;
+    end
   end
 end
 
@@ -402,6 +440,10 @@ always @(*) begin
     data_out[15:0] = dmouse1dat;
   else if (reg_address_in[8:1]==JOY1DAT[8:1])//read port 2 mouse
     data_out[15:0] = mouse1dat;
+  else if (reg_address_in[8:1]==POT0DAT[8:1])
+    data_out[15:0] = { pot0y, pot0x };
+  else if (reg_address_in[8:1]==POT1DAT[8:1])
+    data_out[15:0] = { pot1y, pot1x };
   else if (reg_address_in[8:1]==POTINP[8:1])//read mouse and joysticks extra buttons
     data_out[15:0] = {1'b0, potcap[3],
                       1'b0, potcap[2],
