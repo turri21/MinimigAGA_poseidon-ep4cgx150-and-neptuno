@@ -141,7 +141,6 @@ wire           _ram_ble2;     // sram lower byte select 2nd word
 wire           _ram_we;       // sram write enable
 wire           _ram_oe;       // sram output enable
 wire           _15khz;        // scandoubler disable
-wire           joy_emu_en;    // joystick emulation enable
 wire           sdo;           // SPI data output
 
 wire           ntsc;
@@ -215,7 +214,6 @@ assign sdctl_rst        = pll_locked;
 
 // minimig
 assign _15khz           = ~core_config[0];
-assign joy_emu_en       = 1'b1;
 
 assign LED              = ~led;
 
@@ -298,22 +296,22 @@ TG68K tg68k (
   .CACR_out     (tg68_CACR_out    ),
   .VBR_out      (tg68_VBR_out     ),
   // RTG signals
-	.rtg_addr(rtg_baseaddr),
-	.rtg_base(rtg_baseaddr2),
-	.rtg_vbend(rtg_vbend),
-	.rtg_ext(rtg_ext),
-	.rtg_pixelclock(rtg_pixelwidth),
-	.rtg_16bit(rtg_16bit),
-	.rtg_clut(rtg_clut),
-	.rtg_clut_idx(rtg_clut_idx),
-	.rtg_clut_r(rtg_clut_r),
-	.rtg_clut_g(rtg_clut_g),
-	.rtg_clut_b(rtg_clut_b),
-	.audio_ena(aud_ena_cpu),
-	.audio_buf(aud_addr[15]),
-	.audio_int(aud_int),
-	.host_req(tg68_host_req),
-	.host_ack(tg68_host_ack)
+  .rtg_addr(rtg_baseaddr),
+  .rtg_base(rtg_baseaddr2),
+  .rtg_vbend(rtg_vbend),
+  .rtg_ext(rtg_ext),
+  .rtg_pixelclock(rtg_pixelwidth),
+  .rtg_16bit(rtg_16bit),
+  .rtg_clut(rtg_clut),
+  .rtg_clut_idx(rtg_clut_idx),
+  .rtg_clut_r(rtg_clut_r),
+  .rtg_clut_g(rtg_clut_g),
+  .rtg_clut_b(rtg_clut_b),
+  .audio_ena(aud_ena_cpu),
+  .audio_buf(aud_addr[15]),
+  .audio_int(aud_int),
+  .host_req(tg68_host_req),
+  .host_ack(tg68_host_ack)
 );
 
 assign tg68_host_ack=tg68_host_req; // Prevent lockups on reads to not-yet-implemented Akiko registers.
@@ -336,8 +334,8 @@ sdram_ctrl sdram (
   .sd_ras       (SDRAM_nRAS       ),
   .sd_cas       (SDRAM_nCAS       ),
   // Control CPU (not used in MiST)
-	.hostce       (1'b0             ),
-	.hostwe       (1'b0             ),
+  .hostce       (1'b0             ),
+  .hostwe       (1'b0             ),
   // Fast RAM
   .cpuena       (tg68_cpuena      ),
   .cpuRD        (tg68_cout        ),
@@ -467,8 +465,6 @@ minimig minimig (
   ._joy2        (~joyb            ),  // joystick 2 [fire7:fire,up,down,left,right] (default joystick port)
   ._joy3        (~joyc            ),  // joystick 3 [fire7:fire,up,down,left,right]
   ._joy4        (~joyd            ),  // joystick 4 [fire7:fire,up,down,left,right]
-  .mouse_btn1   (1'b1             ), // mouse button 1
-  .mouse_btn2   (1'b1             ), // mouse button 2
   .mouse0_btn   (mouse0_buttons   ),  // mouse buttons for first mouse
   .mouse1_btn   (mouse1_buttons   ),  // mouse buttons for second mouse
   .mouse_idx    (mouse_idx        ),  // mouse index
@@ -480,10 +476,6 @@ minimig minimig (
   ._15khz       (_15khz           ),  // scandoubler disable
   .pwr_led      (led              ),  // power led
   .rtc          (rtc              ),
-  .msdat        (                 ),  // PS2 mouse data
-  .msclk        (                 ),  // PS2 mouse clk
-  .kbddat       (                 ),  // PS2 keyboard data
-  .kbdclk       (                 ),  // PS2 keyboard clk
   //host controller interface (SPI)
   ._scs         ( {SPI_SS4,SPI_SS3,SPI_SS2}  ),  // SPI chip select
   .direct_sdi   (SPI_DO           ),  // SD Card direct in  SPI_SDO
@@ -491,15 +483,15 @@ minimig minimig (
   .sdo          (minimig_sdo      ),  // SPI data output
   .sck          (SPI_SCK          ),  // SPI clock
   //video
-	.selcsync     (vga_selcsync     ),
-	._csync       (cs               ),  // horizontal sync
-	._hsync       (hs               ),  // horizontal sync
-	.hsyncpol     (hsyncpol         ),
-	._vsync       (vs               ),  // vertical sync
-	.vsyncpol     (vsyncpol         ),
-	.red          (red              ),  // red
-	.green        (green            ),  // green
-	.blue         (blue             ),  // blue
+  .selcsync     (vga_selcsync     ),
+  ._csync       (cs               ),  // horizontal sync
+  ._hsync       (hs               ),  // horizontal sync
+  .hsyncpol     (hsyncpol         ),
+  ._vsync       (vs               ),  // vertical sync
+  .vsyncpol     (vsyncpol         ),
+  .red          (red              ),  // red
+  .green        (green            ),  // green
+  .blue         (blue             ),  // blue
   //audio
   .left         (                 ),  // audio bitstream left
   .right        (                 ),  // audio bitstream right
@@ -604,7 +596,6 @@ always @(posedge clk_114) begin
 	end
 end
 
-reg vblank_d;
 reg linecompare_d;
 wire linecompare_trigger = rtg_linecompare & !linecompare_d;
 reg [3:0] linecompare_fillmask_ctr;
@@ -617,11 +608,10 @@ begin
 	vs_reg    <= #1 vs;
 	hs_reg    <= #1 hs;
 	linecompare_d<=rtg_linecompare;
-  vblank_d<=vblank_out;
 
-  // When we change the RTG address we must ensure any existing transaction has finished
+	// When we change the RTG address we must ensure any existing transaction has finished
 	if(|linecompare_fillmask_ctr)
-		linecompare_fillmask_ctr=linecompare_fillmask_ctr-1;
+		linecompare_fillmask_ctr=linecompare_fillmask_ctr-1'd1;
 	if(linecompare_trigger)
 		linecompare_fillmask_ctr=4'hf;
 

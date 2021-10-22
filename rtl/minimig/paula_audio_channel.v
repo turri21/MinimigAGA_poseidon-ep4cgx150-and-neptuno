@@ -148,7 +148,7 @@ always @(posedge clk) begin
       if(audlen==1 || audlen==0)
          silence<=1'b1;
     end else if (lencount && cck)//length counter count down
-      lencnt[15:0] <= (lencnt[15:0] - 1);
+      lencnt[15:0] <= (lencnt[15:0] - 1'd1);
     // Silence fix
     dmaena_d<=dmaena;
     if(dmaena_d==1'b1 && dmaena==1'b0) begin

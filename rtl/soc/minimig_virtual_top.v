@@ -782,8 +782,6 @@ minimig minimig
 	._joy2        (JOYB             ),  // joystick 2 [fire7:fire,up,down,left,right] (default joystick port)
 	._joy3        (JOYC             ),  // joystick 3 [fire7:fire,up,down,left,right]
 	._joy4        (JOYD             ),  // joystick 4 [fire7:fire,up,down,left,right]
-	.mouse_btn1   (1'b1             ), // mouse button 1
-	.mouse_btn2   (1'b1             ), // mouse button 2
 	//  .mouse_btn    (mouse_buttons    ),  // mouse buttons
 	.mouse0_btn   (3'b000           ),
 	.mouse1_btn   (3'b000           ),
