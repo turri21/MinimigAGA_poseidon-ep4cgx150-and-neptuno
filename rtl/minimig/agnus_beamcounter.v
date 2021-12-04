@@ -27,11 +27,12 @@
 module agnus_beamcounter
 (
 	input	clk,					// bus clock
-  input clk7_en,
+	input clk7_en,
 	input	reset,					// reset
+	input rd,	// Import read signal so we can guard against phantom writes to RTG
 	input	cck,					// CCK clock
 	input	ntsc,					// NTSC mode switch
-  input aga,
+	input aga,
 	input	ecs,					// ECS enable switch
 	input	a1k,					// enable A1000 VBL interrupt timing
 	input	[15:0] data_in,			// bus data in
@@ -143,7 +144,7 @@ always @ (posedge clk) begin
       beamcon0_sh <= #1 {10'b0, ~ntsc, 5'b0};
 	 end else if ((reg_address_in[8:1] == BEAMCON0[8:1]) && ecs) begin
 		// Write to shadow register only in RTG mode when lpendis or displaydual are high
-		if(data_in[13] || data_in[6])
+		if(!rd && (data_in[13] || data_in[6]))
 			beamcon0_sh <= #1 data_in;
 		else // Otherwise update the non-shadowed reg 
 			beamcon0_reg <= #1 data_in;

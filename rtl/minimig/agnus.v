@@ -462,6 +462,7 @@ agnus_beamcounter  bc1
   .clk(clk),
   .clk7_en(clk7_en),
   .reset(reset),
+  .rd(rd),
   .cck(cck),
   .ntsc(ntsc),
   .aga(aga),
