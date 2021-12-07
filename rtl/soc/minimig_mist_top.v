@@ -177,6 +177,7 @@ wire [ 16-1:0] joya;
 wire [ 16-1:0] joyb;
 wire [ 16-1:0] joyc;
 wire [ 16-1:0] joyd;
+wire [ 16-1:0] joy_ana;
 wire [  8-1:0] kbd_mouse_data;
 wire           kbd_mouse_strobe;
 wire           kms_level;
@@ -394,6 +395,7 @@ user_io user_io(
      .JOY1(joyb),
      .JOY2(joyc),
      .JOY3(joyd),
+     .JOY_ANA1(joy_ana),
      .RTC(rtc),
      .MOUSE0_BUTTONS(mouse0_buttons),
      .MOUSE1_BUTTONS(mouse1_buttons),
@@ -465,6 +467,7 @@ minimig minimig (
   ._joy2        (~joyb            ),  // joystick 2 [fire7:fire,up,down,left,right] (default joystick port)
   ._joy3        (~joyc            ),  // joystick 3 [fire7:fire,up,down,left,right]
   ._joy4        (~joyd            ),  // joystick 4 [fire7:fire,up,down,left,right]
+  .joy_ana      (joy_ana          ),  // analogue joystick (on the default joystick port)
   .mouse0_btn   (mouse0_buttons   ),  // mouse buttons for first mouse
   .mouse1_btn   (mouse1_buttons   ),  // mouse buttons for second mouse
   .mouse_idx    (mouse_idx        ),  // mouse index

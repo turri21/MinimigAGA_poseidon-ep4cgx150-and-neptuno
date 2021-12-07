@@ -196,6 +196,7 @@ module minimig
 	input	[15:0]_joy2,		//joystick 2 [fire7:fire,up,down,left,right] (default joystick port)
 	input	[15:0]_joy3,		//joystick 3 [fire7:fire,up,down,left,right]
 	input	[15:0]_joy4,		//joystick 4 [fire7:fire,up,down,left,right]
+	input	[15:0] joy_ana,
   input [2:0] mouse0_btn, // mouse buttons
   input [2:0] mouse1_btn, // mouse buttons
   input mouse_idx,       // mouse buttons
@@ -686,6 +687,7 @@ userio USERIO1
 	.aflock(aflock),
 	._joy1(_joy1),
 	._joy2(_joy2 & {10'b1111111111,kb_joy2}),
+	.joy_ana(joy_ana),
 	.mouse0_btn(mouse0_btn),
 	.mouse1_btn(mouse1_btn),
 	.mouse_idx(mouse_idx),

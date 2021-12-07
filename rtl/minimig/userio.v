@@ -49,6 +49,7 @@ module userio (
   input  wire           _fire1_dat,
   input  wire [ 16-1:0] _joy1,              // joystick 1 in (default mouse port)
   input  wire [ 16-1:0] _joy2,              // joystick 2 in (default joystick port)
+  input  wire [ 16-1:0] joy_ana,            // analogue joystick (default joystick port)
   input  wire           aflock,             // auto fire lock
   input  wire [  3-1:0] mouse0_btn,
   input  wire [  3-1:0] mouse1_btn,
@@ -123,8 +124,7 @@ reg  [15:0] _tjoy2;       // synchronized joystick 2 signals
 reg  [15:0] _djoy2;       // synchronized joystick 2 signals
 wire [15:0] _sjoy2;       // synchronized joystick 2 signals
 reg  [15:0] potreg;       // POTGO write
-reg   [8:0] pot_cnt;
-wire        pot_cnt_en = pot_cnt == 452; // about one count / scanline
+wire        pot_cnt_en = sol && !c1 && !c3; // one count / scanline
 reg   [7:0] pot0x;
 reg   [7:0] pot0y;
 reg   [7:0] pot1x;
@@ -141,7 +141,8 @@ wire  _mleft1;            //left mouse button
 wire  _mthird1;          //middle mouse button
 wire  _mright1;          //right mouse buttons
 reg    joy1enable;          //joystick 1 enable (mouse/joy switch)
-reg    joy2enable;          //joystick 2 enable when no osd
+wire   joy2enable;          //joystick 2 enable when no osd
+reg    mouse2enable;
 wire  osd_enable;          // OSD display enable
 wire  key_disable;        // Amiga keyboard disable
 reg    [7:0] t_osd_ctrl;      //JB: osd control lines
@@ -150,6 +151,7 @@ wire  [15:0] test_data;      //mouse counter test value
 wire  [1:0] autofire_config;
 reg   [1:0] autofire_cnt;
 wire  cd32pad;
+wire  anajoy;
 reg   autofire;
 reg   sel_autofire;     // select autofire and permanent fire
 wire  joy2_pin5;
@@ -176,29 +178,28 @@ always @ (posedge clk) begin
 end
 
 // POT[0/1]DAT registers
-always @ (posedge clk) begin
-  if (clk7_en) begin
-    if (reset)
-      pot_cnt <= 0;
-    else if (pot_cnt_en)
-      pot_cnt <= 0;
-    else
-      pot_cnt <= pot_cnt + 1'd1;
-  end
-end
+reg [3:0] potcnt; // is the POT counting?
 
 // button on the pot pins
 always @ (posedge clk) begin
   if (clk7_en) begin
-    if (reset)
+    if (reset) begin
       {pot0x, pot0y, pot1x, pot1y} <= 0;
-    else if (potreg[0])
+      potcnt <= 4'b0000;
+    end else if (potreg[0]) begin
       {pot0x, pot0y, pot1x, pot1y} <= 0;
+      potcnt <= 4'b1111;
+    end
     else if (pot_cnt_en) begin
       if (!potcap[0]) pot0x <= pot0x + 1'd1;
       if (!potcap[1]) pot0y <= pot0y + 1'd1;
-      if (!potcap[2]) pot1x <= pot1x + 1'd1;
-      if (!potcap[3]) pot1y <= pot1y + 1'd1;
+      if (anajoy) begin
+        if (potcnt[2] && joy_ana[15:8] != pot1y) pot1y <= pot1y + 1'd1; else potcnt[2] <= 0;
+        if (potcnt[3] && joy_ana[ 7:0] != pot1x) pot1x <= pot1x + 1'd1; else potcnt[3] <= 0;
+      end else begin
+        if (!potcap[2]) pot1x <= pot1x + 1'd1;
+        if (!potcap[3]) pot1y <= pot1y + 1'd1;
+      end
     end
   end
 end
@@ -213,17 +214,20 @@ always @ (posedge clk) begin
     if (reset)
       potcap <= #1 4'h0;
     else begin
-      if (cd32pad && ~joy2_pin5) begin
+      if (anajoy)
+        potcap[3] <= ~(potreg[15] & ~potreg[14]); // pin9
+      else if (cd32pad && ~joy2_pin5)
         potcap[3] <= #1 cd32pad2_reg[7];
-      end else begin
+      else
         potcap[3] <= #1 _mright1 & _djoy2[5] & ~(potreg[15] & ~potreg[14]);
-      end
-      potcap[2] <= #1 joy2_pin5;
-      if(joy1enable & cd32pad & ~joy1_pin5) begin
+
+      potcap[2] <= #1 joy2_pin5; // pin5
+
+      if(joy1enable & cd32pad & ~joy1_pin5)
         potcap[1] <= #1 cd32pad1_reg[7];
-      end else begin
+      else
         potcap[1] <= #1 _mright0 & _rmb & _djoy1[5] & ~(potreg[11] & ~potreg[10]);
-      end
+
       potcap[0] <= #1 _mthird0 & joy1_pin5;
     end
   end
@@ -323,15 +327,30 @@ always @ (posedge clk) begin
   end
 end
 
+wire _tpin4 = anajoy ? _tjoy2[5] : _tjoy2[0];
+wire _tpin3 = anajoy ? _tjoy2[4] : _tjoy2[1];
+wire _tpin2 = anajoy ?      1'b1 : _tjoy2[2];
+wire _tpin1 = anajoy ? _tjoy2[6] : _tjoy2[3];
+
+wire _dpin4 = anajoy ? _djoy2[5] : _djoy2[0];
+wire _dpin3 = anajoy ? _djoy2[4] : _djoy2[1];
+wire _dpin2 = anajoy ?      1'b1 : _djoy2[2];
+wire _dpin1 = anajoy ? _djoy2[6] : _djoy2[3];
+
 // port 2 joystick disable in osd or when second mouse left button is pressed
 always @ (posedge clk) begin
   if (clk7_en) begin
-    if (key_disable || !_mleft1)
-      joy2enable <= #1 0;
-    else if (!_xjoy2[4])
-      joy2enable <= #1 1;
+    if (reset)
+      mouse2enable <= 0;
+    else
+      if (!_mleft1)
+        mouse2enable <= 1;
+      else if (!_xjoy2[4])
+        mouse2enable <= 0;
   end
 end
+
+assign joy2enable = !mouse2enable && !key_disable;
 
 // autofire is permanent active if enabled, can be overwritten any time by normal fire button
 assign _sjoy2[5:0] = joy2enable ? {_xjoy2[5], sel_autofire ^ _xjoy2[4], _xjoy2[3:0]} : 6'b11_1111;
@@ -405,12 +424,12 @@ always @ (posedge clk) begin
   if (clk7_en) begin
     if (test_load)
       dmouse1dat[7:2] <= #1 test_data[7:2];
-    else if ((!_djoy2[0] && _tjoy2[0] && _tjoy2[2]) || (_djoy2[0] && !_tjoy2[0] && !_tjoy2[2]) || (!_djoy2[2] && _tjoy2[2] && !_tjoy2[0]) || (_djoy2[2] && !_tjoy2[2] && _tjoy2[0]))
+    else if ((!_dpin4 && _tpin4 && _tpin2) || (_dpin4 && !_tpin4 && !_tpin2) || (!_dpin2 && _tpin2 && !_tpin4) || (_dpin2 && !_tpin2 && _tpin4))
       dmouse1dat[7:0] <= #1 dmouse1dat[7:0] + 1'd1;
-    else if ((!_djoy2[0] && _tjoy2[0] && !_tjoy2[2]) || (_djoy2[0] && !_tjoy2[0] && _tjoy2[2]) || (!_djoy2[2] && _tjoy2[2] && _tjoy2[0]) || (_djoy2[2] && !_tjoy2[2] && !_tjoy2[0]))
+    else if ((!_dpin4 && _tpin4 && !_tpin2) || (_dpin4 && !_tpin4 && _tpin2) || (!_dpin2 && _tpin2 && _tpin4) || (_dpin2 && !_tpin2 && !_tpin4))
       dmouse1dat[7:0] <= #1 dmouse1dat[7:0] - 1'd1;
     else
-      dmouse1dat[1:0] <= #1 {!_djoy2[0], _djoy2[0] ^ _djoy2[2]};
+      dmouse1dat[1:0] <= #1 {!_dpin4, _dpin4 ^ _dpin2};
   end
 end
 
@@ -418,12 +437,12 @@ always @ (posedge clk) begin
   if (clk7_en) begin
     if (test_load)
       dmouse1dat[15:10] <= #1 test_data[15:10];
-    else if ((!_djoy2[1] && _tjoy2[1] && _tjoy2[3]) || (_djoy2[1] && !_tjoy2[1] && !_tjoy2[3]) || (!_djoy2[3] && _tjoy2[3] && !_tjoy2[1]) || (_djoy2[3] && !_tjoy2[3] && _tjoy2[1]))
+    else if ((!_dpin3 && _tpin3 && _tpin1) || (_dpin3 && !_tpin3 && !_tpin1) || (!_dpin1 && _tpin1 && !_tpin3) || (_dpin1 && !_tpin1 && _tpin3))
       dmouse1dat[15:8] <= #1 dmouse1dat[15:8] + 1'd1;
-    else if ((!_djoy2[1] && _tjoy2[1] && !_tjoy2[3]) || (_djoy2[1] && !_tjoy2[1] && _tjoy2[3]) || (!_djoy2[3] && _tjoy2[3] && _tjoy2[1]) || (_djoy2[3] && !_tjoy2[3] && !_tjoy2[1]))
+    else if ((!_dpin3 && _tpin3 && !_tpin1) || (_dpin3 && !_tpin3 && _tpin1) || (!_dpin1 && _tpin1 && _tpin3) || (_dpin1 && !_tpin1 && !_tpin3))
       dmouse1dat[15:8] <= #1 dmouse1dat[15:8] - 1'd1;
     else
-      dmouse1dat[9:8] <= #1 {!_djoy2[1], _djoy2[1] ^ _djoy2[3]};
+      dmouse1dat[9:8] <= #1 {!_dpin3, _dpin3 ^ _dpin1};
   end
 end
 
@@ -595,6 +614,7 @@ userio_osd osd1
   .cpu_config       (cpu_config),
   .autofire_config  (autofire_config),
   .cd32pad          (cd32pad),
+  .anajoy           (anajoy),
   .audio_filter_mode(audio_filter_mode),
   .pwr_led_dim_n    (pwr_led_dim_n),
   .usrrst           (usrrst),

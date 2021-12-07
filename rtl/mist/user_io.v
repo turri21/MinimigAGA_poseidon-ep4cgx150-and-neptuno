@@ -11,6 +11,8 @@ module user_io(
 	output [15:0] JOY1,
 	output [15:0] JOY2,
 	output [15:0] JOY3,
+	output reg   [15:0] JOY_ANA0,
+	output reg   [15:0] JOY_ANA1,
 
 	output [2:0] MOUSE0_BUTTONS,
 	output [2:0] MOUSE1_BUTTONS,
@@ -47,6 +49,7 @@ reg [31:0]    joystick_1;
 reg [31:0]    joystick_2;
 reg [31:0]    joystick_3;
 reg [31:0]    joystick_4;
+reg  [2:0]    stick_idx;
 reg [63:0]    rtc;
 
 assign JOY0 = joystick_0[15:0];
@@ -133,7 +136,7 @@ always @(posedge clk_sys) begin
 	// strobe is set whenever a valid byte has been received
 	kbd_mouse_strobe <= 0;
 
-	if (~spi_transfer_endD & spi_transfer_end) begin
+	if (spi_transfer_end) begin
 		abyte_cnt <= 8'd0;
 	end else if (spi_receiver_strobeD ^ spi_receiver_strobe) begin
 
@@ -189,6 +192,25 @@ always @(posedge clk_sys) begin
 					kbd_mouse_data <= spi_byte_in;
 					kbd_mouse_strobe <= 1;
 					kbd_mouse_strobe_level <= ~kbd_mouse_strobe_level;
+				end
+				// joystick analog
+				8'h1a: begin
+					// first byte is joystick index
+					if(abyte_cnt == 1)
+						stick_idx <= spi_byte_in[2:0];
+					else if(abyte_cnt == 2) begin
+						// second byte is x axis
+						if(stick_idx == 0)
+							JOY_ANA0[15:8] <= {~spi_byte_in[7], spi_byte_in[6:0]};
+						else if(stick_idx == 1)
+							JOY_ANA1[15:8] <= {~spi_byte_in[7], spi_byte_in[6:0]};
+					end else if(abyte_cnt == 3) begin
+						// third byte is y axis
+						if(stick_idx == 0)
+							JOY_ANA0[7:0] <= {~spi_byte_in[7], spi_byte_in[6:0]};
+						else if(stick_idx == 1)
+							JOY_ANA1[7:0] <= {~spi_byte_in[7], spi_byte_in[6:0]};
+					end
 				end
 				8'h22: if (abyte_cnt < 9) rtc[(abyte_cnt-1)<<3 +:8] <= spi_byte_in;
 				8'h15: status <= spi_byte_in;
