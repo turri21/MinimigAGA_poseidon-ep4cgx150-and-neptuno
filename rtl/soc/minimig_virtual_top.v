@@ -195,6 +195,7 @@ wire           _ram_ble2;     // sram lower byte select 2nd word
 wire           _ram_we;       // sram write enable
 wire           _ram_oe;       // sram output enable
 wire           _15khz;        // scandoubler disable
+wire           invertsync;    // helps some monitors with the scandoubled signal
 wire           sdo;           // SPI data output
 wire           vs;
 wire           hs;
@@ -416,8 +417,8 @@ assign osd_r = osd_pixel ? 2'b11 : 2'b00;
 assign osd_g = osd_pixel ? 2'b11 : 2'b00;
 assign osd_b = osd_pixel ? 2'b11 : 2'b10;
 assign VGA_CS           = cs_reg;
-assign VGA_VS           = vsyncpol ^ vs_reg;
-assign VGA_HS           = hsyncpol ^ hs_reg;
+assign VGA_VS           = (!rtg_ena & invertsync) ^ vsyncpol ^ vs_reg;
+assign VGA_HS           = (!rtg_ena & invertsync) ^ hsyncpol ^ hs_reg;
 //assign VGA_R[7:0]       = osd_window ? {osd_r,red_reg[7:2]} : red_reg[7:0];
 assign VGA_G[7:0]       = osd_window ? {osd_g,green_reg[7:2]} : green_reg[7:0];
 assign VGA_B[7:0]       = osd_window ? {osd_b,blue_reg[7:2]} : blue_reg[7:0];
@@ -901,6 +902,7 @@ cfide #(
 		.debugRxD(CTRL_RX),
 		.menu_button(MENU_BUTTON),
 		.scandoubler(_15khz),
+		.invertsync(invertsync),
 		
 		.audio_ena(aud_ena_host),
 		.audio_clear(aud_clear),

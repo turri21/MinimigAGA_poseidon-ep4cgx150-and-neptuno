@@ -55,6 +55,7 @@ entity cfide is
 		debugRxD : in std_logic;
 		menu_button	: in std_logic:='1';
 		scandoubler	: out std_logic;
+		invertsync : out std_logic;
 		
 		audio_ena : out std_logic;
 		audio_clear : out std_logic;
@@ -297,11 +298,13 @@ begin
 	if n_reset='0' then
 		reconfig<='0';
 		iecserial<='0';
+		invertsync<='0';
 	elsif rising_edge(clk_28) then
 		if req='1' and wr='1' then
 		
 			if platform_select='1' then	-- Write to platform registers
 				scandoubler<=d(0);
+				invertsync<=d(1);
 				reconfig<=d(3);
 				iecserial<=d(4);
 			end if;

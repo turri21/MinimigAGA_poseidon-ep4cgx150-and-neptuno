@@ -142,13 +142,13 @@ int ColdBoot()
 			key = OsdGetCtrl();
 			sprintf(s,"Got key: %x\n",key);
 			BootPrint(s);
-			if ((key == KEY_F1) || (key == KEY_F3))
+			if ((key == KEY_F1) || (key == KEY_F3) || (key == KEY_F5))
 			{
 				override=1;
 				config.chipset |= CONFIG_NTSC; // force NTSC mode if F1 or F3 pressed
 			}
 
-			if ((key == KEY_F2) || (key == KEY_F4))
+			if ((key == KEY_F2) || (key == KEY_F4) || (key == KEY_F6))
 			{
 				override=1;
 				config.chipset &= ~CONFIG_NTSC; // force PAL mode if F2 or F4 pressed
@@ -165,6 +165,12 @@ int ColdBoot()
 			{
 				override=1;
 				config.misc |= 1<<(PLATFORM_SCANDOUBLER);  // High byte of platform register
+			}
+
+			if ((key == KEY_F5 || (key == KEY_F6))
+			{
+				override=1;
+				config.misc |= 1<<(PLATFORM_INVERTSYNC);  // High byte of platform register
 			}
 
 			if(override)

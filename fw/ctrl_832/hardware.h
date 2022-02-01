@@ -85,6 +85,7 @@
 
 
 #define PLATFORM_SCANDOUBLER 0
+#define PLATFORM_INVERTSYNC 1
 
 // Write to this register to reconfigure the FPGA on devices which support such operations.
 #define RECONFIGURE (*(volatile unsigned short *)0xDEE016)
