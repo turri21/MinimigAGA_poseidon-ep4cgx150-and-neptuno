@@ -111,24 +111,24 @@ extern unsigned char fat32;
 
 
 // functions
-unsigned char FindDrive(void);
+unsigned int FindDrive(void);
 unsigned long GetFATLink(unsigned long cluster);
-unsigned char FileNextSector(fileTYPE *file) RAMFUNC;
-unsigned char FileOpen(fileTYPE *file, const char *name);
-unsigned char FileSeek(fileTYPE *file, unsigned long offset, unsigned long origin);
-unsigned char FileRead(fileTYPE *file, unsigned char *pBuffer) RAMFUNC;
-unsigned char FileWrite(fileTYPE *file, unsigned char *pBuffer);
-unsigned char FileReadEx(fileTYPE *file, unsigned char *pBuffer, unsigned long nSize);
+unsigned int FileNextSector(fileTYPE *file) RAMFUNC;
+unsigned int FileOpen(fileTYPE *file, const char *name);
+unsigned int FileSeek(fileTYPE *file, unsigned long offset, unsigned long origin);
+unsigned int FileRead(fileTYPE *file, unsigned char *pBuffer) RAMFUNC;
+unsigned int FileWrite(fileTYPE *file, unsigned char *pBuffer);
+unsigned int FileReadEx(fileTYPE *file, unsigned char *pBuffer, unsigned long nSize);
 
 unsigned long CurrentDirectory();
 int ValidateDirectory(unsigned long directory);
 unsigned long FindDirectory(unsigned long parent, const char *name); // Returns first cluster of directory.
 unsigned long FindDirectoryByCluster(unsigned long parent, unsigned long cluster); // Returns 1 if directory at <cluster> is found within directory at <parent>
 
-unsigned char FileCreate(unsigned long iDirectory, fileTYPE *file);
-unsigned char UpdateEntry(fileTYPE *file);
+unsigned int FileCreate(unsigned long iDirectory, fileTYPE *file);
+unsigned int UpdateEntry(fileTYPE *file);
 
-char ScanDirectory(unsigned long mode, char *extension, unsigned char options);
+int ScanDirectory(unsigned long mode, char *extension, unsigned char options);
 void ChangeDirectory(unsigned long iStartCluster);
 
 #endif

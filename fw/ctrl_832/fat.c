@@ -113,7 +113,7 @@ void bprintfl(const char *fmt,unsigned long l)
 
 
 // FindDrive() checks if a card is present and contains FAT formatted primary partition
-unsigned char FindDrive(void)
+unsigned int FindDrive(void)
 {
     buffered_fat_index = -1;
 
@@ -337,7 +337,7 @@ static int doLFN(DIRENTRY *pEntry,char *lfnbuf)
 }
 
 
-unsigned char FileOpen(fileTYPE *file, const char *name)
+unsigned int FileOpen(fileTYPE *file, const char *name)
 {
 //    unsigned long  iDirectory = 0;       // only root directory is supported
     DIRENTRY      *pEntry = NULL;        // pointer to current entry in sector buffer
@@ -680,7 +680,7 @@ int CompareDirEntries(DIRENTRY *pDirEntry1, char *pLFN1, DIRENTRY *pDirEntry2, c
     return(rc);
 }
 
-char ScanDirectory(unsigned long mode, char *extension, unsigned char options)
+int ScanDirectory(unsigned long mode, char *extension, unsigned char options)
 {
     DIRENTRY *pEntry = NULL;            // pointer to current entry in sector buffer
     unsigned long iDirectorySector;     // current sector of directory entries table
@@ -1352,13 +1352,19 @@ unsigned long GetFATLink(unsigned long cluster)
 }
 
 #pragma section_code_init
-RAMFUNC unsigned char FileNextSector(fileTYPE *file)
+RAMFUNC unsigned int FileNextSector(fileTYPE *file)
 {
     unsigned long sb;
     unsigned short i;
 
     // increment sector index
     file->sector++;
+
+	if(file->sector > (file->size>>9))	// Attempt to seek beyond the end of the file
+	{
+		FatalError(ERROR_FILESYSTEM,"NextSector() beyond end of file",file->sector,0);
+		return(0);
+	}
 
     // cluster's boundary crossed?
     if ((file->sector&~cluster_mask) == 0)
@@ -1391,7 +1397,7 @@ RAMFUNC unsigned char FileNextSector(fileTYPE *file)
 }
 #pragma section_no_code_init
 
-unsigned char FileSeek(fileTYPE *file, unsigned long offset, unsigned long origin)
+unsigned int FileSeek(fileTYPE *file, unsigned long offset, unsigned long origin)
 {
 // offset in sectors (512 bytes)
 // origin can be set to SEEK_SET or SEEK_CUR
@@ -1401,6 +1407,12 @@ unsigned char FileSeek(fileTYPE *file, unsigned long offset, unsigned long origi
 
     if (origin == SEEK_CUR)
         offset += file->sector;
+
+	if(offset > (file->size>>9))	// Attempt to seek beyond the end of the file
+	{
+		FatalError(ERROR_FILESYSTEM,"Seek() beyond end of file",file->sector,0);
+		return(0);
+	}
 
     if (file->sector > offset) // current filepointer is beyond requested position
     { // so move it backwards
@@ -1459,7 +1471,7 @@ unsigned char FileSeek(fileTYPE *file, unsigned long offset, unsigned long origi
 }
 
 #pragma section_code_init
-RAMFUNC unsigned char FileRead(fileTYPE *file, unsigned char *pBuffer) 
+RAMFUNC unsigned int FileRead(fileTYPE *file, unsigned char *pBuffer) 
 {
     unsigned long sb;
 
@@ -1474,7 +1486,7 @@ RAMFUNC unsigned char FileRead(fileTYPE *file, unsigned char *pBuffer)
 }
 #pragma section_no_code_init
 
-unsigned char FileReadEx(fileTYPE *file, unsigned char *pBuffer, unsigned long nSize)
+unsigned int FileReadEx(fileTYPE *file, unsigned char *pBuffer, unsigned long nSize)
 {
     unsigned long sb;
     unsigned long bc; // block count of single multisector read operation
@@ -1501,7 +1513,7 @@ unsigned char FileReadEx(fileTYPE *file, unsigned char *pBuffer, unsigned long n
 }
 
 
-unsigned char FileWrite(fileTYPE *file,unsigned char *pBuffer)
+unsigned int FileWrite(fileTYPE *file,unsigned char *pBuffer)
 {
     unsigned long sector;
 
@@ -1516,7 +1528,7 @@ unsigned char FileWrite(fileTYPE *file,unsigned char *pBuffer)
 }
 
 
-unsigned char FileCreate(unsigned long iDirectory, fileTYPE *file)
+unsigned int FileCreate(unsigned long iDirectory, fileTYPE *file)
 {
     // TODO: deleted entries are not empty, they have to be cleared first
     /*
@@ -1676,7 +1688,7 @@ unsigned char FileCreate(unsigned long iDirectory, fileTYPE *file)
 
 
 // changing of allocated cluster number is not supported - new size must be within current cluster number
-unsigned char UpdateEntry(fileTYPE *file)
+unsigned int UpdateEntry(fileTYPE *file)
 {
     DIRENTRY *pEntry;
 

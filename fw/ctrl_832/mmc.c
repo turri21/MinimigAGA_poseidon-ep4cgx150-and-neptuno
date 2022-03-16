@@ -36,12 +36,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //#include "firmware.h"
 
 // variables
-unsigned char crc;
-unsigned long timeout;
-unsigned char response;
-unsigned char CardType;
+static int sd_lbas;
+static unsigned char crc;
+static unsigned long timeout;
+static unsigned char response;
+static unsigned char CardType;
 
-unsigned char CSDData[16];
+static unsigned char CSDData[16];
 
 // internal functions
 void MMC_CRC(unsigned char c);
@@ -95,14 +96,8 @@ unsigned char MMC_Init(void)
                                 printf("CMD58 (READ_OCR) failed!\r");
 
                             DisableCard();
-
-                            // set appropriate SPI speed
-//                            if (GetSPIMode() == SPIMODE_FAST)
-//                                AT91C_SPI_CSR[0] = AT91C_SPI_CPOL | (2 << 8); // 24 MHz SPI clock (max 25 MHz for SDHC card)
-								SPI_fast();
-//                            else
-//                                AT91C_SPI_CSR[0] = AT91C_SPI_CPOL | (6 << 8); // 8 MHz SPI clock (no SPI mod)
-//								SPI_slow();
+							SPI_fast();
+							MMC_GetCapacity();
                             return(CardType);
                         }
                     }
@@ -137,14 +132,9 @@ unsigned char MMC_Init(void)
 
                             DisableCard();
 
-                            // set appropriate SPI speed
-//                            if (GetSPIMode() == SPIMODE_FAST)
-//                                AT91C_SPI_CSR[0] = AT91C_SPI_CPOL | (2 << 8); // 24 MHz SPI clock (max 25 MHz for SD card)
-								SPI_fast();
-//                            else
-//                                AT91C_SPI_CSR[0] = AT91C_SPI_CPOL | (6 << 8); // 8 MHz SPI clock (no SPI mod)
-//								SPI_slow();
+							SPI_fast();
                             CardType = CARDTYPE_SD;
+							MMC_GetCapacity();
 
                             return(CardType);
                         }
@@ -174,16 +164,9 @@ unsigned char MMC_Init(void)
 
                 DisableCard();
 
-                // set appropriate SPI speed
-//                if (GetSPIMode() == SPIMODE_FAST)
-//                    AT91C_SPI_CSR[0] = AT91C_SPI_CPOL | (3 << 8); // 16 MHz SPI clock (max 20 MHz for MMC card)
-					SPI_fast();
-//                else
-//                    AT91C_SPI_CSR[0] = AT91C_SPI_CPOL | (6 << 8); // 8 MHz SPI clock (no SPI mod)
-//					SPI_slow();
-
+				SPI_fast();
                 CardType = CARDTYPE_MMC;
-
+				MMC_GetCapacity();
                 return(CardType);
             }
         }
@@ -207,6 +190,12 @@ unsigned char MMC_Read(unsigned long lba, unsigned char *pReadBuffer)
     unsigned long i;
 //    unsigned long t;
 	unsigned char *p;
+
+    if(lba>=sd_lbas)
+	{
+		FatalError(ERROR_SDCARD,"Read beyond end of device.",lba,sd_lbas);
+		return(0);
+	}
 
     if (CardType != CARDTYPE_SDHC) // SDHC cards are addressed in sectors not bytes
         lba = lba << 9; // otherwise convert sector adddress to byte address
@@ -262,7 +251,7 @@ unsigned char MMC_Read(unsigned long lba, unsigned char *pReadBuffer)
 #pragma section_no_code_init
 
 // Read CSD register
-unsigned char MMC_GetCSD()
+static unsigned char MMC_GetCSD()
 {
 	int i;
     EnableCard();
@@ -309,6 +298,7 @@ unsigned long MMC_GetCapacity()
 			result|=CSDData[8]<<18;
 			result|=CSDData[9]<<10;
 			result+=1024;
+			sd_lbas=result;
 			return(result);
 	}
 	else
@@ -323,6 +313,7 @@ unsigned long MMC_GetCapacity()
 			++result;
 			result<<=cmult+2;
 			result*=blocksize;	// Scale by the number of 512-byte chunks per block.
+			sd_lbas=result;
 			return(result);
     }
 }
@@ -337,6 +328,13 @@ unsigned char MMC_ReadMultiple(unsigned long lba, unsigned char *pReadBuffer, un
 //    unsigned long t;
 	unsigned char *p;
 //                printf("CMD18 (READ_MULTIPLE_BLOCK)");
+
+    if((lba+nBlockCount)>=sd_lbas)
+	{
+		FatalError(ERROR_SDCARD,"ReadM beyond end of device.",lba+nBlockCount,sd_lbas);
+		return(0);
+	}
+
     if (CardType != CARDTYPE_SDHC) // SDHC cards are addressed in sectors not bytes
         lba = lba << 9; // otherwise convert sector adddress to byte address
     EnableCard();
@@ -399,6 +397,12 @@ unsigned char MMC_ReadMultiple(unsigned long lba, unsigned char *pReadBuffer, un
 unsigned char MMC_Write(unsigned long lba, unsigned char *pWriteBuffer)
 {
     unsigned long i;
+    
+    if(lba>=sd_lbas)
+	{
+		FatalError(ERROR_SDCARD,"Read beyond end of device.",lba,sd_lbas);
+		return(0);
+	}
 
    if (CardType != CARDTYPE_SDHC) // SDHC cards are addressed in sectors not bytes
         lba = lba << 9; // otherwise convert sector adddress to byte address
