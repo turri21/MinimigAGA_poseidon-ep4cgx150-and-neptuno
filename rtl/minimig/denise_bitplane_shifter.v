@@ -113,7 +113,7 @@ always @ (*) begin
   end else if (hires) begin
     sh_select = {aga, scroll[0], 1'b1};
   end else begin
-    sh_select = {aga, scroll[1:0]};
+    sh_select = {1'b0, scroll[1:0]} + aga ? 3'd3 : 3'b0;
   end
 end
 
