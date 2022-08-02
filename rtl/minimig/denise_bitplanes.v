@@ -90,7 +90,7 @@ always @(hpos)
   endcase
 
 always @(hpos)
-  case (hpos[4:3])
+  case (hpos[4:3]) // AMR - FIXME - will probably need to adjust these too.
     2'b00 : extra_delay_f12 = 8'b00_0000_00;
     2'b01 : extra_delay_f12 = 8'b01_1000_00;
     2'b10 : extra_delay_f12 = 8'b01_0000_00;
@@ -98,11 +98,23 @@ always @(hpos)
   endcase
 
 always @(hpos)
-  case (hpos[5:4])
-    2'b00 : extra_delay_f3 = 8'b00_0000_00;
-    2'b01 : extra_delay_f3 = 8'b11_0000_00;
-    2'b10 : extra_delay_f3 = 8'b10_0000_00;
-    2'b11 : extra_delay_f3 = 8'b01_0000_00;
+  case (hpos[5:2]) // AMR - adjust fetch offsets
+    4'b0000 : extra_delay_f3 = 8'b00_0000_00;
+    4'b0001 : extra_delay_f3 = 8'b11_1100_00;
+    4'b0010 : extra_delay_f3 = 8'b11_1000_00;
+    4'b0011 : extra_delay_f3 = 8'b11_0100_00;
+    4'b0100 : extra_delay_f3 = 8'b11_0000_00;
+    4'b0101 : extra_delay_f3 = 8'b10_1100_00;
+    4'b0110 : extra_delay_f3 = 8'b10_1000_00;
+    4'b0111 : extra_delay_f3 = 8'b10_0100_00;
+    4'b1000 : extra_delay_f3 = 8'b10_0000_00;
+    4'b1001 : extra_delay_f3 = 8'b01_1100_00;
+    4'b1010 : extra_delay_f3 = 8'b01_1000_00;
+    4'b1011 : extra_delay_f3 = 8'b01_0100_00;
+    4'b1100 : extra_delay_f3 = 8'b01_0000_00;
+    4'b1101 : extra_delay_f3 = 8'b00_1100_00;
+    4'b1110 : extra_delay_f3 = 8'b00_1000_00;
+    4'b1111 : extra_delay_f3 = 8'b00_0100_00;
   endcase
 
 always @ (posedge clk) begin
