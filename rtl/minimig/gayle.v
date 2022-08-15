@@ -245,9 +245,9 @@ assign sector_count_dec_in  = pio_in & fifo_last_out & sel_fifo & rd & packet_st
 assign sector_count_dec_out = pio_out & fifo_last_in & sel_fifo & hwr & lwr & packet_state == PACKET_IDLE;
 
 // task file register control
-assign tfr_we =  packet_last ? 1'b1 : bsy ? hdd_wr : sel_tfr & hwr;
-assign tfr_sel = packet_last ? 3'd2 : bsy ? hdd_addr : address_in[4:2];
-assign tfr_in =  packet_last ? 8'h03: bsy ? hdd_data_out[7:0] : data_in[15:8];
+assign tfr_we =  (pio_in & packet_last) ? 1'b1 : bsy ? hdd_wr : sel_tfr & hwr;
+assign tfr_sel = (pio_in & packet_last) ? 3'd2 : bsy ? hdd_addr : address_in[4:2];
+assign tfr_in =  (pio_in & packet_last) ? 8'h03: bsy ? hdd_data_out[7:0] : data_in[15:8];
 
 // input multiplexer for SPI host
 assign hdd_data_in = tfr_sel==0 ? fifo_data_out : {7'h0, dev[1], tfr_out};
@@ -279,11 +279,13 @@ always @(posedge clk)
 			packet_count[6:0] <= hdd_data_out[7:1];
 		else if (hdd_wr && hdd_addr == 5)
 			packet_count[14:7] <= hdd_data_out;
+		else if (busy && hdd_status_wr && hdd_data_out[5] && packet_state == PACKET_IDLE)
+			packet_count <= 15'd6; // IDLE->WAITCMD transition, expect 6 words of packet command
 		else if (packet_count_dec)
 			packet_count <= packet_count - 1'd1;
 	end
 
-assign packet_count_dec = packet_state == PACKET_PROCESSCMD & sel_fifo & rd;
+assign packet_count_dec = (packet_state == PACKET_WAITCMD || packet_state == PACKET_PROCESSCMD) & sel_fifo & ((pio_in & rd) | (pio_out & hwr & lwr));
 assign packet_last = packet_state == PACKET_PROCESSCMD && packet_count == 1 && packet_count_dec;
 
 // IDE interrupt enable register
@@ -400,7 +402,7 @@ always @(posedge clk)
 	end
 
 assign drq = (fifo_full & pio_in) | (~fifo_full & pio_out & sector_count != 0) | 
-             (packet_state == PACKET_PROCESSCMD & packet_count != 0 & !busy); // HDD data request status bit
+             (packet_state == PACKET_PROCESSCMD & packet_count != 0 & !busy & pio_in); // HDD data request status bit
 
 // error status
 always @(posedge clk)
@@ -433,6 +435,7 @@ gayle_fifo SECBUF1
 	.rd(fifo_rd),
 	.wr(fifo_wr),
 	.packet_state(packet_state),
+	.packet_out_full((packet_state == PACKET_WAITCMD || packet_state == PACKET_PROCESSCMD) && pio_out && packet_count == 0),
 	.full(fifo_full),
 	.empty(fifo_empty),
 	.last_out(fifo_last_out),

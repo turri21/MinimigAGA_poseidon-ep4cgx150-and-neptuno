@@ -8,6 +8,7 @@ module gayle_fifo
 	input	rd,						// read from fifo
 	input	wr,						// write to fifo
 	input [1:0] packet_state,
+	input   packet_out_full, // full packet is written by CPU
 	output	full,					// fifo is full
 	output	empty,					// fifo is empty
 	output	last_out,				// the last word of a sector is being read
@@ -74,7 +75,7 @@ assign empty = empty_rd | empty_wr;
 // this signal is activated when 512th byte is written to the empty fifo
 // then it's deactivated when 512th byte is read from the fifo (hysteresis)
 // special handlig of packet commands
-assign full = (inptr[12:8] != outptr[12:8] || packet_state == PACKET_WAITCMD && inptr == 6) ? 1'b1 : 1'b0;
+assign full = (inptr[12:8] != outptr[12:8] || packet_out_full) ? 1'b1 : 1'b0;
 
 assign last_out = outptr[7:0] == 8'hFF ? 1'b1 : 1'b0;
 assign last_in  = inptr [7:0] == 8'hFF ? 1'b1 : 1'b0;
