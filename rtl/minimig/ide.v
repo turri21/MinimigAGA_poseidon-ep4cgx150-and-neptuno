@@ -138,6 +138,7 @@ wire       packet_state_change;
 reg [12:0] packet_count;
 wire       packet_in_last;
 
+`ifdef IDE_DEBUG
 // cmd/status debug
 reg [7:0] status_dbg  /* synthesis noprune */;
 reg [7:0] dbg_ide_cmd /* synthesis noprune */;
@@ -160,6 +161,7 @@ always @(posedge clk) begin
 		end
 	end
 end
+`endif
 
 // HDD status register bits
 assign bsy = busy & ~drq;
@@ -235,7 +237,7 @@ always @(posedge clk)
 		else if (hdd_wr && hdd_addr == 5)
 			packet_count[12:7] <= hdd_data_out[5:0];
 		else if (packet_state_change && packet_state == PACKET_IDLE)
-			packet_count <= 15'd6; // IDLE->WAITCMD transition, expect 6 words of packet command
+			packet_count <= 13'd6; // IDLE->WAITCMD transition, expect 6 words of packet command
 	end
 
 // status register (write only from SPI host)
