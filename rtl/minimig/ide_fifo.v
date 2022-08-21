@@ -69,7 +69,7 @@ assign empty = empty_rd | empty_wr;
 // special handlig of packet commands
 assign full = (inptr[12:8] != outptr[12:8] && !packet_in && !packet_out) ||
               (packet_in && inptr == packet_count && inptr != outptr) ||
-							(packet_out && inptr == packet_count /*&& inptr != outptr*/);
+              (packet_out && inptr == packet_count /*&& inptr != outptr*/);
 assign packet_in_last = packet_in && inptr == packet_count && inptr == outptr && inptr != 0;
 
 assign last_out = outptr[7:0] == 8'hFF ? 1'b1 : 1'b0;

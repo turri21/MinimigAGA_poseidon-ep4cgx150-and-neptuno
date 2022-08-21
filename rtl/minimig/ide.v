@@ -137,6 +137,8 @@ localparam PACKET_PROCESSCMD = 2;
 wire       packet_state_change;
 reg [12:0] packet_count;
 wire       packet_in_last;
+wire       packet_in;
+wire       packet_out;
 
 `ifdef IDE_DEBUG
 // cmd/status debug
@@ -333,7 +335,7 @@ always @(posedge clk)
 			                packet_state == PACKET_WAITCMD ? PACKET_PROCESSCMD : packet_state;
 	end
 
-assign drq = (fifo_full & pio_in) | (~fifo_full & pio_out & sector_count != 0); // HDD data request status bit
+assign drq = (fifo_full & pio_in) | (~fifo_full & pio_out & (sector_count != 0 || packet_out)); // HDD data request status bit
 
 // error status
 always @(posedge clk)
@@ -355,6 +357,9 @@ assign fifo_data_in = pio_in ? hdd_data_out : data_in;
 assign fifo_rd = pio_out ? hdd_data_rd : sel_fifo & rd;
 assign fifo_wr = pio_in ? hdd_data_wr : sel_fifo & hwr & lwr;
 
+assign packet_in = packet_state == PACKET_PROCESSCMD && pio_in;
+assign packet_out = packet_state == PACKET_WAITCMD || (packet_state == PACKET_PROCESSCMD && pio_out);
+
 //sector data buffer (FIFO)
 ide_fifo SECBUF1
 (
@@ -365,8 +370,8 @@ ide_fifo SECBUF1
 	.data_out(fifo_data_out),
 	.rd(fifo_rd),
 	.wr(fifo_wr),
-	.packet_in(packet_state == PACKET_PROCESSCMD && pio_in),
-	.packet_out(packet_state == PACKET_WAITCMD || (packet_state == PACKET_PROCESSCMD && pio_out)),
+	.packet_in(packet_in),
+	.packet_out(packet_out),
 	.packet_count(packet_count),
 	.packet_in_last(packet_in_last),
 	.full(fifo_full),
