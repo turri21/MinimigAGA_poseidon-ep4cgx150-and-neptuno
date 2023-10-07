@@ -27,7 +27,18 @@ module user_io(
 	output [3:0] CONF,
 	output [7:0] STATUS,
 
-	output [63:0] RTC
+	output [63:0] RTC,
+
+	// i2c bridge
+	output reg          i2c_start,
+	output reg          i2c_read,
+	output reg    [6:0] i2c_addr,
+	output reg    [7:0] i2c_subaddr,
+	output reg    [7:0] i2c_dout,
+	input         [7:0] i2c_din,
+	input               i2c_ack,
+	input               i2c_end,
+	input               hdmi_hiclk // HDMI PCLK > 80 MHz
 );
 
 reg [6:0]     sbuf;
@@ -84,11 +95,34 @@ always@(posedge SPI_CLK or posedge SPI_SS_IO) begin
 	end
 end
 
-always@(negedge SPI_CLK or posedge SPI_SS_IO) begin
+reg [7:0] spi_byte_out;
+
+always@(negedge SPI_CLK or posedge SPI_SS_IO) begin : spi_byteout
 	if(SPI_SS_IO == 1) begin
-	   SPI_MISO <= 1'bZ;
+		SPI_MISO <= 1'bZ;
 	end else begin
-		SPI_MISO <= CORE_TYPE[~bit_cnt];
+		SPI_MISO <= spi_byte_out[~bit_cnt];
+	end
+end
+
+always@(posedge SPI_CLK or posedge SPI_SS_IO) begin : spi_transmitter
+
+	if(SPI_SS_IO == 1) begin
+		spi_byte_out <= CORE_TYPE;
+	end else begin
+		// read the command byte to choose the response
+		if(bit_cnt == 7) begin
+			if(!byte_cnt) cmd <= {sbuf, SPI_MOSI};
+
+			spi_byte_out <= 0;
+			case({(!byte_cnt) ? {sbuf, SPI_MOSI} : cmd})
+			// i2c
+			8'h31:
+				if (byte_cnt == 0) spi_byte_out <= {5'd0, hdmi_hiclk, i2c_ack, i2c_end};
+				else spi_byte_out <= i2c_din;
+			default: ;
+			endcase
+		end
 	end
 end
 
@@ -135,6 +169,8 @@ always @(posedge clk_sys) begin
 
 	// strobe is set whenever a valid byte has been received
 	kbd_mouse_strobe <= 0;
+
+	i2c_start <= 0;
 
 	if (spi_transfer_end) begin
 		abyte_cnt <= 8'd0;
@@ -214,6 +250,10 @@ always @(posedge clk_sys) begin
 				end
 				8'h22: if (abyte_cnt < 9) rtc[(abyte_cnt-1)<<3 +:8] <= spi_byte_in;
 				8'h15: status <= spi_byte_in;
+				// I2C bridge
+				8'h30: if(abyte_cnt == 1) {i2c_addr, i2c_read} <= spi_byte_in;
+				       else if (abyte_cnt == 2) i2c_subaddr <= spi_byte_in;
+				       else if (abyte_cnt == 3) begin i2c_dout <= spi_byte_in; i2c_start <= 1; end
 			endcase
 		end
 	end

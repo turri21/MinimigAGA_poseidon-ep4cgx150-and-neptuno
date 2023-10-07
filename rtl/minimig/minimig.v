@@ -270,6 +270,7 @@ module minimig
   output  hd_frd,
   output  hblank_out,
   output  vblank_out,
+  output  blank_out,
   output  osd_blank_out,	// Let the toplevel dither module handle drawing the OSD.
   output  osd_pixel_out,
   output  rtg_ena,
@@ -371,9 +372,10 @@ wire		index;					//disk index interrupt
 
 //local video signals
 wire		blank;					//blanking signal
+wire		cblank;         //blanking from Denise
 wire		sol;						//start of video line
 wire		sof;						//start of video frame
-wire     vbl_int;					// vertical blanking interrupt
+wire		vbl_int;				// vertical blanking interrupt
 wire		strhor_denise;			//horizontal strobe for Denise
 wire		strhor_paula;			//horizontal strobe for Paula
 wire		[7:0]red_i;				//denise red (internal)
@@ -770,6 +772,7 @@ denise DENISE1
   .chip48(chip48),
 	.data_out(denise_data_out),
 	.blank(blank),
+	.blank_out(cblank),
 	.red(red_i),
 	.green(green_i),
 	.blue(blue_i),
@@ -799,12 +802,14 @@ amber AMBER1
 	._hsync_in(_hsync_i),
 	._vsync_in(_vsync_i),
 	._csync_in(_csync_i),
+	.blank_in(cblank),
 	.red_out(red),
 	.blue_out(blue),
 	.green_out(green),
 	._hsync_out(_hsync),
 	._vsync_out(_vsync),
 	._csync_out(_csync),
+	.blank_out(blank_out),
 	.selcsync(selcsync),
 	.osd_blank_out(osd_blank_out),
 	.osd_pixel_out(osd_pixel_out)

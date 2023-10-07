@@ -28,9 +28,22 @@ module minimig_mist_top (
   // VGA
   output reg            VGA_HS,     // VGA H_SYNC
   output reg            VGA_VS,     // VGA V_SYNC
-  output reg  [  6-1:0] VGA_R,      // VGA Red[5:0]
-  output reg  [  6-1:0] VGA_G,      // VGA Green[5:0]
-  output reg  [  6-1:0] VGA_B,      // VGA Blue[5:0]
+  output reg  [ VGA_WIDTH-1:0] VGA_R,      // VGA Red
+  output reg  [ VGA_WIDTH-1:0] VGA_G,      // VGA Green
+  output reg  [ VGA_WIDTH-1:0] VGA_B,      // VGA Blue
+`ifdef MINIMIG_USE_HDMI
+  output                HDMI_RST,
+  output reg      [7:0] HDMI_R,
+  output reg      [7:0] HDMI_G,
+  output reg      [7:0] HDMI_B,
+  output reg            HDMI_HS,
+  output reg            HDMI_VS,
+  output                HDMI_PCLK,
+  output reg            HDMI_DE,
+  inout                 HDMI_SDA,
+  inout                 HDMI_SCL,
+  input                 HDMI_INT,
+`endif
   // SDRAM
   inout  wire [ 16-1:0] SDRAM_DQ,   // SDRAM Data bus 16 Bits
   output wire [ 13-1:0] SDRAM_A,    // SDRAM Address bus 13 Bits
@@ -43,16 +56,50 @@ module minimig_mist_top (
   output wire [  2-1:0] SDRAM_BA,   // SDRAM Bank Address
   output wire           SDRAM_CLK,  // SDRAM Clock
   output wire           SDRAM_CKE,  // SDRAM Clock Enable
+`ifdef MINIMIG_DUAL_SDRAM
+  inout  wire [ 16-1:0] SDRAM2_DQ,  // SDRAM Data bus 16 Bits
+  output wire [ 13-1:0] SDRAM2_A,   // SDRAM Address bus 13 Bits
+  output wire           SDRAM2_DQML,// SDRAM Low-byte Data Mask
+  output wire           SDRAM2_DQMH,// SDRAM High-byte Data Mask
+  output wire           SDRAM2_nWE, // SDRAM Write Enable
+  output wire           SDRAM2_nCAS,// SDRAM Column Address Strobe
+  output wire           SDRAM2_nRAS,// SDRAM Row Address Strobe
+  output wire           SDRAM2_nCS, // SDRAM Chip Select
+  output wire [  2-1:0] SDRAM2_BA,  // SDRAM Bank Address
+  output wire           SDRAM2_CLK, // SDRAM Clock
+  output wire           SDRAM2_CKE, // SDRAM Clock Enable
+`endif
   // MINIMIG specific
   output wire           AUDIO_L,    // sigma-delta DAC output left
   output wire           AUDIO_R,    // sigma-delta DAC output right
+`ifdef MINIMIG_I2S_AUDIO
+  output                I2S_BCK,
+  output                I2S_LRCK,
+  output                I2S_DATA,
+`endif
+`ifdef MINIMIG_I2S_AUDIO_HDMI
+  output                HDMI_MCLK,
+  output                HDMI_BCK,
+  output                HDMI_LRCK,
+  output                HDMI_SDATA,
+`endif
+`ifdef MINIMIG_SPDIF_AUDIO
+  output                SPDIF,
+`endif
   // SPI
   inout wire            SPI_DO,     // inout
   input wire            SPI_DI,
   input wire            SPI_SCK,
   input wire            SPI_SS2,    // fpga
   input wire            SPI_SS3,    // OSD
+`ifndef MINIMIG_NO_DIRECT_UPLOAD
   input wire            SPI_SS4,    // "sniff" mode
+`endif
+`ifdef MINIMIG_QSPI
+  input wire            QCSn,
+  input wire            QSCK,
+  input wire    [4-1:0] QDAT,
+`endif
   input wire            CONF_DATA0  // SPI_SS for user_io
 );
 
@@ -60,12 +107,20 @@ module minimig_mist_top (
 ////////////////////////////////////////
 // internal signals                   //
 ////////////////////////////////////////
+`ifdef MINIMIG_NO_DIRECT_UPLOAD
+wire           SPI_SS4 = 1;
+`endif
+
+`ifdef MINIMIG_VGA_8BIT
+localparam VGA_WIDTH = 8;
+`else
+localparam VGA_WIDTH = 6;
+`endif
 
 // clock
 wire           pll_in_clk;
 wire           clk_114;
 wire           clk_28;
-wire           clk_sdram;
 wire           clk_vid;
 wire           pll_locked;
 wire           clk7_en;
@@ -116,7 +171,8 @@ wire           aga;
 wire           cache_inhibit;
 wire           cacheline_clr;
 wire [ 32-1:0] tg68_cad;
-wire [  7-1:0] tg68_cpustate;
+wire   [  3:0] tg68_cpustate;
+wire           tg68_chipset_ramsel;
 wire           tg68_nrst_out;
 wire           tg68_clds;
 wire           tg68_cuds;
@@ -170,6 +226,12 @@ wire [  4-1:0] sdram_cs;
 wire [  2-1:0] sdram_dqm;
 wire [  2-1:0] sdram_ba;
 
+`ifdef MINIMIG_DUAL_SDRAM
+wire [  4-1:0] sdram2_cs;
+wire [  2-1:0] sdram2_dqm;
+wire [  2-1:0] sdram2_ba;
+`endif
+
 // mist
 wire           user_io_sdo;
 wire           minimig_sdo;
@@ -194,17 +256,35 @@ wire           force_csync;
 wire     [1:0] clock_override;
 wire           clock_ntsc;
 
+`ifdef MINIMIG_USE_HDMI
+wire        i2c_start;
+wire        i2c_read;
+wire  [6:0] i2c_addr;
+wire  [7:0] i2c_subaddr;
+wire  [7:0] i2c_dout;
+wire  [7:0] i2c_din;
+wire        i2c_ack;
+wire        i2c_end;
+`endif
+
 ////////////////////////////////////////
 // toplevel assignments               //
 ////////////////////////////////////////
 
 // SDRAM
 assign SDRAM_CKE        = 1'b1;
-assign SDRAM_CLK        = clk_sdram;
 assign SDRAM_nCS        = sdram_cs[0];
 assign SDRAM_DQML       = sdram_dqm[0];
 assign SDRAM_DQMH       = sdram_dqm[1];
 assign SDRAM_BA         = sdram_ba;
+
+`ifdef MINIMIG_DUAL_SDRAM
+assign SDRAM2_CKE       = 1'b1;
+assign SDRAM2_nCS       = sdram2_cs[0];
+assign SDRAM2_DQML      = sdram2_dqm[0];
+assign SDRAM2_DQMH      = sdram2_dqm[1];
+assign SDRAM2_BA        = sdram2_ba;
+`endif
 
 // clock
 assign pll_in_clk       = CLOCK_27[0];
@@ -231,7 +311,7 @@ amiga_clk amiga_clk (
   .ntsc         (clock_ntsc       ), // pal/ntsc clock select
   .clk_in       (pll_in_clk       ), // input clock     ( 27.000000MHz)
   .clk_114      (clk_114          ), // output clock c0 (114.750000MHz)
-  .clk_sdram    (clk_sdram        ), // output clock c2 (114.750000MHz, -146.25 deg)
+  .clk_sdram    (SDRAM_CLK        ), // output clock c2 (114.750000MHz, -146.25 deg)
   .clk_28       (clk_28           ), // output clock c1 ( 28.687500MHz)
   .clk7_en      (clk7_en          ), // output clock 7 enable (on 28MHz clock domain)
   .clk7n_en     (clk7n_en         ), // 7MHz negedge output clock enable (on 28MHz clock domain)
@@ -242,6 +322,23 @@ amiga_clk amiga_clk (
   .locked       (pll_locked       )  // pll locked output
 );
 
+`ifdef MINIMIG_DUAL_SDRAM
+amiga_clk amiga_clk2 (
+  .rst          (pll_rst          ), // async reset input
+  .ntsc         (clock_ntsc       ), // pal/ntsc clock select
+  .clk_in       (pll_in_clk       ), // input clock     ( 27.000000MHz)
+  .clk_114      (                 ), // output clock c0 (114.750000MHz)
+  .clk_sdram    (SDRAM2_CLK       ), // output clock c2 (114.750000MHz, -146.25 deg)
+  .clk_28       (                 ), // output clock c1 ( 28.687500MHz)
+  .clk7_en      (                 ), // output clock 7 enable (on 28MHz clock domain)
+  .clk7n_en     (                 ), // 7MHz negedge output clock enable (on 28MHz clock domain)
+  .c1           (                 ), // clk28m clock domain signal synchronous with clk signal
+  .c3           (                 ), // clk28m clock domain signal synchronous with clk signal delayed by 90 degrees
+  .cck          (                 ), // colour clock output (3.54 MHz)
+  .eclk         (                 ), // 0.709379 MHz clock enable output (clk domain pulse)
+  .locked       (                 )  // pll locked output
+);
+`endif
 
 //// TG68K main CPU ////
 
@@ -290,6 +387,7 @@ TG68K tg68k (
 //.ovr          (tg68_ovr         ),
   .ramaddr      (tg68_cad         ),
   .cpustate     (tg68_cpustate    ),
+  .chipset_ramsel(tg68_chipset_ramsel),
   .nResetOut    (tg68_nrst_out    ),
   .skipFetch    (                 ),
   .ramlds       (tg68_clds        ),
@@ -317,7 +415,7 @@ TG68K tg68k (
 
 assign tg68_host_ack=tg68_host_req; // Prevent lockups on reads to not-yet-implemented Akiko registers.
 
-
+`ifndef MINIMIG_DUAL_SDRAM
 sdram_ctrl sdram (
   .sysclk       (clk_114          ),
   .reset_in     (sdctl_rst        ),
@@ -377,6 +475,143 @@ sdram_ctrl sdram (
   .ena7WRreg    (tg68_ena7WR      )
 );
 
+`else
+
+//assign         tg68_cout = !chipram_cpustate[2] ? chipram_cout : fastram_cout;
+//assign         tg68_cpuena = !chipram_cpustate[2] ? chipram_ready : !fastram_cpustate[2] ? fastram_ready : 1'b0;
+
+assign         tg68_cpuena = chipram_ready | fastram_ready;
+assign         tg68_cout = chipram_ready ? chipram_cout : fastram_cout;
+
+//chipram
+wire     [3:0] chipram_cpustate = tg68_cpustate | {1'b0, ~tg68_chipset_ramsel, 2'b00};
+wire [ 16-1:0] chipram_cout;
+wire           chipram_ready;
+
+sdram_ctrl sdram (
+  .sysclk       (clk_114          ),
+  .reset_in     (sdctl_rst        ),
+  .cache_rst    (tg68_rst         ),
+  .cache_inhibit(cache_inhibit    ),
+  .cacheline_clr(cacheline_clr    ),
+  .cpu_cache_ctrl (tg68_CACR_out  ),
+  //SDRAM chip
+  .sdata        (SDRAM_DQ         ),
+  .sdaddr       (SDRAM_A[12:0]    ),
+  .dqm          (sdram_dqm        ),
+  .sd_cs        (sdram_cs         ),
+  .ba           (sdram_ba         ),
+  .sd_we        (SDRAM_nWE        ),
+  .sd_ras       (SDRAM_nRAS       ),
+  .sd_cas       (SDRAM_nCAS       ),
+  // Control CPU (not used in MiST)
+  .hostce       (1'b0             ),
+  .hostwe       (1'b0             ),
+  // Fast RAM
+  .cpuena       (chipram_ready    ),
+  .cpuRD        (chipram_cout     ),
+  .cpuWR        (tg68_cin         ),
+  .cpuAddr      (tg68_cad[25:1]   ),
+  .cpuU         (tg68_cuds        ),
+  .cpuL         (tg68_clds        ),
+  .cpustate     (chipram_cpustate ),
+  // Chip RAM
+  .chipWR       (ram_data         ),
+  .chipWR2      (tg68_dat_out2    ),
+  .chipAddr     ({1'b0, ram_address[22:1]}),
+  .chipU        (_ram_bhe         ),
+  .chipL        (_ram_ble         ),
+  .chipU2       (_ram_bhe2        ),
+  .chipL2       (_ram_ble2        ),
+  .chipRW       (_ram_we          ),
+  .chip_dma     (_ram_oe          ),
+  .clk7_en      (clk7_en          ),
+  .chipRD       (ramdata_in       ),
+  .chip48       (chip48           ),
+  // RTG
+  .rtgAddr      (                 ),
+  .rtgce        (                 ),
+  .rtgfill      (                 ),
+  .rtgRd        (                 ), 
+  // Audio buffer
+  .audAddr      (                 ),
+  .audce        (                 ),
+  .audfill      (                 ),
+  .audRd        (                 ),
+  // Misc signals
+  .reset_out    (reset_out        ),
+  .hostRD       (                 ),
+  .hostena      (                 ),
+  .enaWRreg     (tg68_ena28       ),
+  .ena7RDreg    (tg68_ena7RD      ),
+  .ena7WRreg    (tg68_ena7WR      )
+);
+
+//fastram
+wire     [3:0] fastram_cpustate = tg68_cpustate | {1'b0, tg68_chipset_ramsel, 2'b00};
+wire [ 16-1:0] fastram_cout;
+wire           fastram_ready;
+
+sdram_ctrl sdram2 (
+  .sysclk       (clk_114          ),
+  .reset_in     (sdctl_rst        ),
+  .cache_rst    (tg68_rst         ),
+  .cache_inhibit(1'b0             ),
+  .cacheline_clr(1'b0             ),
+  .cpu_cache_ctrl (tg68_CACR_out  ),
+  //SDRAM chip
+  .sdata        (SDRAM2_DQ        ),
+  .sdaddr       (SDRAM2_A[12:0]   ),
+  .dqm          (sdram2_dqm       ),
+  .sd_cs        (sdram2_cs        ),
+  .ba           (sdram2_ba        ),
+  .sd_we        (SDRAM2_nWE       ),
+  .sd_ras       (SDRAM2_nRAS      ),
+  .sd_cas       (SDRAM2_nCAS      ),
+  // Control CPU (not used in MiST)
+  .hostce       (1'b0             ),
+  .hostwe       (1'b0             ),
+  // Fast RAM
+  .cpuena       (fastram_ready    ),
+  .cpuRD        (fastram_cout     ),
+  .cpuWR        (tg68_cin         ),
+  .cpuAddr      (tg68_cad[25:1]   ),
+  .cpuU         (tg68_cuds        ),
+  .cpuL         (tg68_clds        ),
+  .cpustate     (fastram_cpustate ),
+  // Chip RAM
+  .chipWR       (                 ),
+  .chipWR2      (                 ),
+  .chipAddr     (                 ),
+  .chipU        (                 ),
+  .chipL        (                 ),
+  .chipU2       (                 ),
+  .chipL2       (                 ),
+  .chipRW       (1'b1             ),
+  .chip_dma     (1'b1             ),
+  .clk7_en      (clk7_en          ),
+  .chipRD       (                 ),
+  .chip48       (                 ),
+  // RTG
+  .rtgAddr      (rtg_addr_mangled ),
+  .rtgce        (rtg_ramreq       ),
+  .rtgfill      (rtg_fill         ),
+  .rtgRd        (rtg_fromram      ), 
+  // Audio buffer
+  .audAddr      (aud_ramaddr      ),
+  .audce        (aud_ramreq       ),
+  .audfill      (aud_fill         ),
+  .audRd        (aud_fromram      ),
+  // Misc signals
+  .reset_out    (                 ),
+  .hostRD       (                 ),
+  .hostena      (                 ),
+  .enaWRreg     (                 ),
+  .ena7RDreg    (                 ),
+  .ena7WRreg    (                 )
+);
+
+`endif
 
 // multiplex spi_do, drive it from user_io if that's selected, drive
 // it from minimig if it's selected and leave it open else (also
@@ -406,10 +641,20 @@ user_io user_io(
      .KMS_LEVEL(kms_level),
      .CORE_TYPE(8'ha5),    // minimig core id (a1 - old minimig id, a5 - new aga minimig id)
      .CONF(core_config),
+`ifdef MINIMIG_USE_HDMI
+     .i2c_start      (i2c_start      ),
+     .i2c_read       (i2c_read       ),
+     .i2c_addr       (i2c_addr       ),
+     .i2c_subaddr    (i2c_subaddr    ),
+     .i2c_dout       (i2c_dout       ),
+     .i2c_din        (i2c_din        ),
+     .i2c_ack        (i2c_ack        ),
+     .i2c_end        (i2c_end        ),
+     .hdmi_hiclk     (rtg_ena        ), // HDMI Pixel Clock > 80MHz
+`endif
      .STATUS(core_status)
-  );
-  
-  
+);
+
 wire           VGA_CS_INT;     // VGA C_SYNC
 wire           VGA_HS_INT;     // VGA H_SYNC
 wire           VGA_VS_INT;     // VGA V_SYNC
@@ -485,6 +730,15 @@ minimig minimig (
   .sdi          (SPI_DI           ),  // SPI data input
   .sdo          (minimig_sdo      ),  // SPI data output
   .sck          (SPI_SCK          ),  // SPI clock
+`ifdef MINIMIG_QSPI
+  .qcs          (~QCSn            ),
+  .qsck         (QSCK             ),
+  .qdat         (QDAT             ),
+`else
+  .qcs          (1'b0             ),
+  .qsck         (1'b0             ),
+  .qdat         (3'd0             ),
+`endif
   //video
   .selcsync     (vga_selcsync     ),
   ._csync       (cs               ),  // horizontal sync
@@ -518,9 +772,10 @@ minimig minimig (
   .floppy_fwr   (                 ),  // floppy fifo writing
   .floppy_frd   (                 ),  // floppy fifo reading
   .hd_fwr       (                 ),  // hd fifo writing
-  .hd_frd       (                 ),   // hd fifo  ading
+  .hd_frd       (                 ),  // hd fifo  ading
   .hblank_out   (hblank_out       ),
   .vblank_out   (vblank_out       ),
+  .blank_out    (blank_out        ),  // Composite blank
   .osd_blank_out(osd_window       ),  // Let the toplevel dither module handle drawing the OSD.
   .osd_pixel_out(osd_pixel        ),
   .rtg_ena      (rtg_ena          ),
@@ -528,7 +783,11 @@ minimig minimig (
   .ntsc         (ntsc             ),
   .ext_int2     (1'b0             ),
   .ext_int6     (aud_int          ),
+`ifndef MINIMIG_DUAL_SDRAM
   .ram_64meg    (core_config[3]   )
+`else
+  .ram_64meg    (1'b1             )
+`endif
 );
 
 
@@ -550,6 +809,7 @@ wire [7:0] rtg_clut_idx;	// The currently selected colour in indexed mode
 wire rtg_pixel;	// Strobe the next pixel from the FIFO
 wire rtg_linecompare;
 
+wire blank_out;
 wire hblank_out;
 wire vblank_out;
 reg rtg_vblank;
@@ -670,11 +930,13 @@ VideoStream myvs
 
 
 // Select between RTG hi-colour, RTG CLUT and native video
+reg de_reg;
 
 always @ (posedge clk_vid) begin
   red_reg   <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_r : rtg_r : red;
   green_reg <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_g : rtg_g : green;
   blue_reg  <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_b : rtg_b : blue;
+  de_reg <= rtg_ena ? ~rtg_blank_d2 : ~blank_out;
 end
 
 
@@ -704,8 +966,9 @@ wire [  8-1:0] mixer_green;
 wire [  8-1:0] mixer_blue;
 wire           mixer_vs;
 wire           mixer_hs;
-wire				mixer_cs;
-wire				mixer_pixel;
+wire           mixer_cs;
+wire           mixer_de;
+wire           mixer_pixel;
 
 RGBtoYPbPr videoconvert
 (
@@ -719,6 +982,7 @@ RGBtoYPbPr videoconvert
 	.hs_in(VGA_HS_INT),
 	.vs_in(VGA_VS_INT),
 	.cs_in(VGA_CS_INT),
+	.de_in(de_reg),
 	.pixel_in(vga_pixel),
 	
 	.red_out(mixer_red),
@@ -727,6 +991,7 @@ RGBtoYPbPr videoconvert
 	.hs_out(mixer_hs),
 	.vs_out(mixer_vs),
 	.cs_out(mixer_cs),
+	.de_out(mixer_de),
 	.pixel_out(mixer_pixel)
 );
 
@@ -738,6 +1003,7 @@ wire [  8-1:0] dithered_green;
 wire [  8-1:0] dithered_blue;
 wire           dithered_vs;
 wire           dithered_hs;
+wire           dithered_de;
 
 assign vga_window = 1'b1;
 video_vga_dither #(.outbits(6), .flickerreduce("false")) dither
@@ -764,10 +1030,42 @@ always @(posedge clk_vid) begin
 	VGA_VS <= dithered_vs ^ (vsyncpol & !force_csync);
 	VGA_HS <= dithered_hs ^ (hsyncpol & !force_csync);
 
-	VGA_R[5:0] <= dithered_red[7:2];
-	VGA_G[5:0] <= dithered_green[7:2];
-	VGA_B[5:0] <= dithered_blue[7:2];
+	VGA_R[VGA_WIDTH-1:0] <= dithered_red[7:8-VGA_WIDTH];
+	VGA_G[VGA_WIDTH-1:0] <= dithered_green[7:8-VGA_WIDTH];
+	VGA_B[VGA_WIDTH-1:0] <= dithered_blue[7:8-VGA_WIDTH];
 end
+
+`ifdef MINIMIG_USE_HDMI
+
+i2c_master #(28_000_000) i2c_master (
+	.CLK         (clk_28),
+	.I2C_START   (i2c_start),
+	.I2C_READ    (i2c_read),
+	.I2C_ADDR    (i2c_addr),
+	.I2C_SUBADDR (i2c_subaddr),
+	.I2C_WDATA   (i2c_dout),
+	.I2C_RDATA   (i2c_din),
+	.I2C_END     (i2c_end),
+	.I2C_ACK     (i2c_ack),
+
+	//I2C bus
+	.I2C_SCL     (HDMI_SCL),
+	.I2C_SDA     (HDMI_SDA)
+);
+
+assign HDMI_RST = 1'b1;
+assign HDMI_PCLK = clk_vid;
+
+always @(posedge clk_vid) begin
+	HDMI_VS <= mixer_vs;
+	HDMI_HS <= mixer_hs;
+	HDMI_R <= mixer_red;
+	HDMI_G <= mixer_green;
+	HDMI_B <= mixer_blue;
+	HDMI_DE <= mixer_de;
+end
+
+`endif
 
 // Auxiliary audio
 
@@ -872,6 +1170,44 @@ hybrid_pwm_sd sd(
 	.d_r(runsigned),
 	.q_r(AUDIO_R)
 );
+
+`ifdef MINIMIG_I2S_AUDIO
+i2s i2s (
+	.reset(1'b0),
+	.clk(clk_114),
+	.clk_rate(clock_ntsc ? 32'd114_545_440 : 32'd113_500_640),
+
+	.sclk(I2S_BCK),
+	.lrclk(I2S_LRCK),
+	.sdata(I2S_DATA),
+
+	.left_chan(ldata),
+	.right_chan(rdata)
+);
+`ifdef MINIMIG_I2S_AUDIO_HDMI
+assign HDMI_MCLK = 0;
+reg bck, lrck, sdata;
+assign HDMI_BCK = bck;
+assign HDMI_LRCK = lrck;
+assign HDMI_SDATA = sdata;
+always @(posedge clk_114) begin
+	bck <= I2S_BCK;
+	lrck <= I2S_LRCK;
+	sdata <= I2S_DATA;
+end
+`endif
+`endif
+
+`ifdef MINIMIG_SPDIF_AUDIO
+spdif spdif
+(
+	.clk_i(clk_114),
+	.rst_i(1'b0),
+	.clk_rate_i(clock_ntsc ? 32'd114_545_440 : 32'd113_500_640),
+	.spdif_o(SPDIF),
+	.sample_i({rdata, ldata})
+);
+`endif
 
 endmodule
 

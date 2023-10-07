@@ -75,6 +75,7 @@ module amber
   input  wire           _csync_in,      // composite sync in
   input  wire           _hsync_in,      // horizontal synchronisation in
   input  wire           _vsync_in,      // vertical synchronisation in
+  input  wire           blank_in,
   // output
   output reg  [  8-1:0] red_out=0,      // red componenent video out
   output reg  [  8-1:0] green_out=0,    // green component video out
@@ -82,6 +83,7 @@ module amber
   output reg            _hsync_out=0,   // horizontal synchronisation out
   output reg            _vsync_out=0,   // vertical synchronisation out
   output reg				_csync_out=0,
+  output reg            blank_out=0,
   output wire            selcsync,
   output wire				osd_blank_out,
   output wire				osd_pixel_out
@@ -144,9 +146,9 @@ assign hi_b = hi_en ? ({1'b0, blue_in}  + {1'b0, b_in_d}) : {blue_in[7:0] , 1'b0
 
 
 //// scandoubler ////
-reg  [ 30-1:0] sd_lbuf [0:1024-1];      // line buffer for scan doubling (there are 908/910 hires pixels in every line)
-reg  [ 30-1:0] sd_lbuf_o=0;             // line buffer output register
-reg  [ 30-1:0] sd_lbuf_o_d=0;           // compensantion for one clock delay of the second line buffer
+reg  [ 31-1:0] sd_lbuf [0:1024-1];      // line buffer for scan doubling (there are 908/910 hires pixels in every line)
+reg  [ 31-1:0] sd_lbuf_o=0;             // line buffer output register
+reg  [ 31-1:0] sd_lbuf_o_d=0;           // compensantion for one clock delay of the second line buffer
 reg  [ 11-1:0] sd_lbuf_rd=0;            // line buffer read pointer
 
 // scandoubler line buffer write pointer
@@ -169,7 +171,7 @@ end
 always @ (posedge clk) begin
   if (dblscan) begin
     // write
-    sd_lbuf[sd_lbuf_wr[10:1]] <= #1 {_hsync_in, osd_blank, osd_pixel, hi_r, hi_g, hi_b};
+    sd_lbuf[sd_lbuf_wr[10:1]] <= #1 {blank_in, _hsync_in, osd_blank, osd_pixel, hi_r, hi_g, hi_b};
     // read
     sd_lbuf_o <= #1 sd_lbuf[sd_lbuf_rd[9:0]];
     // delayed data
@@ -355,6 +357,7 @@ end
 //// bypass mux ////
 wire           bm_hsync;
 wire           bm_vsync;
+wire           bm_blank;
 wire [  8-1:0] bm_r;
 wire [  8-1:0] bm_g;
 wire [  8-1:0] bm_b;
@@ -362,6 +365,7 @@ wire           bm_osd_blank;
 wire           bm_osd_pixel;
 
 assign selcsync     = dblscan ? 1'b0 : varbeamen ? 1'b0 : 1'b1;
+assign bm_blank     = dblscan ? sd_lbuf_o_d[30] : blank_in;
 assign bm_hsync     = dblscan ? sd_lbuf_o_d[29] : _hsync_in;
 assign bm_vsync     = dblscan ? _vsync_in       : _vsync_in;
 //assign bm_hsync     = dblscan ? sd_lbuf_o_d[29] : varbeamen ? _hsync_in : ns_csync;
@@ -403,6 +407,7 @@ always @ (posedge clk) begin
   _hsync_out <= #1 bm_hsync;
   _vsync_out <= #1 bm_vsync;
   _csync_out <= #1 dblscan ? ~(~bm_hsync ^ ~bm_vsync) : _csync_in;
+  blank_out  <= #1 bm_blank;
   red_out    <= #1 osd_r;
   green_out  <= #1 osd_g;
   blue_out   <= #1 osd_b;

@@ -72,7 +72,7 @@ module sdram_ctrl(
   output wire    [15:0] audRd,
   // cpu
   input  wire    [25:1] cpuAddr,
-  input  wire [  7-1:0] cpustate,
+  input  wire     [3:0] cpustate,
   input  wire           cpuL,
   input  wire           cpuU,
   input  wire [ 16-1:0] cpuWR,
@@ -198,7 +198,7 @@ assign sd_we  = sd_cmd[0];
 
 always @(posedge sysclk) cpuAddr_r <= cpuAddr;
 
-assign cpuLongword = cpustate[6];
+assign cpuLongword = cpustate[3];
 assign cpuCSn      = cpustate[2];
 
 ////////////////////////////////////////

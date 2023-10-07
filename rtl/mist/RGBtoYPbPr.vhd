@@ -19,6 +19,7 @@ port
 	hs_in : in std_logic;
 	vs_in : in std_logic;
 	cs_in : in std_logic;
+	de_in : in std_logic;
 	pixel_in : in std_logic;
 	
 	red_out : out std_logic_vector(7 downto 0);
@@ -27,6 +28,7 @@ port
 	hs_out : out std_logic;
 	vs_out : out std_logic;
 	cs_out : out std_logic;
+	de_out : out std_logic;
 	pixel_out : out std_logic
 );
 end entity;
@@ -52,6 +54,7 @@ signal r : unsigned(15 downto 0);
 signal hs_d : std_logic;
 signal vs_d : std_logic;
 signal cs_d : std_logic;
+signal de_d : std_logic;
 signal pixel_d : std_logic;
 
 begin
@@ -70,6 +73,7 @@ begin
 			hs_d <= hs_in;		-- Register sync, pixel clock, etc
 			vs_d <= vs_in;		-- so they're delayed the same amount as the incoming video
 			cs_d <= cs_in;
+			de_d <= de_in;
 			pixel_d <= pixel_in;
 		
 			if ena='1' then
@@ -106,6 +110,7 @@ begin
 			hs_out <= hs_d;
 			vs_out <= vs_d;
 			cs_out <= cs_d;
+			de_out <= de_d;
 			pixel_out <= pixel_d;
 		
 			if ena='1' then

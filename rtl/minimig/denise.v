@@ -41,6 +41,7 @@ module denise (
   input  wire [ 48-1:0] chip48,         // big chipram read
   output wire [ 16-1:0] data_out,       // bus data out
   input  wire           blank,          // blanking input
+  output wire           blank_out,      // blanking output
   output wire [  8-1:0] red,            // red componenent video out
   output wire [  8-1:0] green,          // green component video out
   output wire [  8-1:0] blue,           // blue component video out
@@ -476,6 +477,7 @@ assign t_blank = blank | ecs & ecsena & brdrblnk & (~window_del | ~display_ena);
 // RGB video output
 assign {red[7:0],green[7:0],blue[7:0]} = t_blank ? 24'h000000 : out_rgb;
 
+assign blank_out = t_blank;
 
 endmodule
 

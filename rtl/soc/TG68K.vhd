@@ -79,7 +79,8 @@ port(
 	cacheline_clr : out     std_logic;
 	--    ovr           : in      std_logic;
 	ramaddr       : out     std_logic_vector(31 downto 0);
-	cpustate      : out     std_logic_vector(6 downto 0);
+	cpustate      : out     std_logic_vector(3 downto 0);
+	chipset_ramsel: out     std_logic;
 	nResetOut     : buffer  std_logic;
 	skipFetch     : buffer  std_logic;
 	--    cpuDMA        : buffer  std_logic;
@@ -227,6 +228,7 @@ sel_eth<='0';
 	END PROCESS;
 
 	datatg68 <= fromram WHEN datatg68_selram='1' else datatg68_c;
+	chipset_ramsel <= sel_chipram or sel_kickram or sel_slowram;
 
 	-- Register incoming data
 	process(clk) begin
@@ -281,7 +283,7 @@ sel_eth<='0';
 
   ramcs <= NOT datatg68_selram or slower(0); -- (NOT cpu_internal AND sel_ram_d AND NOT sel_nmi_vector) OR slower(0) or block_turbo;
 
-  cpustate <= longword&clkena&slower(1 downto 0)&ramcs&state(1 downto 0);
+  cpustate <= longword&ramcs&state(1 downto 0);
   ramlds <= lds_in;
   ramuds <= uds_in;
 
