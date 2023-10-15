@@ -194,12 +194,13 @@ void c64keys_inthandler()
 			for(j=0;j<16;++j)
 			{
 				--idx;
-				if(changed&0x8000)
+				if(changed>>31)
 				{
 					int code=63-(i*16+j);	/* Fetch Amiga scancode for this key */
 					int amicode;
 					int amiqualup=0;
 					int amiqualdown=0;
+					int keyup=status>>31;
 					c64keys.active=1;
 					code=((code<<3)|(code>>3))&63;	/* bit numbers are transposed compared with c64 scancodes */
 					amicode=keytable[code];
@@ -207,7 +208,7 @@ void c64keys_inthandler()
 					/* Has the run/stop key (acting as Fn) been pressed? */
 					if(amicode&QUAL_LAYERKEY)
 					{
-						if(status&0x8000)	/* Key up? */
+						if(keyup)	/* Key up? */
 							c64keys.layer=0;
 						else
 							c64keys.layer=1;
@@ -215,7 +216,7 @@ void c64keys_inthandler()
 					else
 					{
 						/* If this is a keyup event, make sure it happens on the same layer as the corresponding keydown. */
-						if(status&0x8000) /* key up? */
+						if(keyup) /* key up? */
 						{
 							if(amicode&QUAL_ALTLAYER) /* Was the keydown on the alternative layer? */
 								amicode>>=16;
@@ -236,6 +237,17 @@ void c64keys_inthandler()
 						{
 							/* If the key requires special handling, cancel any shifting before sending the key code
 								unless both shift keys are down */
+							int qual=QUAL_LSHIFT | QUAL_RSHIFT;
+							if(keyup)
+								qual&=amicode;
+							else
+							{
+								/* On downstroke remember which qualifiers were held when the key was pressed. */
+								amicode=(amicode&~qual); /* Mask off previous quals */
+								qual&=c64keys.qualifiers;
+								amicode|=qual;
+								keytable[code]=amicode;
+							}
 							switch(c64keys.qualifiers&(QUAL_LSHIFT|QUAL_RSHIFT))
 							{
 								case 0:
@@ -243,14 +255,14 @@ void c64keys_inthandler()
 									break;
 								case QUAL_LSHIFT:
 									amicode=specialtable[amicode&0xff].shifted;
-									if(status&0x8000)
+									if(keyup)
 										amiqualdown=0x60;
 									else
 										amiqualup=0x60|0x80;
 									break;
 								case QUAL_RSHIFT:
 									amicode=specialtable[amicode&0xff].shifted;
-									if(status&0x8000)
+									if(keyup)
 										amiqualdown=0x61;
 									else
 										amiqualup=0x61|0x80;
@@ -260,7 +272,7 @@ void c64keys_inthandler()
 									break;
 							}
 						}
-						if(status&0x8000)
+						if(keyup)
 						{
 							amicode|=0x80; /* Key up */
 							c64keys.qualifiers&=(~amicode)&QUAL_MASK;

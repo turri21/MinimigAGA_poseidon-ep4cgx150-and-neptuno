@@ -167,7 +167,7 @@ int ColdBoot()
 				config.misc |= 1<<(PLATFORM_SCANDOUBLER);  // High byte of platform register
 			}
 
-			if ((key == KEY_F5 || (key == KEY_F6))
+			if ((key == KEY_F5) || (key == KEY_F6))
 			{
 				override=1;
 				config.misc |= 1<<(PLATFORM_INVERTSYNC);  // High byte of platform register

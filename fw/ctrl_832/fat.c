@@ -470,7 +470,7 @@ int ValidateDirectory(unsigned long directory)
 }
 
 
-int FindDirectoryByCluster(unsigned long parent, unsigned long cluster)
+unsigned long FindDirectoryByCluster(unsigned long parent, unsigned long cluster)
 {
     DIRENTRY      *pEntry = NULL;        // pointer to current entry in sector buffer
     unsigned long  iDirectorySector;     // current sector of directory entries table
@@ -1405,8 +1405,8 @@ unsigned int FileSeek(fileTYPE *file, unsigned long offset, unsigned long origin
     unsigned long sb;
     unsigned short i;
 
-    if (origin == SEEK_CUR)
-        offset += file->sector;
+	if (origin == SEEK_CUR)
+		offset += file->sector;
 
 	if(offset > (file->size>>9))	// Attempt to seek beyond the end of the file
 	{

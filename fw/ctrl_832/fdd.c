@@ -40,7 +40,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 unsigned char DEBUG=0;
 
 unsigned char drives; // number of active drives reported by FPGA (may change only during reset)
-adfTYPE *pdfx;            // drive select pointer
 adfTYPE df[4];            // drive 0 information structure
 
 #define TRACK_SIZE 12668
@@ -178,32 +177,41 @@ void ReadTrack(adfTYPE *drive)
     unsigned int dsklen;
     //unsigned short n;
 
-    if (drive->track >= drive->tracks)
+	// Check that a disk is actually inserted, and if not do a dummy read returning all 1s.
+	// (Body Blows AGA reads from all connected drives without checking whether they're empty.)
+    if (drive->status & DSK_INSERTED)
     {
-        printf("Illegal track read: %d\r", drive->track);
-        FatalError(ERROR_FDD,"Illegal track read!", drive->track,drive->tracks);
-        drive->track = drive->tracks - 1;
-    }
+    	if(drive->track >= drive->tracks)
+		{
+			int unit=((int)drive - (int)&df[0])/sizeof(adfTYPE);
+		    printf("Illegal track read: %d\r", drive->track);
 
-    // display track number: cylinder & head
-    if (DEBUG)
-        printf("*%u:", drive->track);
+		    FatalError(ERROR_FDD,"Illegal track read!", drive->track,drive->tracks);
+		    drive->track = drive->tracks - 1;
+		}
 
-    if (drive->track != drive->track_prev)
-    { // track step or track 0, start at beginning of track
-        drive->track_prev = drive->track;
-        sector = 0;
-        file.cluster = drive->cache[drive->track];
-        file.sector = drive->track * SECTOR_COUNT;
-        drive->sector_offset = sector;
-        drive->cluster_offset = file.cluster;
-    }
-    else
-    { // same track, start at next sector in track
-        sector = drive->sector_offset;
-        file.cluster = drive->cluster_offset;
-        file.sector = (drive->track * SECTOR_COUNT) + sector;
-    }
+		// display track number: cylinder & head
+		if (DEBUG)
+		    printf("*%u:", drive->track);
+
+		if (drive->track != drive->track_prev)
+		{ // track step or track 0, start at beginning of track
+		    drive->track_prev = drive->track;
+		    sector = 0;
+		    file.cluster = drive->cache[drive->track];
+		    file.sector = drive->track * SECTOR_COUNT;
+		    drive->sector_offset = sector;
+		    drive->cluster_offset = file.cluster;
+		}
+		else
+		{ // same track, start at next sector in track
+		    sector = drive->sector_offset;
+		    file.cluster = drive->cluster_offset;
+		    file.sector = (drive->track * SECTOR_COUNT) + sector;
+		}
+	}
+	else
+		drive->tracks=160; /* Ugly hack to enable returning dummy data if no disk is inserted */
 
     EnableFpga();
     status   = SPI(0); // read request signal
@@ -222,7 +230,11 @@ void ReadTrack(adfTYPE *drive)
 
     while (1)
     {
-        FileRead(&file, sector_buffer);
+        // Return all 1s if drive is empty.
+        if (drive->status & DSK_INSERTED)
+            FileRead(&file, sector_buffer);
+        else
+        	memset(sector_buffer,0xff,512);
 
         EnableFpga();
 
@@ -260,6 +272,7 @@ void ReadTrack(adfTYPE *drive)
             {
                 //GenerateHeader(sector_header, sector_buffer, sector, track, dsksync);
                 //SendSector(sector_header, sector_buffer);
+                // FIXME - send actual all 1s without MFM encoding if drive is empty.
                 SendSector(sector_buffer, sector, track, (unsigned char)(dsksync >> 8), (unsigned char)dsksync);
 
                 if (sector == LAST_SECTOR)
@@ -279,21 +292,23 @@ void ReadTrack(adfTYPE *drive)
             break;
 
         sector++;
-        if (sector < SECTOR_COUNT)
+        if (drive->status & DSK_INSERTED)
         {
-            FileNextSector(&file);
-        }
-        else // go to the start of current track
-        {
-            sector = 0;
-            file.cluster = drive->cache[drive->track];
-            file.sector = drive->track * SECTOR_COUNT;
-        }
+        	if( (sector < SECTOR_COUNT)
+		    {
+		        FileNextSector(&file);
+		    }
+		    else // go to the start of current track
+		    {
+		        sector = 0;
+		        file.cluster = drive->cache[drive->track];
+		        file.sector = drive->track * SECTOR_COUNT;
+		    }
 
-        // remember current sector and cluster
-        drive->sector_offset = sector;
-        drive->cluster_offset = file.cluster;
-
+		    // remember current sector and cluster
+		    drive->sector_offset = sector;
+		    drive->cluster_offset = file.cluster;
+		}
         if (DEBUG)
             printf("->");
     }
@@ -655,10 +670,16 @@ void WriteTrack(adfTYPE *drive)
 
                 if (GetData())
                 {
-                    if (drive->status & DSK_WRITABLE)
-                       FileWrite(&file, sector_buffer);
+                    if (drive->status & DSK_INSERTED)
+                    {
+                        if (drive->status & DSK_WRITABLE)
+                            FileWrite(&file, sector_buffer);
+                        else
+                            SetError(ERROR_FDD,"Disk write protected",0,0);
+						// FIXME - should transfer and discard data here, and also test that a disk is actually inserted.
+                    }
                     else
-						SetError(ERROR_FDD,"Disk write protected",0,0);
+						SetError(ERROR_FDD,"Write to empty drive",0,0);
                 }
             }
             else
@@ -685,6 +706,7 @@ void HandleFDD(unsigned char c1, unsigned char c2, unsigned char c3, unsigned ch
         DISKLED_ON;
         sel = (c1 >> 6) & 0x03;
         df[sel].track = c2;
+//        printf("Read track %d, unit %d\n",c2,sel);
         ReadTrack(&df[sel]);
         DISKLED_OFF;
     }

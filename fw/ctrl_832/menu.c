@@ -81,7 +81,7 @@ const char *config_memory_slow_msg[] = {"none  ", "0.5 MB", "1.0 MB", "1.5 MB"};
 const char *config_on_off_msg[] = {"off", "on "};
 const char *config_scanlines_msg[] = {"off", "dim", "black"};
 const char *config_memory_fast_msg[] = {"none  ", "2.0 MB", "4.0 MB", "Maximum"};
-const char *config_cpu_msg[] = {"68000 ", "68010", "-","020 alpha"};
+const char *config_cpu_msg[] = {"68000 ", "68010", "-","68020"};
 const char *config_hdf_msg[] = {"Disabled", "Hardfile (disk img)", "MMC/SD card", "MMC/SD partition 1", "MMC/SD partition 2", "MMC/SD partition 3", "MMC/SD partition 4"};
 const char *config_chipset_msg[] = {"OCS-A500", "OCS-A1000", "ECS", "---", "---", "---", "AGA", "---"};
 const char *config_turbo_msg[] = {"\004\005\005\005\005\006", "\007\007\005\005\005\006", "\007\007\007\007\005\006", "\007\007\007\007\007\007"};
@@ -2300,7 +2300,7 @@ void ErrorMessage(char *message, unsigned char code)
 }
 
 
-void ShowError(char *message, unsigned char code)
+void ShowError()
 {
 	int t=ErrorMask>>1;
 	errorpage=0;

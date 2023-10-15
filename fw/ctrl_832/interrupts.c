@@ -1,4 +1,3 @@
-#include "uart.h"
 #include "interrupts.h"
 
 static void dummy_handler()

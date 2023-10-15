@@ -44,6 +44,8 @@ hdfTYPE hdf[HDF_COUNT];
 char debugmsg[40];
 char debugmsg2[40];
 
+#define DIRECTMODE
+
 #undef SERIALDEBUG
 
 #define DEBUG1(x) {if(DebugMode) DebugMessage(x);}
@@ -442,9 +444,27 @@ void ATA_ReadSectors(unsigned char* tfr, int sector, int cylinder, int head, int
 					}
 					if(blk) // Any blocks left?
 					{
+						int j;
+#ifdef DIRECTMODE
 						HardFileSeek(&hdf[unit], lba + hdf[unit].offset);
 						FileReadEx(&hdf[unit].file, 0, blk); // NULL enables direct transfer to the FPGA
 						lba+=blk;
+#else
+						while(blk)
+						{
+							HardFileSeek(&hdf[unit], lba + hdf[unit].offset);
+							FileReadEx(&hdf[unit].file, sector_buffer, 1);
+							SPI(CMD_IDE_DATA_WR); // write data command
+							SPI(0x00); SPI(0x00); SPI(0x00); SPI(0x00); SPI(0x00);
+							for (i = 0; i < 512; i++)
+							{
+								SPI(sector_buffer[i]);
+							}
+							DisableFpga();
+							++lba;
+							--blk;
+						}
+#endif
 					}
 				}
 				else
@@ -456,8 +476,25 @@ void ATA_ReadSectors(unsigned char* tfr, int sector, int cylinder, int head, int
 			case HDF_CARDPART1:
 			case HDF_CARDPART2:
 			case HDF_CARDPART3:
+#ifdef DIRECTMODE
 				MMC_ReadMultiple(lba+hdf[unit].offset,0,block_count);
 				lba+=block_count;
+#else
+				blk=block_count;
+				while(blk)
+				{
+					MMC_Read(lba+hdf[unit].offset,sector_buffer);
+					SPI(CMD_IDE_DATA_WR); // write data command
+					SPI(0x00); SPI(0x00); SPI(0x00); SPI(0x00); SPI(0x00);
+					for (i = 0; i < 512; i++)
+					{
+						SPI(sector_buffer[i]);
+					}
+					DisableFpga();
+					++lba;
+					--blk;
+				}
+#endif;
 				break;
 		}
 

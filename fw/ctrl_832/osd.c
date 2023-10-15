@@ -90,7 +90,7 @@ const char *supporters[]=
 	"facebook group for their",
 	"enthusiasm and suggestions.",
 	0
-}
+};
 
 // conversion table of Amiga keyboard scan codes to ASCII codes
 const char keycode_table[128] =

@@ -15,7 +15,6 @@
 //#define BUTTON AT91C_PIO_PA28
 
 #include "spi.h"
-#include "uart.h"
 
 /* 0x680000 is 0xe80000 in Amiga space */
 #define HOSTMAP_ADDR 0x680000

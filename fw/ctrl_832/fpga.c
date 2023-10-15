@@ -135,7 +135,7 @@ void SendFileV2(RAFile* file, unsigned char* key, int keysize, int address, int 
 char BootPrint(const char *text)
 {
 //	BootPrintEx(text);
-//	return(1);
+	return(1);
 }
 
 
@@ -197,7 +197,7 @@ unsigned char GetFPGAStatus(void)
 
 void fpga_init() {
 	unsigned long time = GetTimer(0);
-	char ver_beta,ver_major,ver_minor,ver_minion;
+	int ver_beta,ver_major,ver_minor,ver_minion;
 	char rtl_ver[45];
 	int rstval;
 
