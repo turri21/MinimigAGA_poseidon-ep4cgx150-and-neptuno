@@ -43,6 +43,7 @@ module ide
 	input          sel_secondary,
 	input   [15:0] data_in,
 	output  [15:0] data_out,
+	output         data_oe,
 	input          rd,
 	input          hwr,
 	input          lwr,
@@ -98,8 +99,8 @@ INTRQ	- Interrupt Request
 // address decoding signals
 wire 	sel_tfr;    // HDD task file registers select
 wire 	sel_fifo;   // HDD data port select (FIFO buffer)
-wire 	sel_status; // HDD status register select
-wire 	sel_command;// HDD command register select
+wire 	sel_status /* synthesis keep */; // HDD status register select
+wire 	sel_command /* synthesis keep */;// HDD command register select
 
 // internal registers
 reg		block_mark; // IDE multiple block start flag
@@ -198,8 +199,18 @@ always @(posedge clk)
 			sector_count <= sector_count - 8'd1;
 	end
 
-assign sector_count_dec_in  = pio_in & fifo_last_out & sel_fifo & rd & packet_state == PACKET_IDLE;
-assign sector_count_dec_out = pio_out & fifo_last_in & sel_fifo & hwr & lwr & packet_state == PACKET_IDLE;
+reg rd_old;
+reg wr_old;
+reg sel_fifo_old;
+always @(posedge clk)
+	if (clk_en) begin
+		rd_old <= rd;
+		wr_old <= hwr & lwr;
+		sel_fifo_old <= sel_fifo;
+	end
+
+assign sector_count_dec_in  = pio_in & fifo_last_out & sel_fifo_old & ~rd & rd_old & packet_state == PACKET_IDLE;
+assign sector_count_dec_out = pio_out & fifo_last_in & sel_fifo_old & ~hwr & ~lwr & wr_old & packet_state == PACKET_IDLE;
 
 // task file register control
 assign tfr_we =  packet_in_last ? 1'b1 : bsy ? hdd_wr : sel_tfr & hwr;
@@ -383,9 +394,10 @@ ide_fifo SECBUF1
 // fifo is not ready for reading
 assign nrdy = pio_in & sel_fifo & fifo_empty;
 
+assign data_oe = (!dev[1] && hdd0_ena[dev[0]]) || (dev[1] && hdd1_ena[dev[0]]);
 //data_out multiplexer
 assign data_out = sel_fifo && rd ? fifo_data_out  :
-                  sel_status ? ((!dev[1] && hdd0_ena[dev[0]]) || (dev[1] && hdd1_ena[dev[0]])) ? {status,8'h00} : 16'h00_00 :
+                  sel_status ? data_oe ? {status,8'h00} : 16'h00_00 :
                   sel_tfr && rd ? {tfr_out,8'h00} : 16'h00_00;
 
 //===============================================================================================//
