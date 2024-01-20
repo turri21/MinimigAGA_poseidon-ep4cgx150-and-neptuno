@@ -575,7 +575,7 @@ reg  [24-1:0] mem_cnt;
 wire [32-1:0] mem_adr;
 always @ (posedge clk) begin
   if (clk7_en) begin
-    if (rx && !cmd && spi_mem_write_sel) begin
+    if (dat_cnt != 4 && rx && !cmd && spi_mem_write_sel) begin
       case (dat_cnt)
         0 : mem_cnt [ 7: 0] <= #1 wrdat[7:0];
         1 : mem_cnt [15: 8] <= #1 wrdat[7:0];
