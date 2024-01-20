@@ -205,7 +205,7 @@ wire intreq_ack = sel_intreq && hwr && !data_in[15];
 
 ide ide (
 	.clk(clk),
-	.clk_en(clk7_en),
+	.clk_en(1'b1/*clk7_en*/),
 	.reset(reset),
 	.sel_ide(sel_tfr),
 	.sel_secondary(address_in[12]),

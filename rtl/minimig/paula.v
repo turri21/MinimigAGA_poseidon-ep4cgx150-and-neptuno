@@ -61,7 +61,6 @@ module paula
 	// system bus interface
   input clk,         // 28 MHz system clock
   input clk7_en,
-  input clk7n_en,
 	input 	cck,		    		//colour clock enable
 	input 	reset,			   		//reset 
 	input 	[8:1] reg_address_in,	//register address inputs
@@ -100,6 +99,9 @@ module paula
 	input	sdi,					//async. serial data input
 	output	sdo,					//async. serial data output
 	input	sck,					//async. serial data clock
+	input qcs,            //QSPI cs
+	input qsck,           //QSPI clock
+	input [3:0] qdat,     //QSPI data input
 	//audio outputs
 	output	left,					//audio bitstream left
 	output	right,					//audio bitstream right
@@ -254,7 +256,6 @@ paula_floppy pf1
 (
 	.clk(clk),
   .clk7_en (clk7_en),
-  .clk7n_en (clk7n_en),
 	.reset(reset),
   .ntsc(ntsc),
   .sof(sof),
@@ -281,6 +282,9 @@ paula_floppy pf1
 	.sdi(sdi),
 	.sdo(sdo),
 	.sck(sck),
+	.qcs(qcs),
+	.qsck(qsck),
+	.qdat(qdat),
 	
 	.disk_led(disk_led),
 	.floppy_drives(floppy_drives),

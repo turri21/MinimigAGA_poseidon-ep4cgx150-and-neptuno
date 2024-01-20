@@ -223,6 +223,10 @@ module minimig
 	input	sdi,				//SPI data input
 	inout	sdo,				//SPI data output
 	input	sck,				//SPI clock
+
+	input qcs,            //QSPI cs
+	input qsck,           //QSPI clock
+	input [3:0] qdat,     //QSPI data input
  // // host
  // output wire           host_cs,
  // output wire [ 24-1:0] host_adr,
@@ -584,7 +588,6 @@ paula PAULA1
 (
   .clk(clk),
   .clk7_en (clk7_en),
-  .clk7n_en (clk7n_en),
 	.cck(cck),
 	.reset(reset),
 	.reg_address_in(reg_address),
@@ -619,6 +622,9 @@ paula PAULA1
 	.sdi(sdi),
 	.sdo(paula_sdo),
 	.sck(sck),
+	.qcs(qcs),
+	.qsck(qsck),
+	.qdat(qdat),
 	.left(left),
 	.right(right),
 	.ldata(ldata),

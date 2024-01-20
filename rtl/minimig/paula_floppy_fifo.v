@@ -8,7 +8,7 @@
 module paula_floppy_fifo
 (
 	input 	clk,		    	//bus clock
-  input clk7_en,
+	input clk7_en,
 	input 	reset,			   	//reset 
 	input	[15:0] in,			//data in
 	output	reg [15:0] out,	//data out
@@ -24,7 +24,6 @@ reg 	[15:0] mem [2047:0];	// 2048 words by 16 bit wide fifo memory (for 2 MFM-en
 reg		[11:0] in_ptr;			//fifo input pointer
 reg		[11:0] out_ptr;			//fifo output pointer
 wire	equal;					//lower 11 bits of in_ptr and out_ptr are equal
-
 
 // count of FIFO entries
 assign cnt = in_ptr - out_ptr;
