@@ -129,7 +129,6 @@ SIGNAL clkena           : std_logic;
 SIGNAL sel_ram          : std_logic;
 SIGNAL sel_chip         : std_logic;
 SIGNAL sel_chipram      : std_logic;
-SIGNAL turbochip_ena    : std_logic := '0';
 SIGNAL turbochip_d      : std_logic := '0';
 SIGNAL turbokick_d      : std_logic := '0';
 SIGNAL turboslow_d      : std_logic := '0';
@@ -163,7 +162,6 @@ signal sel_undecoded_d  : std_logic;
 signal sel_akiko        : std_logic;
 signal sel_akiko_d      : std_logic;
 signal sel_audio        : std_logic;
-signal sel_ram_d        : std_logic;
 
 SIGNAL cpu_internal     : std_logic;
 SIGNAL cpu_fetch        : std_logic;
@@ -227,13 +225,12 @@ sel_eth<='0';
 		END IF;
 	END PROCESS;
 
---	datatg68 <= fromram WHEN cpu_internal='0' AND sel_ram_d='1' and block_turbo='0' AND sel_nmi_vector='0' ELSE datatg68_c;
 	datatg68 <= fromram WHEN datatg68_selram='1' else datatg68_c;
 
 	-- Register incoming data
 	process(clk) begin
 		if rising_edge(clk) then
-			datatg68_selram <= sel_ram and (not cpu_internal) and (not block_turbo) and (not sel_nmi_vector); -- AMR - remove sel_nmi_vector's decoding from the mux path
+			datatg68_selram <= sel_ram and (not cpu_internal) and (not sel_nmi_vector); -- AMR - remove sel_nmi_vector's decoding from the mux path
 			if sel_undecoded_d = '1' then
 				datatg68_c <= X"FFFF";
 			elsif sel_akiko_d = '1' then
@@ -262,9 +259,9 @@ sel_eth<='0';
 	                           OR (cpuaddr(23 downto 21) = "100")) else '0'; --  AND z2ram_ena='1' ELSE '0';
 	--sel_eth         <= '1' WHEN (cpuaddr(31 downto 24) = eth_base) AND eth_cfgd='1' ELSE '0';
 	sel_chip        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 21)="000") ELSE '0'; --$000000 - $1FFFFF
-	sel_chipram     <= '1' WHEN sel_chip = '1' AND turbochip_d='1' ELSE '0';
+	sel_chipram     <= '1' WHEN sel_chip = '1' AND block_turbo = '0' AND turbochip_d='1' ELSE '0';
 	sel_kick        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 19)="11111") OR (cpuaddr(23 downto 19)="11100")) AND state/="11" ELSE '0'; -- $F8xxxx, $E0xxxx, read only
-	sel_kickram     <= '1' WHEN sel_kick='1' and aga='1' else '0'; -- AMR tie turbo kick to AGA rather than menu option...   --  AND turbokick_d='1' ELSE '0';
+	sel_kickram     <= '1' WHEN sel_kick='1' AND (aga='1' OR (aga='0' AND turbokick_d='1')) ELSE '0'; -- menu option for OCS/ECS, always enable for AGA
 	sel_slow        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND ((cpuaddr(23 downto 20)=X"C" AND ((cpuaddr(19)='0' AND slow_config/="00") OR (cpuaddr(19)='1' AND slow_config(1)='1'))) OR (cpuaddr(23 downto 19)=X"D"&'0' AND slow_config="11")) ELSE '0'; -- $C00000 - $D7FFFF
 	sel_slowram     <= '1' WHEN sel_slow='1' AND turboslow_d='1' ELSE '0';
 	sel_cart        <= '1' WHEN (cpuaddr(31 downto 24) = X"00") AND (cpuaddr(23 downto 20)="1010") ELSE '0'; -- $A00000 - $A7FFFF (actually matches up to $AFFFFF)
@@ -281,7 +278,7 @@ sel_eth<='0';
       OR sel_audio='1'
     ) ELSE '0';
 
-  ramcs <= NOT datatg68_selram or slower(0); -- (NOT cpu_internal AND sel_ram_d AND NOT sel_nmi_vector) OR slower(0) or block_turbo;
+  ramcs <= NOT datatg68_selram or slower(0);
 
   cpustate <= longword&clkena&slower(1 downto 0)&ramcs&state(1 downto 0);
   ramlds <= lds_in;
@@ -377,16 +374,15 @@ PROCESS (clk) BEGIN
       turboslow_d <= '0';
       cacheline_clr <= '0';
     ELSIF cpu_internal='1' THEN -- No mem access, so safe to switch chipram access mode
-      turbochip_d <= turbochipram or turbokick; -- AMR - temporary hack
+      turbochip_d <= turbochipram OR (turbokick AND aga);
       turbokick_d <= turbokick;
-      turboslow_d <= turbochipram OR turbokick; -- AMR aga;
-      cacheline_clr <= ((turbochipram or turbokick) XOR turbochip_d);
-      cache_inhibit <= sel_kickram;
+      turboslow_d <= turbochipram OR (turbokick AND aga);
+      cacheline_clr <= ((turbochipram OR (turbokick AND aga)) XOR turbochip_d) OR (turbokick XOR turbokick_d);
     END IF;
-    sel_ram_d<=sel_ram;
   END IF;
 END PROCESS;
 
+cache_inhibit <= '0';
 
 host_req<=host_req_r;
 myakiko : entity work.akiko
@@ -455,16 +451,15 @@ buslogic : block
 	SIGNAL eindd            : std_logic;
 	TYPE   sync_states      IS (sync0, sync1, sync2, sync3, sync4, sync5, sync6, sync7, sync8, sync9);
 	SIGNAL sync_state       : sync_states;
-	signal sel_chip_d       : std_logic; 
 begin
 
 	clkena <= '1' WHEN (clkena_in='1' AND slower(0)='0' and
 					   (cpu_internal='1' OR (ena7RDreg='1' AND clkena_e='1') OR (ena7WRreg='1' AND clkena_f='1') OR
-					   (ramready='1' and block_turbo='0') OR sel_undecoded_d='1' OR akiko_ack='1'))
+					   ramready='1' OR sel_undecoded_d='1' OR akiko_ack='1'))
 				  ELSE '0';
 
-    -- AMR - attempt to imitate A1200 speed more closely on chipram fetches:
- 	-- Perform throttling of the CPU depending on turbo mode:  (Temporary mapping for evaluation)
+	-- AMR - attempt to imitate A1200 speed more closely on chipram fetches:
+	-- Perform throttling of the CPU depending on turbo mode:  (Temporary mapping for evaluation)
 	-- Turbo set to both: no throttling
 	-- Turbo set to kick only: mild throttling
 	-- Turbo set to chip only: more severe throttling
@@ -478,38 +473,42 @@ begin
 	-- Need to decide how to handle C00000 RAM and Fast RAM in throttled modes
 	--   For compatibility, C00000 RAM should probably run at chip RAM speeds
 	--   Fast RAM should perhaps be throttled in Chip (i.e. A1200) mode, but not otherwise?
-	
-    process (clk) begin
-      IF rising_edge(clk) THEN
-		-- If throttling is enabled, block turbo for CPU data reads, and instruction fetch if cache is disabled.
-		throttle_sel(0) <= freeze or (turbochipram xor turbokick);
-		throttle_sel(1) <= freeze or (turbochipram and not turbokick);
-		sel_chip_d  <= sel_chip;
-        block_turbo <= sel_chip_d and throttle_sel(0) and (cpu_read or (cpu_fetch and cpu_disablecache));
-      end if;
-	end process;
 
-    process (clk) begin
-	  if rising_edge(clk) then
-		if (clkena='1' or freeze='1') and cpu_write='0' and block_turbo='0' then
-		  throttle<=throttle_sel(1) & throttle_sel;
-		elsif clkena_in='1' then
-		  throttle<='0'&throttle(throttle'high downto 1);
+	PROCESS (clk) BEGIN
+		IF rising_edge(clk) THEN
+			IF (reset='0' OR nResetOut='0') THEN
+				throttle_sel <= "00";
+			ELSIF cpu_internal='1' THEN -- No mem access, so safe to switch chipram access mode
+				-- If throttling is enabled, block turbo for CPU data reads, and instruction fetch if cache is disabled.
+				throttle_sel(0) <= freeze or (turbochipram xor turbokick);
+				throttle_sel(1) <= freeze or (turbochipram and not turbokick);
+			END IF;
+		END IF;
+	END PROCESS;
+
+	block_turbo <= aga and throttle_sel(0) and (cpu_read or (cpu_fetch and cpu_disablecache));
+
+	process (clk) begin
+		if rising_edge(clk) then
+			if (clkena='1' or freeze='1') and cpu_write='0' then
+				throttle<=throttle_sel(1) & throttle_sel;
+			elsif clkena_in='1' then
+				throttle<='0'&throttle(throttle'high downto 1);
+			end if;
 		end if;
-	  end if;
 	end process;
 
 	PROCESS (clk) BEGIN
-	  IF rising_edge(clk) THEN
-		IF clkena='1' THEN
-		  slower <= "111"; -- rokk
-		ELSE
-		  slower<= throttle(0)&slower(slower'high downto 1); -- enaWRreg&slower(3 downto 1);
+		IF rising_edge(clk) THEN
+			IF clkena='1' THEN
+				slower <= "111"; -- rokk
+			ELSE
+				slower<= (aga and throttle(0))&slower(slower'high downto 1); -- enaWRreg&slower(3 downto 1);
+			END IF;
 		END IF;
-	  END IF;
 	END PROCESS;
 
-	chipset_cycle <= '1' when (sel_ram='0' OR sel_nmi_vector='1' or block_turbo='1')
+	chipset_cycle <= '1' when (sel_ram='0' OR sel_nmi_vector='1')
 		AND sel_akiko='0' and sel_undecoded_d='0' else '0';
 
 	PROCESS (clk) BEGIN
