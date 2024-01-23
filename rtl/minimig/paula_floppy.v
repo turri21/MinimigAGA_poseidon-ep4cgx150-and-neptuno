@@ -314,6 +314,13 @@ always @(posedge clk)
 	if (clk7_en)
 		rx_flag7_d <= rx_flag;
 
+reg	[1:0] rx_cnt7;
+always @(posedge clk)
+	if (clr_flag_d)
+		rx_cnt7 <= 0;
+	else if (clk7_en && rx_strobe7 && ~&rx_cnt7)
+		rx_cnt7 <= rx_cnt7 + 1'd1;
+
 //-------------------------------------------- QSPI receiver -------------------------------------------------------------
 reg [1:0] qspi_nibble;
 reg [7:0] qspi_cmd;
@@ -386,6 +393,12 @@ always @(negedge sck)
 		else
 			tx_data_cnt <= tx_data_cnt + 3'd1;
 
+reg tx_flag7_d;
+wire tx_strobe7 = tx_flag ^ tx_flag7_d;
+always @(posedge clk)
+	if (clk7_en)
+		tx_flag7_d <= tx_flag;
+
 //---------------------------------------------------------------------------------------------------------------------
 
 //HDD interface
@@ -400,7 +413,7 @@ assign hdd_data_rd = cmd_hdd_data_rd && tx_strobe && spi_tx_cnt_del==2'd3 ? 1'b1
 assign hdd_data_out = qrx_strobe ? qrx_data : rx_data[15:0];
 
 //spidat strobe		
-assign spidat = cmd_fdd && rx_strobe7 && rx_cnt==3 ? 1'b1 : 1'b0;
+assign spidat = cmd_fdd && rx_strobe7 && rx_cnt7==3 ? 1'b1 : 1'b0;
 
 //------------------------------------
 
@@ -462,8 +475,8 @@ always @(*)
 //floppy disk write fifo status is latched when transmision of the previous spi word begins 
 //it guarantees that when latching the status data into spi transmit register setup and hold times are met
 always @(posedge clk)
-//	if (clk7_en)
-		if (tx_strobe)
+	if (clk7_en)
+		if (tx_strobe7)
 			wr_fifo_status <= {dmaen&dsklen[14],3'b000,fifo_cnt[11:0]};
 
 //-----------------------------------------------------------------------------------------------//
@@ -749,7 +762,7 @@ always @(posedge clk) begin
 	if (clk7_en) begin
 		if(reset)
 			{disk_writable[3:0],disk_present[3:0]} <= 8'b0000_0000;
-		else if (~direct_flag && rx_data[15:12]==4'b0001 && rx_strobe7 && rx_cnt==0)
+		else if (~direct_flag && rx_data[15:12]==4'b0001 && rx_strobe7 && rx_cnt7==0)
 			{disk_writable[3:0],disk_present[3:0]} <= rx_data[7:0];
 	end
 end
@@ -796,7 +809,7 @@ always @(*) begin
 			trackwr = 0;
 			dmaon = 0;
 			blckint = 0;
-			if (cmd_fdd && rx_strobe7 && rx_cnt==1 && dmaen && !lenzero && enable)//dsklen>0 and dma enabled, do disk dma operation
+			if (cmd_fdd && rx_strobe7 && rx_cnt7==1 && dmaen && !lenzero && enable)//dsklen>0 and dma enabled, do disk dma operation
 				nextstate = DISKDMA_ACTIVE; 
 			else
 				nextstate = DISKDMA_IDLE;			
