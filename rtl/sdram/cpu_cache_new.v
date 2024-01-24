@@ -313,7 +313,7 @@ always @ (posedge clk) begin
             if (cpu_bs[0]) cpu_cacheline_lo[cpu_adr_blk_ptr] <= #1 cpu_dat_w[ 7: 0]; //update low byte
             if (cpu_bs[1]) cpu_cacheline_hi[cpu_adr_blk_ptr] <= #1 cpu_dat_w[15: 8]; //update hi byte
 
-            if (write_ena) begin
+            if (!sdr_write_req && !sdr_write_ack) begin
               sdr_adr <= #1 cpu_adr[25:1];
               sdr_dqm_w <= #1 {2'b11, ~cpu_bs};
               sdr_dat_w <= #1 {cpu_dat_w, cpu_dat_w};

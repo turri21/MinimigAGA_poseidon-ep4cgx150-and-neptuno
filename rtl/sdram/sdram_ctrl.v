@@ -180,7 +180,7 @@ wire [ 2-1:0] writebuffer_dqm;
 wire [16-1:0] writebufferWR2;
 reg  [16-1:0] writebufferWR2_reg;
 wire [ 2-1:0] writebuffer_dqm2;
-reg           writebuffer_hold;
+reg           writebuffer_ack;
 
 reg  [26-1:1] cpuAddr_r; // registered CPU address - cpuAddr must be stable one cycle before cpuCSn
 
@@ -247,7 +247,7 @@ assign hostena=slot1_type==HOST ? cache_fill_1 : 1'b0;
 // cpu cache
 ////////////////////////////////////////
 
-reg [26-1:0] cache_snoop_adr;
+//reg [26-1:0] cache_snoop_adr;
 reg [31:0] cache_snoop_dat_w;
 reg [3:0] cache_snoop_bs;
 reg snoop_act;
@@ -277,9 +277,9 @@ cpu_cache_new cpu_cache (
 	.sdr_dat_w        ({writebufferWR2, writebufferWR}),
 	.sdr_dqm_w        ({writebuffer_dqm2, writebuffer_dqm}),
 	.sdr_write_req    (writebuffer_req),
-	.sdr_write_ack    (writebuffer_hold),
+	.sdr_write_ack    (writebuffer_ack),
 	.snoop_act        (snoop_act),                    // snoop act (write only - just update existing data in cache)
-	.snoop_adr        (cache_snoop_adr),       // snoop address
+	.snoop_adr        (slot1_addr),       // snoop address
 	.snoop_dat_w      (cache_snoop_dat_w),            // snoop write data
 	.snoop_bs         (cache_snoop_bs)
 );
@@ -459,6 +459,9 @@ always @ (posedge sysclk) begin
 	cache_fill_1                <= #1 1'b0;
 	cache_fill_2                <= #1 1'b0;
 	snoop_act                   <= #1 1'b0;
+
+	writebuffer_ack             <= #1 1'b0;
+
 	if(!init_done) begin
 		if(sdram_state == ph1) begin
 			case(initstate)
@@ -503,7 +506,6 @@ always @ (posedge sysclk) begin
 					ba                  <= #1 slot2_bank;
 					sd_cmd              <= #1 CMD_WRITE;
 					dqm                 <= #1 slot2_dqm;
-					writebuffer_hold    <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
 				end
 				
 				// Evaluate refresh counter in ph0 so that the refresh can be actioned the same
@@ -538,7 +540,7 @@ always @ (posedge sysclk) begin
 					slot1_addr          <= #1 {2'b00, chipAddr, 1'b0};
 					slot1_write         <= #1 !chipRW;
 
-					cache_snoop_adr <= {2'b00, chipAddr, 1'b0}; // snoop address
+//					cache_snoop_adr <= {2'b00, chipAddr, 1'b0}; // snoop address
 					cache_snoop_dat_w <={chipWR2, chipWR}; // snoop write data
 					cache_snoop_bs <= {!chipU2, !chipL2, !chipU, !chipL}; // Byte selects
 				end
@@ -562,9 +564,7 @@ always @ (posedge sysclk) begin
 					sd_cmd              <= #1 CMD_ACTIVE;
 					slot1_addr          <= #1 {writebufferAddr[25:1], 1'b0};
 					slot1_write         <= #1 1'b1;
-					writebufferWR_reg   <= #1 writebufferWR;
-					writebufferWR2_reg  <= #1 writebufferWR2;
-					writebuffer_hold    <= #1 1'b1; // let the write buffer know we're about to write
+					writebuffer_ack     <= #1 1'b1; // let the write buffer know we're about to write
 				end
 				// request from read cache
 				else if(cache_req && cpu_slot1ok && !cpu_reservertg) begin 
@@ -599,7 +599,7 @@ always @ (posedge sysclk) begin
 					sd_cmd              <= #1 CMD_ACTIVE;
 					slot1_addr          <= #1 {hostAddr[25:2],2'b00};
 					slot1_write         <= #1 hostwe;
-					cache_snoop_adr <= {hostAddr[25:2], 2'b00}; // snoop address
+//					cache_snoop_adr <= {hostAddr[25:2], 2'b00}; // snoop address
 					cache_snoop_dat_w <={hostWR}; // snoop write data
 					cache_snoop_bs <= {hostbytesel[2],hostbytesel[3],hostbytesel[0],hostbytesel[1]}; // Byte selects
 				end
@@ -615,6 +615,9 @@ always @ (posedge sysclk) begin
 					dqm                 <= #1 slot2_dqm2;
 					sd_cmd              <= #1 CMD_WRITE;
 				end
+				// Get next writebuffer data from cache (still valid)
+				writebufferWR_reg   <= #1 writebufferWR;
+				writebufferWR2_reg  <= #1 writebufferWR2;
 				// slot 2
 				cache_fill_2                <= #1 1'b1;
 			end
@@ -659,7 +662,6 @@ always @ (posedge sysclk) begin
 						default :       sdata_out <= #1 hostWR[31:16];
 					endcase
 					sdata_oe            <= #1 1'b1;
-					writebuffer_hold    <= #1 1'b0; // indicate to WriteBuffer that it's safe to accept the next write
 				end
 				cache_fill_1          <= #1 1'b1;
 			end
@@ -691,9 +693,7 @@ always @ (posedge sysclk) begin
 					sd_cmd            <= #1 CMD_ACTIVE;
 					slot2_addr        <= #1 {writebufferAddr[25:1], 1'b0};
 					slot2_write       <= #1 1'b1;
-					writebufferWR_reg <= #1 writebufferWR;
-					writebufferWR2_reg <= #1 writebufferWR2;
-					writebuffer_hold  <= #1 1'b1; // let the write buffer know we're about to write
+					writebuffer_ack   <= #1 1'b1; // let the write buffer know we're about to write
 				end
 				// request from read cache
 				else if(cache_req && cpu_slot2ok) begin
@@ -722,7 +722,12 @@ always @ (posedge sysclk) begin
 					sd_cmd              <= #1 CMD_WRITE;
 					dqm                 <= #1 slot1_dqm2;
 				end
+				// Get next writebuffer data from cache (still valid)
+				writebufferWR_reg <= #1 writebufferWR;
+				writebufferWR2_reg <= #1 writebufferWR2;
+
 				cache_fill_1          <= #1 1'b1;
+
 			end
 
 			ph11 : begin
