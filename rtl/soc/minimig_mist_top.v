@@ -432,7 +432,13 @@ TG68K tg68k (
 
 assign tg68_host_ack=tg68_host_req; // Prevent lockups on reads to not-yet-implemented Akiko registers.
 
+wire [23:0] host_addr;
+wire [15:0] host_data;
+wire host_req;
+wire host_ack;
+
 `ifndef MINIMIG_DUAL_SDRAM
+
 sdram_ctrl sdram (
   .sysclk       (clk_114          ),
   .reset_in     (sdctl_rst        ),
@@ -450,8 +456,13 @@ sdram_ctrl sdram (
   .sd_ras       (SDRAM_nRAS       ),
   .sd_cas       (SDRAM_nCAS       ),
   // Control CPU (not used in MiST)
-  .hostce       (1'b0             ),
-  .hostwe       (1'b0             ),
+  .hostWR       (16'h0000),
+  .hostAddr     (host_addr[23:2]),
+  .hostce       (host_req),
+  .hostwe       (1'b0),
+  .hostbytesel  (4'b1111),
+  .hostRD       (host_data),
+  .hostena      (host_ack),
   // Fast RAM
   .cpuena       (tg68_cpuena      ),
   .cpuRD        (tg68_cout        ),
@@ -489,8 +500,6 @@ sdram_ctrl sdram (
   .audRd        (aud_fromram      ),
   // Misc signals
   .reset_out    (reset_out        ),
-  .hostRD       (                 ),
-  .hostena      (                 ),
   .enaWRreg     (tg68_ena28       ),
   .ena7RDreg    (tg68_ena7RD      ),
   .ena7WRreg    (tg68_ena7WR      )
@@ -529,9 +538,14 @@ sdram_ctrl #(.addr_prefix_bits(1), .addr_prefix(0), .fast_write(1)) sdram (
   .sd_we        (SDRAM_nWE        ),
   .sd_ras       (SDRAM_nRAS       ),
   .sd_cas       (SDRAM_nCAS       ),
-  // Control CPU (not used in MiST)
-  .hostce       (1'b0             ),
-  .hostwe       (1'b0             ),
+  // Control CPU (used for drivesounds on MiST)
+  .hostWR       (16'h0000),
+  .hostAddr     (host_addr[23:2]),
+  .hostce       (host_req),
+  .hostwe       (1'b0),
+  .hostbytesel  (4'b1111),
+  .hostRD       (host_data),
+  .hostena      (host_ack),
   // Fast RAM
   .cpuena       (chipram_ready    ),
   .cpuRD        (chipram_cout     ),
@@ -569,8 +583,6 @@ sdram_ctrl #(.addr_prefix_bits(1), .addr_prefix(0), .fast_write(1)) sdram (
   .audRd        (aud_fromram      ),
   // Misc signals
   .reset_out    (reset_out        ),
-  .hostRD       (                 ),
-  .hostena      (                 ),
   .enaWRreg     (tg68_ena28       ),
   .ena7RDreg    (tg68_ena7RD      ),
   .ena7WRreg    (tg68_ena7WR      )
@@ -699,7 +711,13 @@ wire           VGA_VS_INT;     // VGA V_SYNC
 wire [  8-1:0] VGA_R_INT;      // VGA Red[5:0]
 wire [  8-1:0] VGA_G_INT;      // VGA Green[5:0]
 wire [  8-1:0] VGA_B_INT;      // VGA Blue[5:0]
-  
+
+wire fd_step;
+wire fd_insert;
+wire fd_eject;
+wire fd_motor;
+wire hd_step;
+
 //// minimig top ////
 minimig minimig (
   //m68k pins
@@ -762,6 +780,7 @@ minimig minimig (
   .kms_level    (kms_level        ),
   ._15khz       (_15khz           ),  // scandoubler disable
   .pwr_led      (led              ),  // power led
+  .disk_led     (                 ),  // fdd active
   .rtc          (rtc              ),
   //host controller interface (SPI)
   ._scs         ( {SPI_SS4,SPI_SS3,SPI_SS2}  ),  // SPI chip select
@@ -823,10 +842,15 @@ minimig minimig (
   .ext_int2     (1'b0             ),
   .ext_int6     (aud_int          ),
 `ifndef MINIMIG_DUAL_SDRAM
-  .ram_64meg    ({1'b0,core_config[3]})
+  .ram_64meg    ({1'b0,core_config[3]}),
 `else
-  .ram_64meg    (2'b10            )
+  .ram_64meg    (2'b10            ),
 `endif
+  .insert_sound (fd_insert),
+  .eject_sound  (fd_eject),
+  .motor_sound  (fd_motor),
+  .step_sound   (fd_step),
+  .hdd_sound    (hd_step)
 );
 
 
@@ -1189,6 +1213,29 @@ VideoStream myaudiostream
 );
 
 
+// Drive sounds
+
+wire [15:0] ds_aud;
+`ifdef MINIMIG_DRIVESOUNDS
+drivesounds ds_inst
+(
+	.clk(clk_114),
+	.reset_n(tg68_rst),
+	.mem_addr(host_addr),
+	.mem_d(host_data),
+	.mem_req(host_req),
+	.mem_ack(host_ack),
+	.fd_step(fd_step),
+	.fd_motor(fd_motor),
+	.fd_insert(fd_insert),
+	.fd_eject(fd_eject),
+	.hd_step(hd_step),
+	.aud_q(ds_aud)
+);
+`else
+assign ds_aud = 16'h0000;
+`endif
+
 // Audio mixing
 
 wire [15:0] ldata;
@@ -1197,13 +1244,15 @@ wire [15:0] rdata;
 AudioMix myaudiomix
 (
 	.clk(clk_28),
-	.reset_n(reset_out),
+	.reset_n(~reset_out),
 	.audio_in_l1(aud_amiga_left),
 	.audio_in_l2(aud_aux_left),
 	.audio_in_l3(aud_cdda_left),
+	.audio_in_l4(ds_aud),
 	.audio_in_r1(aud_amiga_right),
 	.audio_in_r2(aud_aux_right),
 	.audio_in_r3(aud_cdda_right),
+	.audio_in_r4(ds_aud),
 	.audio_l(ldata),
 	.audio_r(rdata)
 );

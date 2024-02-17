@@ -44,20 +44,24 @@ int bufferswap(unsigned char *b,int c,int gain)
 int main(int argc,char **argv)
 {
 	int i;
+	int fp=0;
 	printf("DRIVESND");
+	fp+=8;
 	for(i=1;i<argc;++i)
 	{
 		FILE *f;
 		unsigned int l;
-		fprintf(stderr,"File %s\n",argv[i]);
+		fprintf(stderr,"Sample %d, File %s, ",i-1,argv[i]);
 		f=fopen(argv[i],"rb");
 		fseek(f,0,SEEK_END);
 		l=ftell(f);
 		fseek(f,0,SEEK_SET);
-		fprintf(stderr,"Size %d\n",l);
+		fprintf(stderr,"Size 0x%x, ",l);
 		emit_longword_be(i-1);
 		emit_longword_be(l);
-		fprintf(stderr,"Gain: %d\n",gains[i-1]);
+		fp+=8;
+		fprintf(stderr,"Offset 0x%x, Gain: %d\n",fp,gains[i-1]);
+		fp+=l;
 		while(l>0)
 		{
 			int r=fread(buffer,1,512,f);
