@@ -16,9 +16,10 @@
 *  Description:  Micron 256Mb SDRAM Verilog model
 *
 *   Limitation:  - Doesn't check for 8192 cycle refresh
+*                  (Rudimentary support added by AMR)
 *
 *         Note:  - Set simulator resolution to "ps" accuracy
-*                - Set Debug = 0 to disable $display messages
+*                - Set Debug = 1 to disable $display messages
 *
 *   Disclaimer:  THESE DESIGNS ARE PROVIDED "AS IS" WITH NO WARRANTY 
 *                WHATSOEVER AND MICRON SPECIFICALLY DISCLAIMS ANY 
@@ -36,6 +37,8 @@
 * 2.0  SH              04/30/2002  - Second release
 *      Micron Technology Inc.
 *
+*      Basic bus contention detection added by AMR
+*
 **************************************************************************/
 
 /* verilator lint_off STMTDLY */
@@ -44,8 +47,8 @@
 
 // Uncomment one of the following to have the appropriate size definitions
 // for the part.
-//`define MT48LC32M16   // 64MB part
-`define MT48LC16M16   // 32MB part
+`define MT48LC32M16   // 64MB part
+//`define MT48LC16M16   // 32MB part
 //`define PRELOAD_RAM
 //`define MT48LC4M16    //  8MB part
 
@@ -151,8 +154,11 @@ module mt48lc16m16a2 (Dq, Addr, Ba, Clk, Cke, Cs_n, Ras_n, Cas_n, We_n, Dqm);
 
     wire      Debug            = 1'b0;                          // Debug messages : 1 = On
     wire      Dq_chk           = Sys_clk & Data_in_enable;      // Check setup/hold time for DQ
-    
-    assign    Dq               = Dq_reg;                        // DQ buffer
+
+	reg warnedcontention = 1'b0;
+	reg	dq_drive = 1'b0;   
+	reg	dq_drive_d = 1'b0;   
+    assign    Dq               = dq_drive ? Dq_reg : {data_bits{1'bz}};                        // DQ buffer
 
     // Commands Operation
     `define   ACT       0
@@ -200,6 +206,11 @@ module mt48lc16m16a2 (Dq, Addr, Ba, Clk, Cke, Cs_n, Ras_n, Cas_n, We_n, Dqm);
     time  RAS_chk0, RAS_chk1, RAS_chk2, RAS_chk3;
     time  RCD_chk0, RCD_chk1, RCD_chk2, RCD_chk3;
     time  RP_chk0, RP_chk1, RP_chk2, RP_chk3;
+
+	// Refresh timing
+	parameter refresh_interval = 7812; // 64ms / 8192 refreshes per 64ms  
+	integer refresh_target = 0 ;
+	integer refresh_count = 0 ;
 
    integer mem_cnt;
    
@@ -286,6 +297,17 @@ end
         Dqm_reg0 = Dqm_reg1;
         Dqm_reg1 = Dqm;
 
+		dq_drive <=1'b0;
+		dq_drive_d <= dq_drive;
+
+		if(dq_drive && !We_n && (!Dqm[1] || !Dqm[0]) && !Cas_n)
+			$display("%m: WARNING - bus contention at %t",$time);
+
+		if(dq_drive_d && !We_n && (!Dqm[1] || !Dqm[0]) && !Cas_n && !warnedcontention) begin
+			$display("Caution : %t - check timings to avoid contention",$time);
+			warnedcontention<=1'b1;
+		end
+
         // Read or Write with Auto Precharge Counter
         if (Auto_precharge[0] === 1'b1) begin
             Count_precharge[0] = Count_precharge[0] + 1;
@@ -317,8 +339,15 @@ end
         // tMRD Counter
         MRD_chk = MRD_chk + 1;
 
+		if($time/refresh_interval>refresh_target) begin
+			refresh_target=refresh_target+1;
+			if(refresh_target>refresh_count && refresh_count>8) // Only complain about autorefresh if the core is actually using it.
+				$display("%m : Autorefresh: expected %d, seen: %d",refresh_target,refresh_count);
+		end
+
         // Auto Refresh
         if (Aref_enable === 1'b1) begin
+			refresh_count=refresh_count+1;
             if (Debug) begin
                 $display ("%m : at time %t AREF : Auto Refresh", $time);
             end
@@ -445,7 +474,9 @@ end
 
                 // Record variables
                 Act_b0 = 1'b1;
-				$display ("%m : Bank 0 activated at time %t", $time);
+                if (Debug) begin
+					$display ("%m : Bank 0 activated at time %t", $time);
+				end
                 Pc_b0 = 1'b0;
                 B0_row_addr = Addr [addr_bits - 1 : 0];
                 RAS_chk0 = $time;
@@ -471,6 +502,9 @@ end
 
                 // Record variables
                 Act_b1 = 1'b1;
+                if (Debug) begin
+					$display ("%m : Bank 1 activated at time %t", $time);
+				end
                 Pc_b1 = 1'b0;
                 B1_row_addr = Addr [addr_bits - 1 : 0];
                 RAS_chk1 = $time;
@@ -496,6 +530,9 @@ end
 
                 // Record variables
                 Act_b2 = 1'b1;
+                if (Debug) begin
+					$display ("%m : Bank 2 activated at time %t", $time);
+				end
                 Pc_b2 = 1'b0;
                 B2_row_addr = Addr [addr_bits - 1 : 0];
                 RAS_chk2 = $time;
@@ -521,6 +558,9 @@ end
 
                 // Record variables
                 Act_b3 = 1'b1;
+                if (Debug) begin
+					$display ("%m : Bank 3 activated at time %t", $time);
+				end
                 Pc_b3 = 1'b0;
                 B3_row_addr = Addr [addr_bits - 1 : 0];
                 RAS_chk3 = $time;
@@ -562,7 +602,8 @@ end
                 Act_b0 = 1'b0;
                 Pc_b0 = 1'b1;
                 RP_chk0 = $time;
-				//$display ("%m : Precharge bank 0 at time %t", $time);
+                if(Debug)
+					$display ("%m : Precharge bank 0 at time %t", $time);
                 // Activate to Precharge
                 if ($time - RAS_chk0 < tRAS) begin
                     $display ("%m : at time %t ERROR: tRAS violation during Precharge", $time);
@@ -579,7 +620,8 @@ end
                 Act_b1 = 1'b0;
                 Pc_b1 = 1'b1;
                 RP_chk1 = $time;
-				$display ("%m : Precharge bank 1 at time %t", $time);
+                if(Debug)
+					$display ("%m : Precharge bank 1 at time %t", $time);
                 // Activate to Precharge
                 if ($time - RAS_chk1 < tRAS) begin
                     $display ("%m : at time %t ERROR: tRAS violation during Precharge", $time);
@@ -596,7 +638,8 @@ end
                 Act_b2 = 1'b0;
                 Pc_b2 = 1'b1;
                 RP_chk2 = $time;
-				$display ("%m : Precharge bank 2 at time %t", $time);
+                if(Debug)
+					$display ("%m : Precharge bank 2 at time %t", $time);
                 // Activate to Precharge
                 if ($time - RAS_chk2 < tRAS) begin
                     $display ("%m : at time %t ERROR: tRAS violation during Precharge", $time);
@@ -613,7 +656,8 @@ end
                 Act_b3 = 1'b0;
                 Pc_b3 = 1'b1;
                 RP_chk3 = $time;
-				$display ("%m : Precharge bank 3 at time %t", $time);
+                if(Debug)
+					$display ("%m : Precharge bank 3 at time %t", $time);
                 // Activate to Precharge
                 if ($time - RAS_chk3 < tRAS) begin
                     $display ("%m : at time %t ERROR: tRAS violation during Precharge", $time);
@@ -1045,6 +1089,7 @@ end
 `endif
             // Display debug message
             if (Dqm_reg0 !== 2'b11) begin
+				dq_drive <= 1'b1;
 `ifdef VERILATOR
                 Dq_reg <= Dq_dqm;
 `else
