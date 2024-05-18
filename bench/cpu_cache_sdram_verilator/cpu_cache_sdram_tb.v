@@ -7,7 +7,7 @@
 module cpu_cache_sdram_tb(
   input  wire           clk_114,
   input  wire           reset,
-  input  wire    [24:1] cpuAddr,
+  input  wire    [25:1] cpuAddr,
   input  wire     [1:0] cpuState,
   input  wire           cpuL,
   input  wire           cpuU,
@@ -30,10 +30,10 @@ always @(posedge clk_114) begin
 end
 
 assign    clkena = tg68_ena28 && (cpuState == 2'b01 || tg68_cpuena);
-assign    tg68_cpustate = {cpuLongWord, 3'b000, cpu_ncs, cpuState};
+assign    tg68_cpustate = {cpuLongWord, cpu_ncs, cpuState};
 assign    tg68_dat_out = cpuWR;
 assign    cpuRD = tg68_dat_in;
-assign    tg68_cad[24:1] = cpuAddr;
+assign    tg68_cad[25:1] = cpuAddr;
 assign    tg68_clds = cpuL;
 assign    tg68_cuds = cpuU;
 
@@ -67,7 +67,7 @@ wire [ 4-1:0] sdram_cs;
 wire [ 2-1:0] sdram_ba;
 wire [ 2-1:0] sdram_dqm;
 
-wire   [24:0] rtgAddr;
+wire   [25:0] rtgAddr;
 wire          rtgce = 0;
 wire          rtgfill;
 wire   [15:0] rtgRd;
@@ -77,7 +77,7 @@ wire          audce = 0;
 wire          audfill;
 wire   [15:0] audRd;
 
-wire [22-1:0] bridge_adr;
+wire [24-1:0] bridge_adr;
 wire          bridge_cs;
 wire          bridge_we;
 wire [32-1:0] bridge_dat_w;
@@ -95,7 +95,7 @@ wire          _ram_oe;
 wire [16-1:0] ramdata_in;
 
 reg  [32-1:0] tg68_cad=0;
-reg  [ 7-1:0] tg68_cpustate=7'b0000001;
+reg  [ 4-1:0] tg68_cpustate=4'b0001;
 reg           tg68_clds=1;
 reg           tg68_cuds=1;
 wire [16-1:0] tg68_cout;
@@ -118,7 +118,7 @@ reg           tg68_rw=0;
 assign cctrl = 3'b111;
 
 assign bridge_cs = 1'b0;
-assign bridge_adr = 22'd0;
+assign bridge_adr = 24'd0;
 assign bridge_we = 1'b0;
 assign bridge_dat_w = 32'd0;
 
@@ -182,7 +182,7 @@ sdram_ctrl sdram_ctrl (
   .audfill      (audfill          ),
   .audRd        (audRd            ),
   // cpu
-  .cpuAddr      (tg68_cad[24:1]   ),
+  .cpuAddr      (tg68_cad[25:1]   ),
   .cpustate     (tg68_cpustate    ),
   .cpuL         (tg68_clds        ),
   .cpuU         (tg68_cuds        ),
