@@ -63,11 +63,14 @@ module sdram_ctrl(
   // RTG
   input wire     [25:0] rtgAddr,
   input wire            rtgce,
+  output wire           rtgack,
+  input wire            rtgpri,
   output wire           rtgfill,
   output wire    [15:0] rtgRd,
   // Audio
   input wire     [22:0] audAddr,
   input wire            audce,
+  output wire           audack,
   output wire           audfill,
   output wire    [15:0] audRd,
   // cpu
@@ -231,9 +234,11 @@ assign reset_out = init_done;
 // RTG access
 
 assign rtgRd=sdata_reg;
-assign rtgfill=slot2_type==RTG ? cache_fill_2 : 1'b0;
+assign rtgfill=(slot1_type==RTG && cache_fill_1) || (slot2_type==RTG && cache_fill_2) ? 1'b1 : 1'b0;
+assign rtgack=(slot1_type==RTG && sdram_state==ph4) || (slot2_type==RTG && sdram_state==ph12) ? 1'b1 : 1'b0;
 assign audRd=sdata_reg;
 assign audfill=slot1_type==AUDIO ? cache_fill_1 : 1'b0;
+assign audack=(slot1_type==AUDIO && sdram_state==ph4) ? 1'b1 : 1'b0;
 
 ////////////////////////////////////////
 // host access
@@ -412,28 +417,35 @@ reg rtg_slot2ok;
 reg aud_slot1ok;
 reg host_slot1ok;
 
+reg rtg_extendable;
+reg rtg_extend;
+wire rtg_blockingbus = cpu_reservertg | wb_reservertg | refresh_pending;
+wire [1:0] rtg_bank = rtgAddr[24:23];
+
 always @(posedge sysclk) begin
 
 	// CPU will defer to RTG on slot 2, and avoid using slot 2 when a refresh is pending.
-	cpu_reservertg <= rtgce && cpuAddr_r[24:23]==rtgAddr[24:23] ? 1'b1 : 1'b0;
+	cpu_reservertg <= rtgce && rtgpri && cpuAddr_r[24:23]==rtg_bank ? 1'b1 : 1'b0;
 	cpu_slot1ok <= !zatn && (slot2_type == IDLE || slot2_bank != cpuAddr_r[24:23]) ? 1'b1 : 1'b0;
 	cpu_slot2ok <= !refresh_pending && (|cpuAddr_r[24:23]   // Reserve bank 0 for slot 1
 	               && (slot1_type == IDLE || slot1_bank != cpuAddr_r[24:23])) ? 1'b1 : 1'b0;
 
 	// Writebuffer will defer to RTG on slot 2, and avoid using slot 2 when a refresh is pending.
-	wb_reservertg <= rtgce && writebufferAddr[24:23]==rtgAddr[24:23] ? 1'b1 : 1'b0;
-//	wb_slot1ok <= !zatn && (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23]) ? 1'b1 : 1'b0;
+	wb_reservertg <= rtgce && rtgpri && writebufferAddr[24:23]==rtg_bank ? 1'b1 : 1'b0;
 	wb_slot1ok <= (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23]) ? 1'b1 : 1'b0;
 	wb_slot2ok <= !refresh_pending && (|writebufferAddr[24:23] // Reserve bank 0 for slot 1
 	           && (slot1_type == IDLE || slot1_bank != writebufferAddr[24:23])) ? 1'b1 : 1'b0;
 
 	// Other ports need to avoid bank clashes.
-	rtg_slot2ok <= !refresh_pending && (slot1_type == IDLE || slot1_bank != rtgAddr[24:23]) ? 1'b1 : 1'b0;
+	rtg_slot2ok <= !refresh_pending && (slot1_type == IDLE || slot1_bank != rtg_bank) ? 1'b1 : 1'b0;
 	host_slot1ok <= (slot2_type==IDLE || slot2_bank!=hostAddr[24:23]);
 	aud_slot1ok <= slot1_type!=AUDIO && !zatn && (slot2_type==IDLE || slot2_bank!=2'b00);
 
 	// Has the host been waiting an unreasonably long time?
 	zatn <= !(|hostslot_cnt) && hostce;
+	
+	// Is the RTG subsystem requesting the last word of a column, or blocking the CPU?
+	rtg_extendable <= rtgce && rtgpri && (!refresh_pending) && rtgAddr[9:4]!=6'b111111 ? 1'b1 : 1'b0;
 end
 
 //// sdram control ////
@@ -450,6 +462,7 @@ always @ (posedge sysclk) begin
 		slot1_type                <= #1 IDLE;
 		slot2_type                <= #1 IDLE;
 		refreshcnt                <= #1 REFRESHSCHEDULE;
+		rtg_extend                <= 1'b0;
 	end
 	sdata_oe                    <= #1 1'b0;
 	sd_cmd                      <= #1 CMD_INHIBIT;
@@ -544,6 +557,15 @@ always @ (posedge sysclk) begin
 					cache_snoop_dat_w <={chipWR2, chipWR}; // snoop write data
 					cache_snoop_bs <= {!chipU2, !chipL2, !chipU, !chipL}; // Byte selects
 				end
+				// Now continue an in-progress RTG transaction if appropriate
+				else if(rtg_extend) begin
+					slot1_type        <= #1 RTG;
+					sdaddr            <= #1 rtgAddr[22:10];
+					ba                <= #1 rtg_bank;
+					slot1_bank        <= #1 rtg_bank;
+					slot1_dqm         <= #1 2'b11;
+					slot1_addr        <= #1 rtgAddr[25:0];
+				end
 				// next in line is refresh
 				// (a refresh cycle blocks both access slots)
 				else if(refresh_pending && slot2_type == IDLE) begin
@@ -634,6 +656,10 @@ always @ (posedge sysclk) begin
 					ba                  <= #1 slot1_bank;
 					sd_cmd              <= #1 CMD_READ;
 					sdaddr              <= #1 {1'b0, 1'b0, 1'b1, slot1_addr[25], slot1_addr[9:1]}; // AUTO PRECHARGE
+					if(slot1_type == RTG) begin // Don't precharge if we're going to extend the cycle
+						rtg_extend<=rtg_extendable;
+						sdaddr[10] <= ~rtg_extendable;
+					end
 				end
 			end
 
@@ -673,16 +699,15 @@ always @ (posedge sysclk) begin
 				slot2_type            <= #1 IDLE;
 				slot2_write           <= #1 1'b0;
 
-				if(rtgce && rtg_slot2ok) begin 
+				if(rtg_extend) begin
 					slot2_type        <= #1 RTG;
 					sdaddr            <= #1 rtgAddr[22:10];
-					ba                <= #1 rtgAddr[24:23];
-					slot2_bank        <= #1 rtgAddr[24:23];
+					ba                <= #1 rtg_bank;
+					slot2_bank        <= #1 rtg_bank;
 					slot2_dqm         <= #1 2'b11;
-					sd_cmd            <= #1 CMD_ACTIVE;
 					slot2_addr        <= #1 rtgAddr[25:0];
 				end
-				else if(writebuffer_req && wb_slot2ok) begin
+				else if(writebuffer_req && wb_slot2ok && !wb_reservertg) begin
 					// We only yield to the OSD CPU if it's both cycle-starved and ready to go.
 					slot2_type        <= #1 CPU_WRITECACHE;
 					sdaddr            <= #1 writebufferAddr[22:10];
@@ -696,7 +721,7 @@ always @ (posedge sysclk) begin
 					writebuffer_ack   <= #1 1'b1; // let the write buffer know we're about to write
 				end
 				// request from read cache
-				else if(cache_req && cpu_slot2ok) begin
+				else if(cache_req && cpu_slot2ok && !cpu_reservertg) begin
 					slot2_type        <= #1 CPU_READCACHE;
 					sdaddr            <= #1 cpuAddr_r[22:10];
 					ba                <= #1 cpuAddr_r[24:23];
@@ -704,6 +729,15 @@ always @ (posedge sysclk) begin
 					slot2_dqm         <= #1 {cpuU, cpuL};
 					slot2_addr        <= #1 {cpuAddr_r[25:1], 1'b0};
 					sd_cmd            <= #1 CMD_ACTIVE;
+				end
+				else if(rtgce && rtg_slot2ok) begin // RTG is high priority if 'hungry', low priority otherwise
+					slot2_type        <= #1 RTG;
+					sdaddr            <= #1 rtgAddr[22:10];
+					ba                <= #1 rtg_bank;
+					slot2_bank        <= #1 rtg_bank;
+					slot2_dqm         <= #1 2'b11;
+					sd_cmd            <= #1 CMD_ACTIVE;
+					slot2_addr        <= #1 rtgAddr[25:0];
 				end
 
 			end
@@ -741,6 +775,10 @@ always @ (posedge sysclk) begin
 					sdaddr              <= #1 {1'b0, 1'b0, 1'b1, slot2_addr[25], slot2_addr[9:1]}; // AUTO PRECHARGE
 					ba                  <= #1 slot2_bank;
 					sd_cmd              <= #1 CMD_READ;
+					if(slot2_type == RTG) begin // Don't precharge if we're going to extend the cycle
+						rtg_extend<=rtg_extendable;
+						sdaddr[10] <= ~rtg_extendable;
+					end
 				end
 			end
 

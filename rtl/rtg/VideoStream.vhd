@@ -11,6 +11,12 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.numeric_std.ALL;
 
 entity VideoStream is
+generic
+(
+	fifodepth : integer := 9; -- 512 entries deep by default
+	burstdepth : integer := 3; -- Eight word bursts
+	signalwidth : integer := 16 -- Sixteen bits wide
+);
 port
 (
 	clk : in std_logic;
@@ -20,63 +26,78 @@ port
 	baseaddr : in std_logic_vector(25 downto 0);
 	a : out std_logic_vector(25 downto 0);
 	req : out std_logic;
-	d : in std_logic_vector(15 downto 0);
+	ack : in std_logic;
+	pri : out std_logic;
+	d : in std_logic_vector(signalwidth-1 downto 0);
 	fill : in std_logic;
 	-- Display interface
 	rdreq : in std_logic;
-	q : out std_logic_vector(15 downto 0)
+	q : out std_logic_vector(signalwidth-1 downto 0)
 );
 end entity;
 
 architecture rtl of VideoStream is
 
-type samplebuffer is array(0 to 511) of std_logic_vector(15 downto 0);
-signal samplebuf : samplebuffer;
-signal inptr : unsigned(8 downto 0);
-signal outptr : unsigned(8 downto 0);
-signal watermark : unsigned(5 downto 0);
-signal address : unsigned(25 downto 0);
-signal address_high : unsigned(25 downto 4);
-signal address_low : unsigned(2 downto 0);
-signal full : std_logic;
-
+type samplebuffer is array(0 to 2**fifodepth-1) of std_logic_vector(signalwidth-1 downto 0);
+signal buf : samplebuffer;
+signal inptr : unsigned(fifodepth-1 downto 0);
+signal outptr : unsigned(fifodepth-1 downto 0);
+signal watermark : unsigned(fifodepth-1 downto 0);
+signal fetch_address : unsigned(25 downto 0);
+signal nearfull : std_logic;
+signal hungry : std_logic;
 begin
 
--- The req signal should be high any time the output process
--- is in the same half of the buffer as the fill process.
+-- Accounting
+process(clk) begin
+	if rising_edge(clk) then
 
-req<=reset_n and enable and not full;
+		if fill='1' and rdreq='0' then
+			watermark <= watermark + 1;
+		end if;
+		
+		if fill='0' and rdreq='1' then
+			watermark <= watermark - 1;
+		end if;
+		
+		if reset_n='0' then
+			watermark <= (others => '0');
+		end if;
+
+	end if;
+end process;
+
+nearfull <= '1' when watermark(watermark'high downto (burstdepth+2)) = to_unsigned(2**(fifodepth-(burstdepth+2))-1,fifodepth-(burstdepth+2)) else '0';
+
+hungry <= not watermark(fifodepth-1);
+
 
 -- Fill from RAM
-a<=std_logic_vector(address_high) & std_logic_vector(address_low) & '0';
-inptr<=unsigned(address_high(9 downto 4)&address_low);
-
 
 process(clk)
 begin
 	if rising_edge(clk) then
-		
-		-- Need to drop the req signal a few cycles early when the buffer fills up.
-		if watermark(watermark'high downto 1)=inptr(8 downto 4) then
-			full <= '1';
-		else
-			full <= '0';
+
+		if fill='1' then
+			buf(to_integer(inptr))<=d;
+			inptr<=inptr+1;
+		end if;
+
+		if ack='1' then	-- Advance the fetch address when the controller acknowledges the request
+			fetch_address<=fetch_address + ((signalwidth/8) * 2**burstdepth);
 		end if;
 
 		if reset_n='0' then
-			address_high<=unsigned(baseaddr(25 downto 4));
-			address_low<="000";
-			samplebuf(to_integer(inptr))<=(others=>'0');
-		elsif fill='1' then
-			samplebuf(to_integer(inptr))<=d;
-			address_low<=address_low+1;
-			if address_low="111" then -- carry to addr_high
-				address_high<=address_high+1;
-			end if;
+			fetch_address <= unsigned(baseaddr);
+			inptr <= (others => '0');
 		end if;
 	end if;
 end process;
 
+a<=std_logic_vector(fetch_address);
+
+req<=reset_n and enable and not nearfull;
+pri<=hungry;
 
 -- Output to video
 
@@ -86,13 +107,15 @@ begin
 		if rdreq='1' then
 			outptr<=outptr+1;
 		end if;
+
 		if reset_n='0' then
-			outptr<=unsigned(baseaddr(9 downto 1));
+			outptr<=(others => '0');
 		end if;
-		watermark<=outptr(outptr'high downto 3)-2;
-		q<=samplebuf(to_integer(outptr));
+
+		q<=buf(to_integer(outptr));
 	end if;
 end process;
 
 
 end architecture;
+

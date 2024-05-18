@@ -228,7 +228,7 @@ sel_eth<='0';
 	END PROCESS;
 
 	datatg68 <= fromram WHEN datatg68_selram='1' else datatg68_c;
-	chipset_ramsel <= sel_chipram or sel_kickram or sel_slowram;
+	chipset_ramsel <= sel_z2ram or sel_chipram or sel_kickram or sel_slowram;
 
 	-- Register incoming data
 	process(clk) begin

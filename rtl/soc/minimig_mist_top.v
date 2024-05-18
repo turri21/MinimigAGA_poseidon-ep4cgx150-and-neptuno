@@ -529,10 +529,12 @@ sdram_ctrl sdram (
   .chipRD       (ramdata_in       ),
   .chip48       (chip48           ),
   // RTG
-  .rtgAddr      (                 ),
-  .rtgce        (                 ),
-  .rtgfill      (                 ),
-  .rtgRd        (                 ), 
+  .rtgAddr      (rtg_addr_mangled ),
+  .rtgce        (rtg_ramreq       ),
+  .rtgack       (rtg_ack          ),
+  .rtgpri       (rtg_rampri       ),
+  .rtgfill      (rtg_fill         ),
+  .rtgRd        (rtg_fromram      ), 
   // Audio buffer
   .audAddr      (                 ),
   .audce        (                 ),
@@ -593,13 +595,14 @@ sdram_ctrl sdram2 (
   .chipRD       (                 ),
   .chip48       (                 ),
   // RTG
-  .rtgAddr      (rtg_addr_mangled ),
-  .rtgce        (rtg_ramreq       ),
-  .rtgfill      (rtg_fill         ),
-  .rtgRd        (rtg_fromram      ), 
+  .rtgAddr      (                 ),
+  .rtgce        (                 ),
+  .rtgfill      (                 ),
+  .rtgRd        (                 ), 
   // Audio buffer
   .audAddr      (aud_ramaddr      ),
   .audce        (aud_ramreq       ),
+  .audack       (aud_ack          ),
   .audfill      (aud_fill         ),
   .audRd        (aud_fromram      ),
   // Misc signals
@@ -912,15 +915,29 @@ assign rtg_addr_mangled[25:24]=rtg_addr[25:24];
 assign rtg_addr_mangled[23]=rtg_addr[23]^(rtg_addr[22]|rtg_addr[21]);
 assign rtg_addr_mangled[22:0]=rtg_addr[22:0];
 
+wire rtg_rampri;
+wire rtg_ack;
+
+reg [1:0] rtg_reset;
+
+always @(posedge clk_114) begin
+	if(clk7_en)
+		rtg_reset <= {1'b1,rtg_reset[1]};
+	if(!rtg_ena || vblank_out || linecompare_fillmask)
+		rtg_reset <= 1'b00;
+end
+
 VideoStream myvs
 (
 	.clk(clk_114),
-	.reset_n(rtg_ena & !vblank_out & !linecompare_fillmask),
+	.reset_n(rtg_reset[0]),
 	.enable(rtg_ena),
 	.baseaddr({rtg_linecompare ? rtg_baseaddr2[24:4] : rtg_baseaddr[24:4],4'b0}),
 	// SDRAM interface
 	.a(rtg_addr),
 	.req(rtg_ramreq),
+	.ack(rtg_ack),
+	.pri(rtg_rampri),
 	.d(rtg_fromram),
 	.fill(rtg_fill),
 	// Display interface
@@ -1084,6 +1101,7 @@ wire [25:0] aud_addr;
 wire [15:0] aud_sample;
 
 wire aud_ramreq;
+wire aud_ack;
 wire [15:0] aud_fromram;
 wire aud_fill;
 wire aud_ena_cpu;
@@ -1126,6 +1144,7 @@ VideoStream myaudiostream
 	// SDRAM interface
 	.a(aud_addr),
 	.req(aud_ramreq),
+	.ack(aud_ack),
 	.d(aud_fromram),
 	.fill(aud_fill),
 	// Display interface
