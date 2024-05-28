@@ -172,7 +172,7 @@ wire           cache_inhibit;
 wire           cacheline_clr;
 wire [ 32-1:0] tg68_cad;
 wire   [  3:0] tg68_cpustate;
-wire           tg68_chipset_ramsel;
+//wire           tg68_chipset_ramsel;
 wire           tg68_nrst_out;
 wire           tg68_clds;
 wire           tg68_cuds;
@@ -391,7 +391,7 @@ TG68K tg68k (
 //.ovr          (tg68_ovr         ),
   .ramaddr      (tg68_cad         ),
   .cpustate     (tg68_cpustate    ),
-  .chipset_ramsel(tg68_chipset_ramsel),
+//  .chipset_ramsel(tg68_chipset_ramsel),
   .nResetOut    (tg68_nrst_out    ),
   .skipFetch    (                 ),
   .ramlds       (tg68_clds        ),
@@ -484,11 +484,15 @@ sdram_ctrl sdram (
 //assign         tg68_cout = !chipram_cpustate[2] ? chipram_cout : fastram_cout;
 //assign         tg68_cpuena = !chipram_cpustate[2] ? chipram_ready : !fastram_cpustate[2] ? fastram_ready : 1'b0;
 
+reg sel_2ndram;
+always @(posedge clk_114)
+  sel_2ndram <= tg68_cad[26];
+
 assign         tg68_cpuena = chipram_ready | fastram_ready;
-assign         tg68_cout = chipram_ready ? chipram_cout : fastram_cout;
+assign         tg68_cout = sel_2ndram? fastram_cout : chipram_cout;
 
 //chipram
-wire     [3:0] chipram_cpustate = tg68_cpustate | {1'b0, ~tg68_chipset_ramsel, 2'b00};
+//wire     [3:0] chipram_cpustate = tg68_cpustate | {1'b0, ~tg68_chipset_ramsel, 2'b00};
 wire [ 16-1:0] chipram_cout;
 wire           chipram_ready;
 
@@ -518,7 +522,7 @@ sdram_ctrl #(.addr_prefix_bits(1), .addr_prefix(0)) sdram (
   .cpuAddr      (tg68_cad[26:1]   ),
   .cpuU         (tg68_cuds        ),
   .cpuL         (tg68_clds        ),
-  .cpustate     (chipram_cpustate ),
+  .cpustate     (tg68_cpustate    ),
   // Chip RAM
   .chipWR       (ram_data         ),
   .chipWR2      (tg68_dat_out2    ),
@@ -554,7 +558,7 @@ sdram_ctrl #(.addr_prefix_bits(1), .addr_prefix(0)) sdram (
 );
 
 //fastram
-wire     [3:0] fastram_cpustate = tg68_cpustate | {1'b0, tg68_chipset_ramsel, 2'b00};
+//wire     [3:0] fastram_cpustate = tg68_cpustate | {1'b0, tg68_chipset_ramsel, 2'b00};
 wire [ 16-1:0] fastram_cout;
 wire           fastram_ready;
 
@@ -584,7 +588,7 @@ sdram_ctrl #(.shortcut(1'b1), .addr_prefix_bits(1), .addr_prefix(1) ) sdram2 (
   .cpuAddr      (tg68_cad[26:1]   ),
   .cpuU         (tg68_cuds        ),
   .cpuL         (tg68_clds        ),
-  .cpustate     (fastram_cpustate ),
+  .cpustate     (tg68_cpustate    ),
   // Chip RAM
   .chipWR       (                 ),
   .chipWR2      (                 ),

@@ -81,7 +81,7 @@ port(
 	--    ovr           : in      std_logic;
 	ramaddr       : out     std_logic_vector(31 downto 0);
 	cpustate      : out     std_logic_vector(3 downto 0);
-	chipset_ramsel: out     std_logic;
+--	chipset_ramsel: out     std_logic;
 	nResetOut     : buffer  std_logic;
 	skipFetch     : buffer  std_logic;
 	--    cpuDMA        : buffer  std_logic;
@@ -230,7 +230,7 @@ sel_eth<='0';
 
 	datatg68 <= fromram WHEN datatg68_selram='1' else datatg68_c;
 --	chipset_ramsel <= sel_z2ram or sel_chipram or sel_kickram or sel_slowram;
-	chipset_ramsel <= not sel_z3ram;
+--	chipset_ramsel <= not sel_z3ram;
 
 	-- Register incoming data
 	process(clk) begin
