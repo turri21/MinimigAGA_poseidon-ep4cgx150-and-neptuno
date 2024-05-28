@@ -15,7 +15,7 @@ module minimig_autoconfig
 	input [1:0] slowram_config,
 	input	[1:0] fastram_config,
 	input m68020,
-	input ram_64meg,
+	input [1:0] ram_64meg,
 	output reg [4:0] board_configured,
 	output reg autoconfig_done
 );
@@ -84,6 +84,11 @@ begin
 				9'h048 : begin	// Zorro II configures at 48
 					case(acdevice)
 						3'b000 : begin // ZII RAM
+								roma_wr[8:6] = 3'b001;	// First ZIII entry
+								roma_wr[5:0] = 6'h01;	// Write address for modifying size of 1st ZIII RAM.
+								ramsize <= ram_64meg[1] ? 4'b0010 : 4'b0000; // 64 meg or 16 meg
+								rom_we<=1'b1;
+
 								board_configured[0] <= 1'b1;
 								acdevice<=(&fastram_config & m68020) ? 3'b001 : 3'b111; // ZIII RAM next
 							end
@@ -97,12 +102,16 @@ begin
 								board_configured[1] <= 1'b1;
 								
 								roma_wr[8:6] = 3'b011;	// Third ZIII entry
-								roma_wr[5:0] = 6'h05;	// Write address for modifying size of 2nd ZIII RAM.
-								ramsize <= |slowram_config ? 4'b1000 : 4'b0111; // 2 meg or 4 meg
+								roma_wr[5:0] = 6'h05;	// Write address for modifying size of 3rd ZIII RAM.
+								ramsize <= ram_64meg[1] ? 4'b1111 : (|slowram_config ? 4'b1000 : 4'b0111); // 16 meg if dual SDRAM, otherwise 2 meg or 4 meg depending on slowram config.
 								rom_we<=1'b1;
 								// skip straight to 3'b011 on 32 meg platforms
-								acdevice<=ram_64meg ? 3'b010 : 3'b011;
-//								acdevice<=3'b011; // Ethernet after ZIII RAM
+								case (ram_64meg)
+									2'b00 : acdevice <= 3'b011;	// Leftover space next on 32-meg platforms
+									2'b01 : acdevice <= 3'b010; // Extra 32 meg next on 64-meg platforms
+									2'b10 : acdevice <= 3'b010; // Extra 32 meg next on dual SDRAM platforms
+									default : acdevice <= 3'b111; // No more otherwise
+								endcase
 							end
 						3'b010 : begin // ZIII RAM 2 - 2nd 32 meg on 64 meg platforms
 								board_configured[2] <= 1'b1;

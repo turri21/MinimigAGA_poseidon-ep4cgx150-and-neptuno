@@ -278,7 +278,7 @@ module minimig
   output reg ntsc = NTSC, //PAL/NTSC video mode selection
   input   ext_int2,	// External interrupt for Akiko
   input   ext_int6,	// External interrupt for AHI audio
-  input   ram_64meg
+  input [1:0] ram_64meg
 );
 
 //--------------------------------------------------------------------------------------

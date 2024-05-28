@@ -342,7 +342,11 @@ amiga_clk amiga_clk2 (
 
 //// TG68K main CPU ////
 
+`ifdef MINIMIG_DUAL_SDRAM
+TG68K #(.dualsdram("true")) tg68k (
+`else
 TG68K tg68k (
+`endif
   .clk          (clk_114          ),
   .reset        (tg68_rst         ),
   .clkena_in    (tg68_ena28       ),
@@ -488,7 +492,7 @@ wire     [3:0] chipram_cpustate = tg68_cpustate | {1'b0, ~tg68_chipset_ramsel, 2
 wire [ 16-1:0] chipram_cout;
 wire           chipram_ready;
 
-sdram_ctrl sdram (
+sdram_ctrl #(.addr_prefix_bits(1), .addr_prefix(0)) sdram (
   .sysclk       (clk_114          ),
   .reset_in     (sdctl_rst        ),
   .cache_rst    (tg68_rst         ),
@@ -511,7 +515,7 @@ sdram_ctrl sdram (
   .cpuena       (chipram_ready    ),
   .cpuRD        (chipram_cout     ),
   .cpuWR        (tg68_cin         ),
-  .cpuAddr      (tg68_cad[25:1]   ),
+  .cpuAddr      (tg68_cad[26:1]   ),
   .cpuU         (tg68_cuds        ),
   .cpuL         (tg68_clds        ),
   .cpustate     (chipram_cpustate ),
@@ -554,7 +558,7 @@ wire     [3:0] fastram_cpustate = tg68_cpustate | {1'b0, tg68_chipset_ramsel, 2'
 wire [ 16-1:0] fastram_cout;
 wire           fastram_ready;
 
-sdram_ctrl sdram2 (
+sdram_ctrl #(.shortcut(1'b1), .addr_prefix_bits(1), .addr_prefix(1) ) sdram2 (
   .sysclk       (clk_114          ),
   .reset_in     (sdctl_rst        ),
   .cache_rst    (tg68_rst         ),
@@ -577,7 +581,7 @@ sdram_ctrl sdram2 (
   .cpuena       (fastram_ready    ),
   .cpuRD        (fastram_cout     ),
   .cpuWR        (tg68_cin         ),
-  .cpuAddr      (tg68_cad[25:1]   ),
+  .cpuAddr      (tg68_cad[26:1]   ),
   .cpuU         (tg68_cuds        ),
   .cpuL         (tg68_clds        ),
   .cpustate     (fastram_cpustate ),
@@ -787,9 +791,9 @@ minimig minimig (
   .ext_int2     (1'b0             ),
   .ext_int6     (aud_int          ),
 `ifndef MINIMIG_DUAL_SDRAM
-  .ram_64meg    (core_config[3]   )
+  .ram_64meg    ({1'b0,core_config[3]})
 `else
-  .ram_64meg    (1'b1             )
+  .ram_64meg    (2'b10            )
 `endif
 );
 

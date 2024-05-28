@@ -74,7 +74,7 @@ module sdram_ctrl(
   output wire           audfill,
   output wire    [15:0] audRd,
   // cpu
-  input  wire    [25:1] cpuAddr,
+  input  wire [ addr_max_bits+addr_prefix_bits-1:1] cpuAddr,        // cpu address
   input  wire     [3:0] cpustate,
   input  wire           cpuL,
   input  wire           cpuU,
@@ -86,6 +86,11 @@ module sdram_ctrl(
   output wire           cpuena
 );
 
+parameter addr_max_bits=26;
+parameter addr_prefix_bits=0;
+parameter addr_prefix=0;
+
+parameter shortcut=0;
 
 //// parameters ////
 
@@ -185,7 +190,7 @@ reg  [16-1:0] writebufferWR2_reg;
 wire [ 2-1:0] writebuffer_dqm2;
 reg           writebuffer_ack;
 
-reg  [26-1:1] cpuAddr_r; // registered CPU address - cpuAddr must be stable one cycle before cpuCSn
+reg  [addr_max_bits+addr_prefix_bits-1:1] cpuAddr_r; // registered CPU address - cpuAddr must be stable one cycle before cpuCSn
 
 reg     [3:0] sd_cmd;   // current command sent to sd ram
 
@@ -258,7 +263,10 @@ reg [3:0] cache_snoop_bs;
 reg snoop_act;
 
 //// cpu cache ////
-cpu_cache_new cpu_cache (
+cpu_cache_new #(
+	.addr_prefix_bits(addr_prefix_bits),
+	.addr_prefix(addr_prefix)
+) cache (
 	.clk              (sysclk),                       // clock
 	.rst              (!reset || !cache_rst),         // cache reset
 	.cache_en         (1'b1),                         // cache enable
@@ -379,14 +387,19 @@ end
 
 //// sdram state ////
 always @ (posedge sysclk) begin
-	if(clk7_enD & ~clk7_en) begin
+	if(!init_done && clk7_enD & ~clk7_en) begin
 		sdram_state   <= #1 ph1;
 	end else begin
 	case(sdram_state) // LATENCY=3
 		ph0     : sdram_state <= #1 ph1;
 		ph1     : sdram_state <= #1 ph2;
 		ph2     : sdram_state <= #1 ph3;
-		ph3     : sdram_state <= #1 ph4;
+		ph3     : begin
+				if(init_done && shortcut==1 && (!rtgce) && slot1_type==IDLE && slot2_type==IDLE)	// Shortcut back to ph0 if both slots are idle.
+					sdram_state <= #1 ph0;
+				else
+					sdram_state <= #1 ph4;
+			end
 		ph4     : sdram_state <= #1 ph5;
 		ph5     : sdram_state <= #1 ph6;
 		ph6     : sdram_state <= #1 ph7;

@@ -39,7 +39,7 @@ begin
 	ram[z2base+'h26/2] = 4'b1110;	// Serial no: 1
 
 	
-	// 16 meg of 32-bit Fast RAM
+	// 16 or 64 meg of 32-bit Fast RAM
 
 	ram[z3base+'h0] = 4'b1010;	// Zorro-III card, add mem, no ROM
 	ram[z3base+'h2/2] = 4'b0000;	// 8MB (extended to 16 in reg 08)
@@ -71,7 +71,7 @@ begin
 	// 2 or 4 meg of 32-bit Fast RAM (unused RAM in Bank 0)
 
 	ram[z3base3+'h0] = 4'b1010;	// Zorro-III card, add mem, no ROM
-	ram[z3base3+'h2/2] = 4'b0111;	// 4MB
+	ram[z3base+'h2/2] = 4'b0000;	// 8MB (extended to 16 in reg 08, actual size specified in reg 0a)
 	ram[z3base3+'h4/2] = 4'b1110;	// ProductID = 0x11
 	ram[z3base3+'h6/2] = 4'b1110;	// ProductID = 0x11
 	ram[z3base3+'h8/2] = 4'b0010;	// Memory card, not silenceable, reserved

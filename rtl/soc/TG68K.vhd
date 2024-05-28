@@ -32,7 +32,8 @@ generic
 	(
 		havertg : boolean := true;
 		haveaudio : boolean := true;
-		havec2p : boolean := true
+		havec2p : boolean := true;
+		dualsdram : boolean := false
 	);
 port(
 	clk           : in      std_logic;
@@ -228,7 +229,8 @@ sel_eth<='0';
 	END PROCESS;
 
 	datatg68 <= fromram WHEN datatg68_selram='1' else datatg68_c;
-	chipset_ramsel <= sel_z2ram or sel_chipram or sel_kickram or sel_slowram;
+--	chipset_ramsel <= sel_z2ram or sel_chipram or sel_kickram or sel_slowram;
+	chipset_ramsel <= not sel_z3ram;
 
 	-- Register incoming data
 	process(clk) begin
@@ -246,15 +248,27 @@ sel_eth<='0';
 		end if;
 	end process;
 
-	sel_akiko <= '1' when cpuaddr(31 downto 16)=X"00B8" else '0';
-	sel_32 <= '1' when cpu(1)='1' and cpuaddr(31 downto 24)/=X"00" and cpuaddr(31 downto 24)/=X"ff" else '0'; -- Decode 32-bit space, but exclude interrupt vectors
---	sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 24)=z3ram_base) else '0'; -- AND z3ram_ena='1' ELSE '0';
+DUALRAM_ZIII: if dualsdram=true generate
+-- First block of ZIII RAM - 0x40000000 - 0x43ffffff
+	sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 30)="01") and cpuaddr(26)='0' else '0';
+-- Second block of ZIII RAM - 32 meg from 0x44000000 - 0x45ffffff
+-- Also matches third block, 16 meg from 0x46000000 - 0x46ffffff
+	sel_z3ram2      <= '1' WHEN (cpuaddr(31 downto 30)="01") and cpuaddr(26)='1' else '0';
+-- Third block of ZIII RAM - either 2 or 4 meg, starting at either 0x41000000 or 0x44000000
+	sel_z3ram3      <= '0'; -- '1' WHEN (cpuaddr(31 downto 30)="01") and (cpuaddr(26)='1' or cpuaddr(24)='1') else '0'; 
+end generate;
+
+SINGLERAM_ZIII: if dualsdram=false generate
 -- First block of ZIII RAM - 0x40000000 - 0x40ffffff
 	sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 30)="01") and cpuaddr(26 downto 24)="000" else '0'; -- AND z3ram_ena='1' ELSE '0';
 -- Second block of ZIII RAM - 32 meg from 0x42000000 - 0x43ffffff
 	sel_z3ram2      <= '1' WHEN (cpuaddr(31 downto 30)="01") and cpuaddr(25)='1' else '0'; -- AND z3ram2_ena='1' ELSE '0';
 -- Third block of ZIII RAM - either 2 or 4 meg, starting at either 0x41000000 or 0x44000000
 	sel_z3ram3      <= '1' WHEN (cpuaddr(31 downto 30)="01") and (cpuaddr(26)='1' or cpuaddr(24)='1') else '0'; -- and z3ram3_ena='1' ELSE '0';
+end generate;
+
+	sel_akiko <= '1' when cpuaddr(31 downto 16)=X"00B8" else '0';
+	sel_32 <= '1' when cpu(1)='1' and cpuaddr(31 downto 24)/=X"00" and cpuaddr(31 downto 24)/=X"ff" else '0'; -- Decode 32-bit space, but exclude interrupt vectors
 	sel_z2ram       <= '1' WHEN (cpuaddr(31 downto 24) = X"00")
 	                         AND ((cpuaddr(23 downto 21) = "001")
 	                           OR (cpuaddr(23 downto 21) = "010")
@@ -325,6 +339,21 @@ sel_eth<='0';
 -- addr(22) <= (addr(22) and not sel_ziii_3) or (addr(21) and sel_ziii_3);
 -- addr(21) <= addr(21) xor sel_ziii_3;
  
+DUALRAM_ADDR: if dualsdram=true generate
+-- FIXME - fold a 16 meg chunk from the first SDRAM into the memory map.
+  ramaddr(31 downto 27) <= "00000";
+  ramaddr(26) <= sel_z3ram;
+  ramaddr(25) <= cpuaddr(25) or sel_z3ram2; -- Second block of 32 meg, in 1st SDRAM.
+  ramaddr(24) <= cpuaddr(24);
+  ramaddr(23)<=(cpuaddr(23) xor (cpuaddr(22) or cpuaddr(21))) and not sel_z3ram3; -- ZII address mangling (disabled for RAM overlaid with trapdoor RAM.)
+  ramaddr(22)<=cpuaddr(21) when sel_z3ram3='1' else cpuaddr(22);
+  ramaddr(21)<=cpuaddr(21) xor sel_z3ram3;
+  ramaddr(20 downto 0) <= cpuaddr(20 downto 0);
+
+end generate;
+
+SINGLERAM_ADDR: if dualsdram=false generate
+ 
   ramaddr(31 downto 26) <= "000000";
   ramaddr(25) <= sel_z3ram2; -- Second block of 32 meg
   ramaddr(24) <= (cpuaddr(24) and sel_z3ram2) or sel_z3ram; -- Remap the first block of Zorro III RAM to 0x1000000
@@ -332,6 +361,10 @@ sel_eth<='0';
   ramaddr(22)<=cpuaddr(21) when sel_z3ram3='1' else cpuaddr(22);
   ramaddr(21)<=cpuaddr(21) xor sel_z3ram3;
   ramaddr(20 downto 0) <= cpuaddr(20 downto 0);
+
+end generate;
+
+
   
   -- 32bit address space for 68020, limit address space to 24bit for 68000/68010
   cpuaddr <= addrtg68 WHEN cpu(1) = '1' ELSE X"00" & addrtg68(23 downto 0);

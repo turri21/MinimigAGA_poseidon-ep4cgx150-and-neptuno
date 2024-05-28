@@ -19,7 +19,7 @@ module cpu_cache_new (
   input  wire           cacheline_clr,
   // cpu
   input  wire           cpu_cs,         // cpu activity
-  input  wire [ 26-1:0] cpu_adr,        // cpu address
+  input  wire [ addr_max_bits+addr_prefix_bits-1:0] cpu_adr,        // cpu address
   input  wire [  2-1:0] cpu_bs,         // cpu byte selects
   input  wire           cpu_32bit,      // cpu 32 bit write
   input  wire           cpu_we,         // cpu write
@@ -44,6 +44,17 @@ module cpu_cache_new (
   input  wire [  4-1:0] snoop_bs        // snoop byte selects
 );
 
+parameter addr_max_bits=26;
+parameter addr_prefix_bits=1;
+parameter addr_prefix=0;
+
+wire addr_prefix_match;
+generate
+	if(addr_prefix_bits)
+		assign addr_prefix_match = cpu_adr[addr_max_bits+addr_prefix_bits-1:addr_max_bits]==addr_prefix[addr_prefix_bits-1:0] ? 1'b1 : 1'b0;
+	else 
+		assign addr_prefix_match = 1'b1;
+endgenerate
 
 //// internal signals ////
 
@@ -253,9 +264,9 @@ assign cpu_adr_blk = cpu_adr[3:1];    // cache block address (inside cache row),
 assign cpu_adr_idx = cpu_adr[11:4];   // cache row address, 8 bits
 assign cpu_adr_tag = cpu_adr[25:12];  // tag, 14 bits
 
-always @(posedge clk) cpu_cacheline_match <= cpu_adr[25:4] == cpu_cacheline_adr && !cpu_cacheline_dirty;
+always @(posedge clk) cpu_cacheline_match <= addr_prefix_match && cpu_adr[25:4] == cpu_cacheline_adr && !cpu_cacheline_dirty;
 assign cpu_cacheline_valid = cpu_cacheline_match && (cpu_sm_state == CPU_SM_IDLE) && (cpu_ir || cpu_dr) && !cache_inhibit;
-assign cpu_32bit_ena = cpu_32bit && cpu_cs && write_ena;
+assign cpu_32bit_ena = addr_prefix_match && cpu_32bit && cpu_cs && write_ena;
 assign cpu_ack = cpu_cache_ack || cpu_cacheline_valid || cpu_32bit_ena;
 
 // cpu side state machine
@@ -307,7 +318,7 @@ always @ (posedge clk) begin
         cpu_adr_blk_ptr <= #1 cpu_adr_blk;
         write_ena <= #1 !sdr_write_req && !sdr_write_ack;
         // waiting for CPU access
-        if (cpu_cs) begin
+        if (cpu_cs && addr_prefix_match) begin
           if (cpu_we) begin
             if (!cpu_cacheline_match) cpu_cacheline_dirty <= #1 1'b1; //invalidate
             if (cpu_bs[0]) cpu_cacheline_lo[cpu_adr_blk_ptr] <= #1 cpu_dat_w[ 7: 0]; //update low byte
