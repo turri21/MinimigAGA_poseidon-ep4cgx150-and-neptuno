@@ -25,7 +25,7 @@ void tick(int c) {
 
 void cpuWrite(int addr, int data)
 {
-	tb->cpuAddr = addr;
+	tb->cpuAddr = addr>>1;
 	tb->cpuWR = data;
 	tb->cpuState = 3;
 	while (!tb->clkena) {
@@ -39,7 +39,7 @@ void cpuWrite(int addr, int data)
 
 int cpuRead(int addr, char d)
 {
-	tb->cpuAddr = addr;
+	tb->cpuAddr = addr>>1;
 	tb->cpuState = d ? 2 : 0;
 	while (!tb->clkena) {
 		tick(1);
@@ -64,11 +64,11 @@ char basic_test() {
 	return ok;
 }
 
-char random_test() {
+char random_test(int iterations) {
 	char ok = 1;
 	std::list<int> addresses;
 	std::cout << "memory random fill" << std::endl;
-	for (int i=0; i<10000; i++)
+	for (int i=0; i<iterations; i++)
 	{
 		int a = rand() & 0xfffffc;
 		addresses.push_back(a);
@@ -86,6 +86,40 @@ char random_test() {
 	}
 	return ok;
 }
+
+
+char random_test_128meg(int iterations=50) {
+	char ok = 1;
+	int offset=64*1024*1024;
+	std::list<int> addresses;
+	std::cout << "memory random fill" << std::endl;
+	for (int i=0; i<iterations; i++)
+	{
+		int a = rand() & 0xfffffc;
+		addresses.push_back(a);
+		cpuWrite(a,a & 0xffff);
+		cpuWrite(a+offset,0xffff ^ (a & 0xffff));
+	}
+
+	std::cout << "memory read back after random fill" << std::endl;
+	for (std::list<int>::iterator it=addresses.begin(); it != addresses.end(); ++it)
+	{
+		int a=*it;
+		int d=a & 0xffff;
+		int data = cpuRead(a, 1);
+		int data2 = cpuRead(a+offset, 1);
+		if (d != data) {
+			std::cout << "error: " << std::setw(8) << std::setfill('0') << std::hex << a << ": " << data << ", expected " << d << std::dec << std::endl;
+			ok = 0;
+		}
+		if ((d^0xffff) != data2) {
+			std::cout << "error: " << std::setw(8) << std::setfill('0') << std::hex << a+offset << ": " << data2 << ", expected " << (d^0xffff) << std::dec << std::endl;
+			ok = 0;
+		}
+	}
+	return ok;
+}
+
 
 int main(int argc, char **argv) {
 
@@ -115,15 +149,23 @@ int main(int argc, char **argv) {
 	tick(1);
 	tick(0);
 
+#if 1
 	if (basic_test())
 		std::cout << "Basic test: OK" << std::endl;
 	else
 		std::cout << "Basic test: ERROR" << std::endl;
 
-	if (random_test())
+	if (random_test(100000))
 		std::cout << "Random test: OK" << std::endl;
 	else
 		std::cout << "Random test: ERROR" << std::endl;
+#endif
+#if 0
+	if (random_test_128meg(50))
+		std::cout << "Random test 128meg: OK" << std::endl;
+	else
+		std::cout << "Random test 128meg: ERROR" << std::endl;
+#endif
 
 	trace->close();
 

@@ -7,7 +7,7 @@
 module cpu_cache_sdram_tb(
   input  wire           clk_114,
   input  wire           reset,
-  input  wire    [25:1] cpuAddr,
+  input  wire    [addr_max_bits+addr_prefix_bits-1:1] cpuAddr,
   input  wire     [1:0] cpuState,
   input  wire           cpuL,
   input  wire           cpuU,
@@ -16,6 +16,10 @@ module cpu_cache_sdram_tb(
   output wire [ 16-1:0] cpuRD,
   output wire           clkena
 );
+
+parameter addr_prefix_bits = 1;
+parameter addr_max_bits = 26;
+parameter addr_prefix = 1'b0;
 
 //// fake cpu ///
 reg [3:0] slower;
@@ -33,7 +37,7 @@ assign    clkena = tg68_ena28 && (cpuState == 2'b01 || tg68_cpuena);
 assign    tg68_cpustate = {cpuLongWord, cpu_ncs, cpuState};
 assign    tg68_dat_out = cpuWR;
 assign    cpuRD = tg68_dat_in;
-assign    tg68_cad[25:1] = cpuAddr;
+assign    tg68_cad[addr_max_bits+addr_prefix_bits-1:1] = cpuAddr;
 assign    tg68_clds = cpuL;
 assign    tg68_cuds = cpuU;
 
@@ -57,6 +61,20 @@ wire           DRAM_BA_1 = sdram_ba[1];
 wire           DRAM_CLK = clk_114;
 wire           DRAM_CKE = 1'b1;
 
+// 2nd SDRAM
+wire [ 16-1:0] DRAM2_DQ;
+wire [ 13-1:0] DRAM2_ADDR;
+wire           DRAM2_LDQM = sdram2_dqm[0];
+wire           DRAM2_UDQM = sdram2_dqm[1];
+wire           DRAM2_WE_N;
+wire           DRAM2_CAS_N;
+wire           DRAM2_RAS_N;
+wire           DRAM2_CS_N = sdram2_cs[0];
+wire           DRAM2_BA_0 = sdram2_ba[0];
+wire           DRAM2_BA_1 = sdram2_ba[1];
+wire           DRAM2_CLK = clk_114;
+wire           DRAM2_CKE = 1'b1;
+
 // SDRAM controller
 wire          sdctl_rst;
 wire          reset_out;
@@ -67,14 +85,21 @@ wire [ 4-1:0] sdram_cs;
 wire [ 2-1:0] sdram_ba;
 wire [ 2-1:0] sdram_dqm;
 
+wire [ 4-1:0] sdram2_cs;
+wire [ 2-1:0] sdram2_ba;
+wire [ 2-1:0] sdram2_dqm;
+
 wire   [25:0] rtgAddr;
 wire          rtgce = 0;
 wire          rtgfill;
+wire          rtgack;
+wire          rtgpri=0;
 wire   [15:0] rtgRd;
 
 wire   [22:0] audAddr;
 wire          audce = 0;
 wire          audfill;
+wire          audack;
 wire   [15:0] audRd;
 
 wire [24-1:0] bridge_adr;
@@ -103,11 +128,13 @@ wire          tg68_ena28;
 wire          tg68_ena7RD;
 wire          tg68_ena7WR;
 wire          tg68_cpuena;
+wire          tg68_cpuena2;
 reg           tg68_dtack=0;
 
 reg  [32-1:0] tg68_adr=0;
 reg  [16-1:0] tg68_dat_in=0;
 reg  [16-1:0] tg68_dat_out=0;
+reg  [16-1:0] tg68_dat_out2=0;
 reg           tg68_as=0;
 reg           tg68_uds=0;
 reg           tg68_lds=0;
@@ -132,7 +159,10 @@ assign _ram_oe = 1'b1;
 //// modules ////
 
 // SDRAM controller
-sdram_ctrl sdram_ctrl (
+sdram_ctrl #(
+	.addr_prefix_bits(addr_prefix_bits),
+	.addr_prefix(addr_prefix)
+) sdram_ctrl (
   // sys
   .sysclk       (clk_114          ),
   .clk7_en      (clk_7_en         ),
@@ -176,13 +206,16 @@ sdram_ctrl sdram_ctrl (
   .rtgce        (rtgce            ),
   .rtgfill      (rtgfill          ),
   .rtgRd        (rtgRd            ),
+  .rtgack       (rtgack           ),
+  .rtgpri       (rtgpri           ),
   // Audio
   .audAddr      (audAddr          ),
   .audce        (audce            ),
   .audfill      (audfill          ),
   .audRd        (audRd            ),
+  .audack       (audack           ),
   // cpu
-  .cpuAddr      (tg68_cad[25:1]   ),
+  .cpuAddr      (tg68_cad[addr_max_bits+addr_prefix_bits-1:1]   ),
   .cpustate     (tg68_cpustate    ),
   .cpuL         (tg68_clds        ),
   .cpuU         (tg68_cuds        ),
@@ -208,6 +241,93 @@ sdram (
   .We_n       (DRAM_WE_N),
   .Dqm        ({DRAM_UDQM, DRAM_LDQM})
 );
+
+
+`ifdef DUAL_SDRAM
+// 2nd SDRAM controller
+sdram_ctrl #(
+	.addr_prefix_bits(addr_prefix_bits),
+	.addr_prefix(addr_prefix+1)
+) sdram_ctrl2 (
+  // sys
+  .sysclk       (clk_114          ),
+  .clk7_en      (clk_7_en         ),
+  .reset_in     (reset            ),
+  .cache_rst    (reset            ),
+  .reset_out    (        ),
+  .cache_inhibit(cache_inhibit    ),
+  .cacheline_clr(1'b0             ),
+  .cpu_cache_ctrl(4'b0011         ),
+  // sdram
+  .sdaddr       (DRAM2_ADDR        ),
+  .sd_cs        (sdram2_cs         ),
+  .ba           (sdram2_ba         ),
+  .sd_we        (DRAM2_WE_N        ),
+  .sd_ras       (DRAM2_RAS_N       ),
+  .sd_cas       (DRAM2_CAS_N       ),
+  .dqm          (sdram2_dqm        ),
+  .sdata        (DRAM2_DQ          ),
+  // host
+  .hostWR       (     ),
+  .hostAddr     (     ),
+  .hostce       (1'b0 ),
+  .hostwe       (     ),
+  .hostbytesel  (     ),
+  .hostRD       (     ),
+  .hostena      (     ),
+  // chip
+  .chipAddr     (     ),
+  .chipL        (     ),
+  .chipU        (     ),
+  .chipL2       (     ),
+  .chipU2       (     ),
+  .chipRW       (     ),
+  .chip_dma     (1'b1 ),
+  .chipWR       (     ),
+  .chipWR2      (     ),
+  .chipRD       (     ),
+  .chip48       (     ),
+  // RTG
+  .rtgAddr      (          ),
+  .rtgce        (1'b0      ),
+  .rtgfill      (          ),
+  .rtgRd        (          ),
+  .rtgack       (          ),
+  .rtgpri       (          ),
+  // Audio
+  .audAddr      (       ),
+  .audce        (1'b0   ),
+  .audfill      (       ),
+  .audRd        (       ),
+  .audack       (       ),
+  // cpu
+  .cpuAddr      (tg68_cad[addr_max_bits+addr_prefix_bits-1:1]   ),
+  .cpustate     (tg68_cpustate    ),
+  .cpuL         (tg68_clds        ),
+  .cpuU         (tg68_cuds        ),
+  .cpuWR        (tg68_dat_out2    ),
+  .cpuRD        (tg68_dat_in      ),
+  .enaWRreg     (tg68_ena28       ),
+  .ena7RDreg    (tg68_ena7RD      ),
+  .ena7WRreg    (tg68_ena7WR      ),
+  .cpuena       (tg68_cpuena2     )
+);
+
+// SDRAM
+mt48lc16m16a2
+sdram2 (
+  .Dq         (DRAM2_DQ),
+  .Addr       (DRAM2_ADDR),
+  .Ba         ({DRAM2_BA_1, DRAM2_BA_0}),
+  .Clk        (DRAM2_CLK),
+  .Cke        (DRAM2_CKE),
+  .Cs_n       (DRAM2_CS_N),
+  .Ras_n      (DRAM2_RAS_N),
+  .Cas_n      (DRAM2_CAS_N),
+  .We_n       (DRAM2_WE_N),
+  .Dqm        ({DRAM2_UDQM, DRAM2_LDQM})
+);
+`endif
 
 endmodule
 
