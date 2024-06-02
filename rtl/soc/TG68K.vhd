@@ -186,6 +186,19 @@ SIGNAL sel_nmi_vector   : std_logic;
 signal block_turbo : std_logic;
 signal throttle_sel : std_logic_vector(1 downto 0);
 
+component profile_cpu
+port (
+	clk : in std_logic;
+	reset_n : in std_logic;
+	clkena : in std_logic;
+	cpustate : in std_logic_vector(1 downto 0);
+	sel_chip : in std_logic;
+	sel_kick : in std_logic;
+	sel_fast24 : in std_logic;
+	sel_fast32: in std_logic
+);
+end component;
+
 BEGIN
 
 sel_eth<='0';
@@ -661,5 +674,18 @@ begin
 	END PROCESS;
 
 end block;
+
+profiler : component profile_cpu
+port map (
+	clk => clk,
+	reset_n => reset,
+	clkena => clkena,
+	cpustate => state,
+	sel_chip => sel_chip,
+	sel_kick => sel_kick,
+	sel_fast24 => sel_z2ram,
+	sel_fast32 => sel_z3ram
+);
+
 
 END;
