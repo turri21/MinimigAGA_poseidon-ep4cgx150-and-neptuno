@@ -320,10 +320,12 @@ always @ (posedge clk) begin
         // waiting for CPU access
         if (cpu_cs && addr_prefix_match) begin
           if (cpu_we) begin
-            if (!cpu_cacheline_match) cpu_cacheline_dirty <= #1 1'b1; //invalidate
-            if (cpu_bs[0]) cpu_cacheline_lo[cpu_adr_blk_ptr] <= #1 cpu_dat_w[ 7: 0]; //update low byte
-            if (cpu_bs[1]) cpu_cacheline_hi[cpu_adr_blk_ptr] <= #1 cpu_dat_w[15: 8]; //update hi byte
-
+//            if (!cpu_cacheline_match) cpu_cacheline_dirty <= #1 1'b1; //invalidate
+            if (cache_inhibit) cpu_cacheline_dirty <= #1 1'b1; //invalidate
+            if(cpu_cacheline_match) begin
+              if (cpu_bs[0]) cpu_cacheline_lo[cpu_adr_blk_ptr] <= #1 cpu_dat_w[ 7: 0]; //update low byte
+              if (cpu_bs[1]) cpu_cacheline_hi[cpu_adr_blk_ptr] <= #1 cpu_dat_w[15: 8]; //update hi byte
+            end
             if (!sdr_write_req && !sdr_write_ack) begin
               sdr_adr <= #1 cpu_adr[25:1];
               sdr_dqm_w <= #1 {2'b11, ~cpu_bs};
@@ -356,9 +358,10 @@ always @ (posedge clk) begin
         sdr_dat_w[31:16] <= #1 cpu_dat_w;
         sdr_write_req <= #1 1'b1;
 
-        if (cpu_bs[0])     cpu_cacheline_lo[cpu_adr_blk]      <= #1 cpu_dat_w[ 7: 0]; //update low byte
-        if (cpu_bs[1])     cpu_cacheline_hi[cpu_adr_blk]      <= #1 cpu_dat_w[15: 8]; //update hi byte
-
+        if(cpu_cacheline_match) begin
+          if (cpu_bs[0])     cpu_cacheline_lo[cpu_adr_blk]      <= #1 cpu_dat_w[ 7: 0]; //update low byte
+          if (cpu_bs[1])     cpu_cacheline_hi[cpu_adr_blk]      <= #1 cpu_dat_w[15: 8]; //update hi byte
+        end
         // on hit update cache, on miss no update neccessary; tags don't get updated on writes
         if (!cpu_adr_blk[0]) begin
           // unaligned 32 bit write, hi word
