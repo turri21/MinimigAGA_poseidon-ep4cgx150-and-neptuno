@@ -278,8 +278,8 @@ cpu_cache_new #(
 	.cpu_bs           ({!cpuU, !cpuL}),               // cpu byte selects
 	.cpu_32bit        (longword_en),                  // cpu 32 bit write
 	.cpu_we           (&cpustate[1:0]),               // cpu write
-	.cpu_ir           (!(|cpustate[1:0])),            // cpu instruction read
-	.cpu_dr           (cpustate[1] && !cpustate[0]),  // cpu data read
+	.cpu_ir           (cpu_ir),                       // cpu instruction read
+	.cpu_dr           (cpu_dr),                       // cpu data read
 	.cpu_dat_w        (cpuWR),                        // cpu write data
 	.cpu_dat_r        (cpuRD),                        // cpu read data
 	.cpu_ack          (ccachehit),                    // cpu acknowledge
@@ -300,6 +300,13 @@ cpu_cache_new #(
 assign longword_en = cpuLongword && cpuAddr_r[3:1]!=3'b111 && cpustate[1:0]==2'b11;
 assign cpuena = ccachehit;
 assign readcache_fill = (cache_fill_1 && slot1_type == CPU_READCACHE) || (cache_fill_2 && slot2_type == CPU_READCACHE);
+
+reg cpu_ir;
+reg cpu_dr;
+always @(posedge sysclk) begin
+	cpu_ir <= !(|cpustate[1:0]);            // cpu instruction read
+	cpu_dr <= cpustate[1] && !cpustate[0];  // cpu data read
+end
 
 //// chip line read ////
 always @ (posedge sysclk) begin
