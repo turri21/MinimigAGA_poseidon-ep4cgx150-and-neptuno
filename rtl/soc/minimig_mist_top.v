@@ -458,6 +458,7 @@ sdram_ctrl sdram (
   .chipRW       (_ram_we          ),
   .chip_dma     (_ram_oe          ),
   .clk7_en      (clk7_en          ),
+  .clk28_en     (tg68_ena28       ),
   .chipRD       (ramdata_in       ),
   .chip48       (chip48           ),
   // RTG
@@ -534,6 +535,7 @@ sdram_ctrl #(.addr_prefix_bits(1), .addr_prefix(0)) sdram (
   .chipRW       (_ram_we          ),
   .chip_dma     (_ram_oe          ),
   .clk7_en      (clk7_en          ),
+  .clk28_en     (tg68_ena28       ),
   .chipRD       (ramdata_in       ),
   .chip48       (chip48           ),
   // RTG
@@ -600,6 +602,7 @@ sdram_ctrl #(.shortcut(1'b1), .addr_prefix_bits(1), .addr_prefix(1) ) sdram2 (
   .chipRW       (1'b1             ),
   .chip_dma     (1'b1             ),
   .clk7_en      (clk7_en          ),
+  .clk28_en     (tg68_ena28       ),
   .chipRD       (                 ),
   .chip48       (                 ),
   // RTG

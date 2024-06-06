@@ -7,6 +7,7 @@
 module cpu_cache_sdram_tb(
   input  wire           clk_114,
   input  wire           reset,
+  output wire           reset_out,
   input  wire    [addr_max_bits+addr_prefix_bits-1:1] cpuAddr,
   input  wire     [1:0] cpuState,
   input  wire           cpuL,
@@ -77,7 +78,6 @@ wire           DRAM2_CKE = 1'b1;
 
 // SDRAM controller
 wire          sdctl_rst;
-wire          reset_out;
 wire [ 3-1:0] cctrl;
 wire          cache_inhibit = 0;
 
@@ -112,11 +112,11 @@ wire          bridge_err;
 wire  [4-1:0] bridge_bytesel;
 wire [16-1:0] ram_data;
 wire [16-1:0] ram_data2;
-wire [22-1:1] ram_address;
+reg [22-1:1] ram_address=0;
 wire          _ram_bhe;
 wire          _ram_ble;
 wire          _ram_we;
-wire          _ram_oe;
+reg           _ram_oe;
 wire [16-1:0] ramdata_in;
 
 reg  [32-1:0] tg68_cad=0;
@@ -149,12 +149,25 @@ assign bridge_adr = 24'd0;
 assign bridge_we = 1'b0;
 assign bridge_dat_w = 32'd0;
 
-assign ram_address = 21'd0;
+//assign ram_address = 21'd0;
 assign ram_data = 16'd0;
 assign _ram_bhe = 1'b1;
 assign _ram_ble = 1'b1;
 assign _ram_we = 1'b1;
-assign _ram_oe = 1'b1;
+//assign _ram_oe = 1'b1;
+
+reg [3:0] ram_counter=0;
+always @(posedge clk_114) begin
+	if(tg68_ena28)
+		ram_counter<=ram_counter+1;
+	if(ram_counter==4'b0000)
+		_ram_oe <= 1'b1;
+	if(ram_counter==4'b1100) begin
+		_ram_oe <= 1'b0;
+		ram_address<=ram_address+1;
+	end
+end
+
 
 //// modules ////
 
@@ -166,6 +179,7 @@ sdram_ctrl #(
   // sys
   .sysclk       (clk_114          ),
   .clk7_en      (clk_7_en         ),
+  .clk28_en     (tg68_ena28       ),
   .reset_in     (reset            ),
   .cache_rst    (reset            ),
   .reset_out    (reset_out        ),
@@ -252,6 +266,7 @@ sdram_ctrl #(
   // sys
   .sysclk       (clk_114          ),
   .clk7_en      (clk_7_en         ),
+  .clk28_en     (tg68_ena28       ),
   .reset_in     (reset            ),
   .cache_rst    (reset            ),
   .reset_out    (        ),

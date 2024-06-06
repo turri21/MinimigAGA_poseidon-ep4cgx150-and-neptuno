@@ -25,6 +25,7 @@ module sdram_ctrl(
   // system
   input  wire           sysclk,
   input  wire           clk7_en,
+  input  wire           clk28_en,
   input  wire           reset_in,
   input  wire           cache_rst,
   input  wire           cache_inhibit,
@@ -270,6 +271,7 @@ cpu_cache_new #(
 	.clk              (sysclk),                       // clock
 	.rst              (!reset || !cache_rst),         // cache reset
 	.cache_en         (1'b1),                         // cache enable
+	.clk28_en         (clk28_en),
 	.cpu_cache_ctrl   (cpu_cache_ctrl),               // CPU cache control
 	.cache_inhibit    (cache_inhibit),                // cache inhibit
 	.cacheline_clr    (cacheline_clr),
