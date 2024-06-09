@@ -34,7 +34,7 @@ always @(posedge clk_114) begin
 		slower <= {1'b0, slower[3:1]};
 end
 
-assign    clkena = tg68_ena28 && (cpuState == 2'b01 || tg68_cpuena);
+assign    clkena = !slower[0] && (cpuState == 2'b01 || tg68_cpuena);
 assign    tg68_cpustate = {cpuLongWord, cpu_ncs, cpuState};
 assign    tg68_dat_out = cpuWR;
 assign    cpuRD = tg68_dat_in;

@@ -342,8 +342,13 @@ amiga_clk amiga_clk2 (
 
 //// TG68K main CPU ////
 
+
 `ifdef MINIMIG_DUAL_SDRAM
-TG68K #(.dualsdram("true")) tg68k (
+	`ifdef MINIMIG_USE_PROFILER
+		TG68K #(.dualsdram("true"),.useprofiler("true")) tg68k (
+	`else
+		TG68K #(.dualsdram("true")) tg68k (
+	`endif
 `else
 TG68K tg68k (
 `endif

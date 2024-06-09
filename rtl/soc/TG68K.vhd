@@ -33,7 +33,8 @@ generic
 		havertg : boolean := true;
 		haveaudio : boolean := true;
 		havec2p : boolean := true;
-		dualsdram : boolean := false
+		dualsdram : boolean := false;
+		useprofiler : boolean := false
 	);
 port(
 	clk           : in      std_logic;
@@ -502,9 +503,9 @@ buslogic : block
 	signal sel_chip_d       : std_logic; 
 begin
 
-	clkena <= '1' WHEN (clkena_in='1' AND slower(0)='0' and
-					   (cpu_internal='1' OR (ena7RDreg='1' AND clkena_e='1') OR (ena7WRreg='1' AND clkena_f='1') OR
-					   (ramready='1' and block_turbo='0') OR sel_undecoded_d='1' OR akiko_ack='1'))
+	clkena <= '1' WHEN slower(0)='0' and
+					   ((clkena_in='1' and ((ena7RDreg='1' AND clkena_e='1') OR (ena7WRreg='1' AND clkena_f='1'))) OR
+					   cpu_internal='1' or (ramready='1' and block_turbo='0') OR sel_undecoded_d='1' OR akiko_ack='1')
 				  ELSE '0';
 
 	-- AMR - attempt to imitate A1200 speed more closely on chipram fetches:
@@ -557,7 +558,7 @@ begin
 		END IF;
 	END PROCESS;
 
-	chipset_cycle <= '1' when (sel_ram='0' OR sel_nmi_vector='1' or block_turbo='1')
+	chipset_cycle <= '1' when clkena_in='1' and slower(0)='0' and (sel_ram='0' OR sel_nmi_vector='1' or block_turbo='1')
 		AND sel_akiko='0' and sel_undecoded_d='0' else '0';
 
 	PROCESS (clk) BEGIN
@@ -675,17 +676,18 @@ begin
 
 end block;
 
-profiler : component profile_cpu
-port map (
-	clk => clk,
-	reset_n => reset,
-	clkena => clkena,
-	cpustate => state,
-	sel_chip => sel_chip,
-	sel_kick => sel_kick,
-	sel_fast24 => sel_z2ram,
-	sel_fast32 => sel_z3ram
-);
-
+genprofiler : if useprofiler generate
+	profiler : component profile_cpu
+	port map (
+		clk => clk,
+		reset_n => reset,
+		clkena => clkena,
+		cpustate => state,
+		sel_chip => sel_chip,
+		sel_kick => sel_kick,
+		sel_fast24 => sel_z2ram,
+		sel_fast32 => sel_z3ram
+	);
+end generate;
 
 END;
