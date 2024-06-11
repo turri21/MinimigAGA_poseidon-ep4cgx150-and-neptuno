@@ -38,7 +38,7 @@ void cpuWrite(int addr, int data,int udqm=0,int ldqm=0)
 	tb->cpuU = 1;
 	tb->cpuState = 1;
 	tb->cpuWR = 0xdead;
-//	tb->cpuAddr = 0;
+	tb->cpuAddr = rand();
 	tick(1);
 	tick(0);
 }
@@ -67,7 +67,7 @@ int cpuRead(int addr, char d)
 	tb->cpuU = 1;
 	tb->cpuState = 1;
 	tb->cpuWR = 0xdead;
-//	tb->cpuAddr = 0;
+	tb->cpuAddr = rand();
 	tick(1);
 	tick(0);
 	return tb->cpuRD;
