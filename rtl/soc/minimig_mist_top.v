@@ -469,6 +469,8 @@ sdram_ctrl sdram (
   // RTG
   .rtgAddr      (rtg_addr_mangled ),
   .rtgce        (rtg_ramreq       ),
+  .rtgack       (rtg_ack          ),
+  .rtgpri       (rtg_rampri       ),
   .rtgfill      (rtg_fill         ),
   .rtgRd        (rtg_fromram      ), 
   // Audio buffer
@@ -551,10 +553,11 @@ sdram_ctrl #(.addr_prefix_bits(1), .addr_prefix(0)) sdram (
   .rtgfill      (rtg_fill         ),
   .rtgRd        (rtg_fromram      ), 
   // Audio buffer
-  .audAddr      (                 ),
-  .audce        (                 ),
-  .audfill      (                 ),
-  .audRd        (                 ),
+  .audAddr      (aud_ramaddr      ),
+  .audce        (aud_ramreq       ),
+  .audack       (aud_ack          ),
+  .audfill      (aud_fill         ),
+  .audRd        (aud_fromram      ),
   // Misc signals
   .reset_out    (reset_out        ),
   .hostRD       (                 ),
@@ -616,11 +619,10 @@ sdram_ctrl #(.shortcut(1'b1), .addr_prefix_bits(1), .addr_prefix(1) ) sdram2 (
   .rtgfill      (                 ),
   .rtgRd        (                 ), 
   // Audio buffer
-  .audAddr      (aud_ramaddr      ),
-  .audce        (aud_ramreq       ),
-  .audack       (aud_ack          ),
-  .audfill      (aud_fill         ),
-  .audRd        (aud_fromram      ),
+  .audAddr      (                 ),
+  .audce        (                 ),
+  .audfill      (                 ),
+  .audRd        (                 ),
   // Misc signals
   .reset_out    (                 ),
   .hostRD       (                 ),
