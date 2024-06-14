@@ -476,6 +476,7 @@ sdram_ctrl sdram (
   // Audio buffer
   .audAddr      (aud_ramaddr      ),
   .audce        (aud_ramreq       ),
+  .audack       (aud_ack          ),
   .audfill      (aud_fill         ),
   .audRd        (aud_fromram      ),
   // Misc signals
