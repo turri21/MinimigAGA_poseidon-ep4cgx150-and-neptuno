@@ -46,6 +46,7 @@ module minimig_m68k_bridge
 	input	cpu_speed,				// CPU speed select request
   input [3:0] memory_config,  // system memory config
 	output	reg turbo,				// indicates current CPU speed mode
+	input   fast_rd,
 	input	_as,					// m68k adress strobe
 	input	_lds,					// m68k lower data strobe d0-d7
 	input	_uds,					// m68k upper data strobe d8-d15
@@ -254,7 +255,7 @@ always @(posedge clk)
 
 // CPU data bus tristate buffers and output data multiplexer
 //assign data[15:0] = doe ? cache_hit ? cache_out : ldata_in[15:0] : 16'bz;
-assign data[15:0] = ldata_in;
+assign data[15:0] = fast_rd ? data_in : ldata_in;
 assign data2 = ldata_in2;
 assign host_rdat = ldata_in;
 

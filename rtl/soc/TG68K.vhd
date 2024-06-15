@@ -50,6 +50,7 @@ port(
 	data_read2    : in      std_logic_vector(15 downto 0);
 	data_write    : out     std_logic_vector(15 downto 0);
 	data_write2   : out     std_logic_vector(15 downto 0);
+    fast_rd       : buffer  std_logic;
 	as            : out     std_logic;
 	uds           : out     std_logic;
 	lds           : out     std_logic;
@@ -165,6 +166,7 @@ signal sel_undecoded_d  : std_logic;
 signal sel_akiko        : std_logic;
 signal sel_akiko_d      : std_logic;
 signal sel_audio        : std_logic;
+signal sel_gayle_ide    : std_logic;
 
 SIGNAL cpu_internal     : std_logic;
 SIGNAL cpu_fetch        : std_logic;
@@ -280,6 +282,8 @@ SINGLERAM_ZIII: if dualsdram=false generate
 -- Third block of ZIII RAM - either 2 or 4 meg, starting at either 0x41000000 or 0x44000000
 	sel_z3ram3      <= '1' WHEN (cpuaddr(31 downto 30)="01") and (cpuaddr(26)='1' or cpuaddr(24)='1') else '0'; -- and z3ram3_ena='1' ELSE '0';
 end generate;
+
+	sel_gayle_ide <= '1' when state(1 downto 0) = "10" and cpuaddr(31 downto 14)=X"00DA"&"00" else '0';
 
 	sel_akiko <= '1' when cpuaddr(31 downto 16)=X"00B8" else '0';
 	sel_32 <= '1' when cpu(1)='1' and cpuaddr(31 downto 24)/=X"00" and cpuaddr(31 downto 24)/=X"ff" else '0'; -- Decode 32-bit space, but exclude interrupt vectors
@@ -501,10 +505,11 @@ buslogic : block
 	TYPE   sync_states      IS (sync0, sync1, sync2, sync3, sync4, sync5, sync6, sync7, sync8, sync9);
 	SIGNAL sync_state       : sync_states;
 	signal sel_chip_d       : std_logic; 
+	signal fast_rd_d        : std_logic;
 begin
 
 	clkena <= '1' WHEN slower(0)='0' and
-					   ((clkena_in='1' and ((ena7RDreg='1' AND clkena_e='1') OR (ena7WRreg='1' AND clkena_f='1'))) OR
+					   ((clkena_in='1' and ((ena7RDreg='1' AND clkena_e='1') OR (ena7WRreg='1' AND clkena_f='1') or fast_rd='1')) OR
 					   cpu_internal='1' or (ramready='1' and block_turbo='0') OR sel_undecoded_d='1' OR akiko_ack='1')
 				  ELSE '0';
 
@@ -559,7 +564,7 @@ begin
 	END PROCESS;
 
 	chipset_cycle <= '1' when clkena_in='1' and slower(0)='0' and (sel_ram='0' OR sel_nmi_vector='1' or block_turbo='1')
-		AND sel_akiko='0' and sel_undecoded_d='0' else '0';
+		 and (sel_gayle_ide='0') AND sel_akiko='0' and sel_undecoded_d='0' else '0';
 
 	PROCESS (clk) BEGIN
 	  IF rising_edge(clk) THEN
@@ -606,6 +611,22 @@ begin
 				data_write2 <= w_datatg68;
 			END IF;
 
+			-- AMR - Fast chipset path for Gayle
+			if slower(0)='0' and clkena_in='1' and sel_gayle_ide='1' and S_state="00" then
+				addr <= cpuaddr;
+				fast_rd <= '1';
+			end if;
+			
+			if fast_rd='1' and clkena_in='1' then
+				fast_rd <= '0';
+			end if;
+
+			if fast_rd='1' then
+				r_data <= data_read;
+			end if;
+
+			-- Regular chipset path
+			
 			IF ena7WRreg='1' THEN
 				CASE S_state IS
 					WHEN "00" =>
@@ -675,6 +696,7 @@ begin
 	END PROCESS;
 
 end block;
+
 
 genprofiler : if useprofiler generate
 	profiler : component profile_cpu

@@ -154,6 +154,7 @@ module minimig
 	output 	[15:0] cpu_data2,	// m68k data bus 2nd word
 	input	[15:0] cpudata_in,	// m68k data in
 	output	[2:0] _cpu_ipl,		// m68k interrupt request
+	input   fast_rd,            // Fast read for Gayle IDE
 	input	_cpu_as,			// m68k address strobe
 	input	_cpu_uds,			// m68k upper data strobe
 	input	_cpu_lds,			// m68k lower data strobe
@@ -917,6 +918,7 @@ minimig_m68k_bridge CPU1
 	.cpu_speed(cpu_speed & ~int7 & ~ovr & ~usrrst),
   .memory_config(memory_config[3:0]),
 	.turbo(turbo),
+	.fast_rd(fast_rd),
 	._as(_cpu_as),
 	._lds(_cpu_lds),
 	._uds(_cpu_uds),
@@ -1080,7 +1082,7 @@ gayle GAYLE1
 	.address_in(cpu_address_out),
 	.data_in(cpu_data_out),
 	.data_out(gayle_data_out),
-	.rd(cpu_rd),
+	.rd(cpu_rd | fast_rd),
 	.hwr(cpu_hwr),
 	.lwr(cpu_lwr),
 	.sel_ide(sel_ide),
