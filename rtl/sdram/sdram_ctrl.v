@@ -449,13 +449,13 @@ always @(posedge sysclk) begin
 	// CPU will defer to RTG on slot 2, and avoid using slot 2 when a refresh is pending.
 	cpu_reservertg <= rtgce && rtgpri && cpuAddr_r[24:23]==rtg_bank ? 1'b1 : 1'b0;
 	cpu_slot1ok <= !zatn && (slot2_type == IDLE || slot2_bank != cpuAddr_r[24:23]) ? 1'b1 : 1'b0;
-	cpu_slot2ok <= !refresh_pending && (|cpuAddr_r[24:23]   // Reserve bank 0 for slot 1
+	cpu_slot2ok <= !refresh_pending && ((shortcut | |cpuAddr_r[24:23])   // Reserve bank 0 for slot 1
 	               && (slot1_type == IDLE || slot1_bank != cpuAddr_r[24:23])) ? 1'b1 : 1'b0;
 
 	// Writebuffer will defer to RTG on slot 2, and avoid using slot 2 when a refresh is pending.
 	wb_reservertg <= rtgce && rtgpri && writebufferAddr[24:23]==rtg_bank ? 1'b1 : 1'b0;
 	wb_slot1ok <= (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23]) ? 1'b1 : 1'b0;
-	wb_slot2ok <= !refresh_pending && (|writebufferAddr[24:23] // Reserve bank 0 for slot 1
+	wb_slot2ok <= !refresh_pending && (shortcut | (|writebufferAddr[24:23]) // Reserve bank 0 for slot 1
 	           && (slot1_type == IDLE || slot1_bank != writebufferAddr[24:23])) ? 1'b1 : 1'b0;
 
 	// Other ports need to avoid bank clashes.
@@ -589,7 +589,7 @@ always @ (posedge sysclk) begin
 					slot1_addr        <= #1 rtgAddr[25:0];
 				end
 				// next in line is refresh
-				// (a refresh cycle blocks both access slots)
+				// (a refresh cycle doesn't block slot 2)
 				else if(refresh_pending && slot2_type == IDLE) begin
 					sd_cmd              <= #1 CMD_AUTO_REFRESH;
 					slot1_type          <= #1 REFRESH;
@@ -683,10 +683,41 @@ always @ (posedge sysclk) begin
 						sdaddr[10] <= ~rtg_extendable;
 					end
 				end
+
+				if(slot1_write && (slot2_write || slot2_type == IDLE)) begin // Write cycle
+					sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b0, slot1_addr[25], slot1_addr[9:4]}; // no auto-precharge
+					sdaddr[2:0]         <= #1 slot1_addr[3:1];
+					ba                  <= #1 slot1_bank;
+					dqm                 <= #1 slot1_dqm;
+					sd_cmd              <= #1 CMD_WRITE;
+					case (slot1_type)
+						CHIP:           sdata_out <= #1 chipWR;
+						CPU_WRITECACHE:	sdata_out <= #1 writebufferWR_reg;
+						default :       sdata_out <= #1 hostWR[31:16];
+					endcase
+					sdata_oe            <= #1 1'b1;
+				end
 			end
 
 			ph5 : begin
 				cache_fill_2                <= #1 1'b1;
+				if(slot1_write && (slot2_write || slot2_type == IDLE)) begin // Write cycle (2nd word)
+					sdaddr[12:3]    <= #1 {1'b0, 1'b0, 1'b1, slot1_addr[25], slot1_addr[9:4]}; // auto-precharge
+					sdaddr[2:0]     <= #1 slot1_addr[3:1] + 1'd1;
+					ba              <= #1 slot1_bank;
+					case (slot1_type)
+						CHIP:           sdata_out <= #1 chipWR2;
+						CPU_WRITECACHE:	sdata_out <= #1 writebufferWR2_reg;
+						default :       sdata_out <= #1 hostWR[15:0];
+					endcase
+					sdata_oe            <= #1 1'b1;
+					sd_cmd              <= #1 CMD_WRITE;
+					dqm                 <= #1 slot1_dqm2;
+					slot1_write         <= #1 1'b0;
+					slot1_type          <= #1 IDLE;
+				end
+				// Don't block slot 2 with refresh on slot 1
+				if(slot1_type == REFRESH) slot1_type <= #1 IDLE;
 			end
 
 			ph6 : begin
@@ -802,10 +833,31 @@ always @ (posedge sysclk) begin
 						sdaddr[10] <= ~rtg_extendable;
 					end
 				end
+				if(slot2_write && (slot1_write || slot1_type == IDLE)) begin // Write cycle
+					sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b0, slot2_addr[25], slot2_addr[9:4]}; // Can't auto-precharge, since we need to interrupt the burst
+					sdaddr[2:0]         <= #1 slot2_addr[3:1];
+					sdata_out           <= #1 writebufferWR_reg;
+					sdata_oe            <= #1 1'b1;
+					ba                  <= #1 slot2_bank;
+					sd_cmd              <= #1 CMD_WRITE;
+					dqm                 <= #1 slot2_dqm;
+				end
+
 			end
 
 			ph13 : begin
 				cache_fill_1          <= #1 1'b1;
+				if(slot2_write && (slot1_write || slot1_type == IDLE)) begin // Write cycle (2nd word)
+					sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b1, slot2_addr[25], slot2_addr[9:4]}; // auto-precharge
+					sdaddr[2:0]         <= #1 slot2_addr[3:1] + 1'd1;
+					sdata_out           <= #1 writebufferWR2_reg;
+					sdata_oe            <= #1 1'b1;
+					ba                  <= #1 slot2_bank;
+					dqm                 <= #1 slot2_dqm2;
+					sd_cmd              <= #1 CMD_WRITE;
+					slot2_write         <= #1 1'b0;
+					slot2_type          <= #1 IDLE;
+				end
 			end
 
 			ph14 : begin
