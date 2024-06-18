@@ -112,7 +112,7 @@ reg           cc_clr;
 reg  [addr_max_bits+addr_prefix_bits-1:0] cpu_adr_l;
 reg  [ 3-1:0] cpu_adr_blk_ptr;
 wire [ 3-1:0] cpu_adr_blk_ptr_next = {cpu_adr_blk_ptr[2:1] + 1'd1, 1'b0};
-wire [ 3-1:0] cpu_adr_blk_ptr_prev = {cpu_adr_blk_ptr[2:1] - 1'd1, 1'b0};
+reg  [ 3-1:0] cpu_adr_blk_ptr_prev;
 wire [ 3-1:0] cpu_adr_blk;
 wire [ 3-1:0] cpu_adr_blk_l;
 wire [ 8-1:0] cpu_adr_idx;
@@ -339,6 +339,8 @@ always @ (posedge clk) begin
     
     if (cacheline_clr) cpu_cacheline_i_dirty <= #1 1'b1;
     if (cacheline_clr) cpu_cacheline_d_dirty <= #1 1'b1;
+
+    cpu_adr_blk_ptr_prev <= #1 cpu_adr_blk_ptr;
 
     // state machine
     case (cpu_sm_state)
