@@ -332,6 +332,11 @@ set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to VGA_B[0]
 set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to VGA_HS
 set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to VGA_VS
 
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to VGA_R[*]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to VGA_G[*]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to VGA_B[*]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to VGA_HS
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to VGA_VS
 
 
 
