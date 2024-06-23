@@ -25,6 +25,10 @@ module minimig_mist_top (
   // UART
   output wire           UART_TX,    // UART Transmitter
   input wire            UART_RX,    // UART Receiver
+`ifdef MINIMIG_USE_MIDI_PINS
+  output wire           MIDI_OUT,
+  input wire            MIDI_IN,
+`endif
   // VGA
   output reg            VGA_HS,     // VGA H_SYNC
   output reg            VGA_VS,     // VGA V_SYNC
@@ -256,6 +260,8 @@ wire           no_csync;
 wire           force_csync;
 wire     [1:0] clock_override;
 wire           clock_ntsc;
+wire     [1:0] switches;
+wire           uart_in;
 
 `ifdef MINIMIG_USE_HDMI
 wire        i2c_start;
@@ -659,6 +665,7 @@ user_io user_io(
      .MOUSE0_BUTTONS(mouse0_buttons),
      .MOUSE1_BUTTONS(mouse1_buttons),
      .MOUSE_IDX(mouse_idx),
+     .SWITCHES(switches),
      .KBD_MOUSE_DATA(kbd_mouse_data),
      .KBD_MOUSE_TYPE(kbd_mouse_type),
      .KBD_MOUSE_STROBE(kbd_mouse_strobe),
@@ -678,6 +685,13 @@ user_io user_io(
 `endif
      .STATUS(core_status)
 );
+
+`ifdef MINIMIG_USE_MIDI_PINS
+     assign MIDI_OUT = UART_TX;
+     assign uart_in = switches[1] ? MIDI_IN : UART_RX;
+`else
+     assign uart_in = UART_RX;
+`endif
 
 wire           VGA_CS_INT;     // VGA C_SYNC
 wire           VGA_HS_INT;     // VGA H_SYNC
@@ -728,7 +742,7 @@ minimig minimig (
   .cck          (cck              ), // colour clock output (3.54 MHz)
   .eclk         (eclk             ), // 0.709379 MHz clock enable output (clk domain pulse)
   //rs232 pins
-  .rxd          (UART_RX          ),  // RS232 receive
+  .rxd          (uart_in          ),  // RS232 receive
   .txd          (UART_TX          ),  // RS232 send
   .cts          (1'b0             ),  // RS232 clear to send
   .rts          (                 ),  // RS232 request to send
