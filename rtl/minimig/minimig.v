@@ -1181,7 +1181,7 @@ minimig_autoconfig#(.TOCCATA_SND(1'b0)) autoconfig
 	.board_configured(board_configured),
 	.autoconfig_done(autoconfig_done),
 	.toccata_base_addr(toccata_base_addr),
-	.board_shutup(autoconfig_shutdown),
+	.board_shutup(autoconfig_shutdown)
 );
 
 //-------------------------------------------------------------------------------------
