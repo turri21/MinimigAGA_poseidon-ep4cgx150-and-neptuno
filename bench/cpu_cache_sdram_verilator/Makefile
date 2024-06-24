@@ -4,6 +4,10 @@ HDL_FILES = cpu_cache_sdram_tb.v mt48lc16m16a2.v ../../rtl/sdram/cpu_cache_new.v
 
 all: cpu_cache_sdram_tb
 
+clean:
+	-rm cpu_cache_sdram_tb
+	-rm $(OBJ_DIR)/*
+
 Vcpu_cache_sdram_tb.cpp: ${OBJ_DIR}/Vcpu_cache_sdram_tb.cpp
 
 

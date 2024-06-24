@@ -23,24 +23,42 @@ void tick(int c) {
 	timestamp += 4.38;
 }
 
+
+void cpuInternalCycle()
+{
+	static int counter=0;
+	counter=(counter+1)&7;
+	if(!counter)
+	{
+		tb->cpuL = 1;
+		tb->cpuU = 1;
+		tb->cpuState = 1;
+		tb->cpuWR = 0xdead;
+		tb->cpuAddr = rand();
+		tick(1);
+		tick(0);
+		tick(1);
+		tick(0);
+		tick(1);
+		tick(0);
+		tick(1);
+		tick(0);
+	}
+}
+
+
 void cpuWrite(int addr, int data,int udqm=0,int ldqm=0)
 {
+	cpuInternalCycle();
 	tb->cpuL = ldqm;
 	tb->cpuU = udqm;
 	tb->cpuAddr = addr>>1;
 	tb->cpuWR = data;
 	tb->cpuState = 3;
-	while (!tb->clkena) {
+	do {
 		tick(1);
 		tick(0);
-	}
-	tb->cpuL = 1;
-	tb->cpuU = 1;
-	tb->cpuState = 1;
-	tb->cpuWR = 0xdead;
-	tb->cpuAddr = rand();
-	tick(1);
-	tick(0);
+	} while (!tb->clkena);
 }
 
 
@@ -55,21 +73,15 @@ void cpuWriteL(int addr, int data)
 
 int cpuRead(int addr, char d)
 {
+	cpuInternalCycle();
 	tb->cpuL = 0;
 	tb->cpuU = 0;
 	tb->cpuAddr = addr>>1;
 	tb->cpuState = d ? 2 : 0;
-	while (!tb->clkena) {
+	do {
 		tick(1);
 		tick(0);
-	}
-	tb->cpuL = 1;
-	tb->cpuU = 1;
-	tb->cpuState = 1;
-	tb->cpuWR = 0xdead;
-	tb->cpuAddr = rand();
-	tick(1);
-	tick(0);
+	} while (!tb->clkena);
 	return tb->cpuRD;
 }
 
@@ -263,6 +275,36 @@ char consecutive_test(int iterations) {
 }
 
 
+char l1filltest()
+{
+	char ok=1;
+	expungeL2(0,1);
+	expungeL2(0,0);
+	for(int i=0;i<16;++i)
+		cpuWrite(i*2,i*0x0101);
+	cpuRead(0,1);
+	expungeL1(0,1);
+	cpuRead(0,1);
+	tb->cpuL = 1;
+	tb->cpuU = 1;
+	tb->cpuState = 1;
+	tb->cpuWR = 0xdead;
+	tb->cpuAddr = 0x8010;
+	for(int i=1;i<=8;++i)
+		tick(i&1);
+	for(int i=0;i<8;++i)
+	{
+		int t=cpuRead(i*2,1);
+		if(t!=i*0x0101)
+		{
+			ok=0;
+			std::cout << "error: " << i << " - got " << std::setw(4) << std::setfill('0') << std::hex << t << ", expected " << i*0x0101 << std::dec << std::endl;
+		}
+	}	
+	return(ok);
+}
+
+
 char random_test_128meg(int iterations=50) {
 	char ok = 1;
 	int offset=64*1024*1024;
@@ -366,6 +408,13 @@ int main(int argc, char **argv) {
 		std::cout << "Consecutive test: OK" << std::endl;
 	else
 		std::cout << "Consecutive test: ERROR" << std::endl;
+#endif
+
+#if 1
+	if (l1filltest())
+		std::cout << "Level 1 fill test: OK" << std::endl;
+	else
+		std::cout << "Level 1 fill test: ERROR" << std::endl;
 #endif
 
 
