@@ -1134,7 +1134,7 @@ end
 
 cdda_fifo cdda_fifo (
 	.clk_sys       ( clk          ),
-	.clk_en        ( clk7_en      ),
+	.clk_en        ( 1'b1         ),
 	.cen_44100     ( cen_44100    ),
 	.reset         ( reset        ),
 
