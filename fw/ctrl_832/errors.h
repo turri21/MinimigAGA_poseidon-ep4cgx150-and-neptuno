@@ -9,12 +9,8 @@
 #define ERROR_MAX 4
 #define ERROR_ALL 5
 
-#define SetError(x,s,y,z) {ErrorMask|=(1<<x); Errors[x].string=s; Errors[x].a=y; Errors[x].b=z;}
-#define FatalError(x,s,y,z) {ErrorMask|=(1<<x); Errors[x].string=s; Errors[x].a=y; Errors[x].b=z; ErrorFatal=1; }
-#define FDDError(s,a) SetError(ERROR_FDD,s,a,0)
-#define SetSubError(x) SubError=x
-#define SetSubError2(x) SubError2=x
-#define SetSubErrorString(x) SubErrorString=x
+void FatalError(int errortype,const char *msg,int y,int z);
+void SetError(int errortype,const char *msg,int y,int z);
 
 extern int ErrorMask;
 extern int ErrorFatal;

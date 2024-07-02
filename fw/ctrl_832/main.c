@@ -123,6 +123,7 @@ int ColdBoot()
 	DisableInterrupts();
 
 	ClearError(ERROR_ALL);
+	ErrorFatal=0;
 
     if (MMC_Init())
 	{
@@ -243,18 +244,13 @@ __geta4 int main(void)
 			HandleRTC();
 
 //		cd_continueaudio(&cd);
-        HandleFpga();
-        HandleUI();
 		if(ErrorMask)
-		{
 			ShowError();
-			while(ErrorMask)
-			{
-				if(!ErrorFatal)
-					HandleFpga();
-		        HandleUI();
-            }
-		}
+
+		if(!ErrorFatal)
+			HandleFpga(); /* Stop talking to the disk subsystems if a fatal error occurs */
+
+        HandleUI();
     }
 }
 

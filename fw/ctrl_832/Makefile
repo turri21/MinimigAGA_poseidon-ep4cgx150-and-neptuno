@@ -81,9 +81,10 @@ $(PROJECT).bin: Makefile $(BUILD_DIR) $(ALL_SOURCES)
 # clean
 clean:
 	@echo clean
-	@rm -rf $(BUILD_DIR)/*.o
-	@rm -rf $(PROJECT).bin
-	@rm -rf $(PROJECT).map
+	@-rm $(BUILD_DIR)/*.o
+	@-rm *.asm	
+	@-rm $(PROJECT).bin
+	@-rm $(PROJECT).map
 
 %.asm: %.c
 	$(CC) $(CFLAGS) -o=$@ $<

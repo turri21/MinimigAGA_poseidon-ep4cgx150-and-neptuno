@@ -1975,7 +1975,7 @@ void HandleUI(void)
         /******************************************************************/
     case MENU_ERROR :
 		menumask=0x01;
-		parentstate=MENU_ERROR;
+		parentstate=MENU_MAIN1;
 
  		OsdSetTitle("Error",OSD_ARROW_LEFT|OSD_ARROW_RIGHT);
         OsdWrite(0, ErrorFatal ? "      *** FATAL ERROR ***" : "         *** ERROR ***", 1,0);
@@ -1991,11 +1991,12 @@ void HandleUI(void)
 	    OsdWrite(6, "", 0,0);
 	    OsdWrite(7, ErrorFatal ? "           Reboot" : "             OK", 1,0);
 
+        ClearError(ERROR_ALL);
+
 		menustate = MENU_ERROR2;
 		break;
 
 	case MENU_ERROR2 :
-		menustate = MENU_ERROR;
 		if(left)
 		{
 			--errorpage;
@@ -2294,13 +2295,6 @@ void InsertFloppy(adfTYPE *drive)
 }
 
 /*  Error Message */
-void ErrorMessage(char *message, unsigned char code)
-{
-    menustate = MENU_ERROR;
-	OsdShow(DISABLE_KEYBOARD); // do not disable KEYBOARD
-    OsdColor(OSDCOLOR_WARNING);
-}
-
 
 void ShowError()
 {

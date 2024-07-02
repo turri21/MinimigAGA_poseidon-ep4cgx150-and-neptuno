@@ -82,6 +82,14 @@ const char *supporters[]=
 	"Marc Honey",
 	"Andre Wosten",
 	"Paul Andrzejczak",
+	"Christian Givskov",
+	"Steve Jones",
+	"Kasper Oleson",
+	"Stefan Johanseen",
+	"Alan Galloway",
+	"Ramon Martinez Palomares",
+	"John Clements",
+	
 
 	"+ all other contributors.",
 	"Thanks also to Espen Skog,",

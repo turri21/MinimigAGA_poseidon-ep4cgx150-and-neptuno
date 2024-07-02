@@ -147,7 +147,6 @@ void c64keys_inthandler()
 	unsigned int aa;
 	unsigned int ad;
 
-
 	for(i=0;i<4;++i)
 	{
 		unsigned int t=HW_KEYBOARD(REG_KEYBOARD_WORD0+4*i);
@@ -194,13 +193,13 @@ void c64keys_inthandler()
 			for(j=0;j<16;++j)
 			{
 				--idx;
-				if(changed>>31)
+				if(changed&0x8000)
 				{
 					int code=63-(i*16+j);	/* Fetch Amiga scancode for this key */
 					int amicode;
 					int amiqualup=0;
 					int amiqualdown=0;
-					int keyup=status>>31;
+					int keyup=status&0x8000;
 					c64keys.active=1;
 					code=((code<<3)|(code>>3))&63;	/* bit numbers are transposed compared with c64 scancodes */
 					amicode=keytable[code];

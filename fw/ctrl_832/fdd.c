@@ -176,7 +176,10 @@ void ReadTrack(adfTYPE *drive)
     unsigned int track;
     unsigned int dsksync;
     unsigned int dsklen;
+    unsigned int dummyread;
     //unsigned short n;
+
+	dummyread=1;
 
 	// Check that a disk is actually inserted, and if not do a dummy read returning all 1s.
 	// (Body Blows AGA reads from all connected drives without checking whether they're empty.)
@@ -189,28 +192,30 @@ void ReadTrack(adfTYPE *drive)
 			int unit=((int)drive - (int)&df[0])/sizeof(adfTYPE);
 		    printf("Illegal track read: %d\r", drive->track);
 
-		    FatalError(ERROR_FDD,"Illegal track read!", drive->track,drive->tracks);
-		    drive->track = drive->tracks - 1;
-		}
-
-		// display track number: cylinder & head
-		if (DEBUG)
-		    printf("*%u:", drive->track);
-
-		if (drive->track != drive->track_prev)
-		{ // track step or track 0, start at beginning of track
-		    drive->track_prev = drive->track;
-		    sector = 0;
-		    file.cluster = drive->cache[drive->track];
-		    file.sector = drive->track * SECTOR_COUNT;
-		    drive->sector_offset = sector;
-		    drive->cluster_offset = file.cluster;
+		    SetError(ERROR_FDD,"Read beyond disk end", drive->track,drive->tracks);
+//		    drive->track = drive->tracks - 1;
 		}
 		else
-		{ // same track, start at next sector in track
-		    sector = drive->sector_offset;
-		    file.cluster = drive->cluster_offset;
-		    file.sector = (drive->track * SECTOR_COUNT) + sector;
+		{
+			if (DEBUG)
+				printf("*%u:", drive->track);
+
+			if (drive->track != drive->track_prev)
+			{ // track step or track 0, start at beginning of track
+				drive->track_prev = drive->track;
+				sector = 0;
+				file.cluster = drive->cache[drive->track];
+				file.sector = drive->track * SECTOR_COUNT;
+				drive->sector_offset = sector;
+				drive->cluster_offset = file.cluster;
+			}
+			else
+			{ // same track, start at next sector in track
+				sector = drive->sector_offset;
+				file.cluster = drive->cluster_offset;
+				file.sector = (drive->track * SECTOR_COUNT) + sector;
+			}
+			dummyread=0;
 		}
 	}
 	else
@@ -226,7 +231,7 @@ void ReadTrack(adfTYPE *drive)
     DisableFpga();
 
     if (track >= drive->tracks)
-        track = drive->tracks - 1;
+    	dummyread=1;
 
     if (DEBUG)
         printf("(%u)[%04X]:", status >> 6, dsksync);
@@ -234,7 +239,7 @@ void ReadTrack(adfTYPE *drive)
     while (1)
     {
         // Return all 1s if drive is empty.
-        if (drive->status & DSK_INSERTED)
+        if (!dummyread)
             FileRead(&file, sector_buffer);
         else
         	memset(sector_buffer,0xff,512);
@@ -250,7 +255,7 @@ void ReadTrack(adfTYPE *drive)
         dsklen  |= SPI(0); // lsb of mfm words to transfer
 
         if (track >= drive->tracks)
-            track = drive->tracks - 1;
+        	dummyread=1;
 
         // workaround for Copy Lock in Wiz'n'Liz and North&South (might brake other games)
         if (dsksync == 0x0000 || dsksync == 0x8914 || dsksync == 0xA144)
@@ -304,8 +309,11 @@ void ReadTrack(adfTYPE *drive)
 		    else // go to the start of current track
 		    {
 		        sector = 0;
-		        file.cluster = drive->cache[drive->track];
-		        file.sector = drive->track * SECTOR_COUNT;
+		        if(!dummyread)
+		        {
+				    file.cluster = drive->cache[drive->track];
+				    file.sector = drive->track * SECTOR_COUNT;
+				}
 		    }
 
 		    // remember current sector and cluster
@@ -368,7 +376,6 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
 {
     unsigned int c, c1, c2, c3, c4;
     unsigned int i;
-//    unsigned char checksum[4];
 	int error=0;
 
     while (1)
@@ -394,45 +401,39 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
                 break;
             }
 
-//			SPIN;
-
             c = SPI(0);
             checksum[0] = c;
             c1 = (c & 0x55) << 1;
-//			SPIN;
+
             c = SPI(0);
             checksum[1] = c;
             c2 = (c & 0x55) << 1;
 
-//			SPIN;
-
             c = SPI(0);
             checksum[2] = c;
             c3 = (c & 0x55) << 1;
-//			SPIN;
+
             c = SPI(0);
             checksum[3] = c;
             c4 = (c & 0x55) << 1;
 
-//			SPIN;
 
             c = SPI(0);
             checksum[0] ^= c;
             c1 |= c & 0x55;
-//			SPIN;
+
             c = SPI(0);
             checksum[1] ^= c;
             c2 |= c & 0x55;
 
-//			SPIN;
-
             c = SPI(0);
             checksum[2] ^= c;
             c3 |= c & 0x55;
-//			SPIN;
+
             c = SPI(0);
             checksum[3] ^= c;
             c4 |= c & 0x55;
+
 
             if (c1 != 0xFF) // always 0xFF
                 error = 22;
@@ -458,10 +459,8 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
 
             for (i = 0; i < 8; i++)
             {
-//				SPIN;
                 checksum[0] ^= SPI(0);
                 checksum[1] ^= SPI(0);
-//				SPIN;
                 checksum[2] ^= SPI(0);
                 checksum[3] ^= SPI(0);
             }
@@ -471,19 +470,15 @@ unsigned char GetHeader(unsigned int *pTrack, unsigned int *pSector)
             checksum[2] &= 0x55;
             checksum[3] &= 0x55;
 
-//			SPIN;
 
             c1 = ((SPI(0)) & 0x55) << 1;
             c2 = ((SPI(0)) & 0x55) << 1;
-//			SPIN;
             c3 = ((SPI(0)) & 0x55) << 1;
             c4 = ((SPI(0)) & 0x55) << 1;
 
-//			SPIN;
 
             c1 |= (SPI(0)) & 0x55;
             c2 |= (SPI(0)) & 0x55;
-//			SPIN;
             c3 |= (SPI(0)) & 0x55;
             c4 |= (SPI(0)) & 0x55;
 
@@ -533,19 +528,13 @@ unsigned char GetData(void)
 
         if (n >= 0x204)
         {
-//			SPIN;
-
             c1 = ((SPI(0)) & 0x55) << 1;
             c2 = ((SPI(0)) & 0x55) << 1;
-//			SPIN;
             c3 = ((SPI(0)) & 0x55) << 1;
             c4 = ((SPI(0)) & 0x55) << 1;
 
-//			SPIN;
-
             c1 |= (SPI(0)) & 0x55;
             c2 |= (SPI(0)) & 0x55;
-//			SPIN;
             c3 |= (SPI(0)) & 0x55;
             c4 |= (SPI(0)) & 0x55;
 
@@ -559,23 +548,15 @@ unsigned char GetData(void)
             p = sector_buffer;
             do
             {
-//				SPIN;
-//				SPIN;
                 c = SPI(0);
                 checksum[0] ^= c;
                 *p++ = (c & 0x55) << 1;
-//				SPIN;
-//				SPIN;
                 c = SPI(0);
                 checksum[1] ^= c;
                 *p++ = (c & 0x55) << 1;
-//				SPIN;
-//				SPIN;
                 c = SPI(0);
                 checksum[2] ^= c;
                 *p++ = (c & 0x55) << 1;
-//				SPIN;
-//				SPIN;
                 c = SPI(0);
                 checksum[3] ^= c;
                 *p++ = (c & 0x55) << 1;
@@ -587,14 +568,12 @@ unsigned char GetData(void)
             p = sector_buffer;
             do
             {
-//				SPIN;
                 c = SPI(0);
                 checksum[0] ^= c;
                 *p++ |= c & 0x55;
                 c = SPI(0);
                 checksum[1] ^= c;
                 *p++ |= c & 0x55;
-//				SPIN;
                 c = SPI(0);
                 checksum[2] ^= c;
                 *p++ |= c & 0x55;
@@ -680,14 +659,13 @@ void WriteTrack(adfTYPE *drive)
                             FileWrite(&file, sector_buffer);
                         else
                             SetError(ERROR_FDD,"Disk write protected",0,0);
-						// FIXME - should transfer and discard data here, and also test that a disk is actually inserted.
                     }
                     else
 						SetError(ERROR_FDD,"Write to empty drive",0,0);
                 }
             }
             else
-				FatalError(ERROR_FDD,"Wrong track number",27,0);
+				FatalError(ERROR_FDD,"Wrong track number",Track,drive->track);
         }
     }
 }

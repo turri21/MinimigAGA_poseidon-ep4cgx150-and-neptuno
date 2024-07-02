@@ -3,7 +3,7 @@
 // Uses 5-bit PWM, wrapped within a 10-bit Sigma Delta, with the intention of
 // increasing the pulse width, since narrower pulses seem to equate to more noise
 //
-// Copyright 2012,2020,2021 by Alastair M. Robinson
+// Copyright 2012, 2020, 2021, 2024 by Alastair M. Robinson
 //
 //
 // This program is free software: you can redistribute it and/or modify
@@ -31,9 +31,9 @@ module hybrid_pwm_sd
 );
 
 
-// PWM portion of the DAC - a free-running 5-bit counter.
-// Output goes high when counter is 0
-// and goes low again when the threshold value is reached.
+// PWM portion of the DAC - a 5-bit counter - restarts at 1 rather than 0
+// since the input is the number of consecutive 1 bits, from 0 to 31,
+// the loop is thus 31 cycles, not 32.
 
 reg [4:0] pwmcounter=5'b11111;
 reg [4:0] pwmthreshold_l = 5'd30;
@@ -50,8 +50,9 @@ always @(posedge clk) begin
 
 	if(pwmcounter==5'b11111)
 	begin
-		q_l<=1'b1;
-		q_r<=1'b1;
+		q_l<=|pwmthreshold_l;
+		q_r<=|pwmthreshold_r;
+		pwmcounter<=5'b1;
 	end
 
 end
@@ -115,7 +116,7 @@ reg [15:0] mux_in;
 
 always @(posedge clk) begin
 	mux_in <= (init | terminated) ? {initctr_l[13:0],2'b00} : ( muxtoggle ? d_r : d_l );
-	if(pwmcounter==5'b11111) // Update thresholds as PWM cycle ends
+	if(pwmcounter==5'b11110) // Update thresholds just before PWM cycle ends
 	begin	
 		scaledin<=33'h8000000 // (1<<(16-5))<<16     offset to keep centre aligned.
 			+({1'b0,mux_in}*16'hf000); // + d_l * 30<<(16-5);

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "rafile.h"
+#include "errors.h"
 
 int RARead(RAFile *file,unsigned char *pBuffer, unsigned long bytes)
 {
@@ -27,23 +28,35 @@ int RARead(RAFile *file,unsigned char *pBuffer, unsigned long bytes)
 	// in 512-byte aligned chunks, until the last block.
 	while(bytes>511)
 	{
+		if(file->ptr>=file->file.size)
+		{
+			SetError(ERROR_FILESYSTEM,"Read past file end",file->ptr,file->file.size);
+			return(0);
+		}
 		result&=FileRead(&file->file,pBuffer);	// Read direct to pBuffer
-		FileNextSector(&file->file);
-		bytes-=512;
 		file->ptr+=512;
+		if(file->ptr<file->file.size)
+			FileNextSector(&file->file);
+		bytes-=512;
 		pBuffer+=512;
 	}
 
 	if(bytes)	// Do we have any bytes left to read?
 	{
 		int i;
+		if(file->ptr>=file->file.size)
+		{
+			SetError(ERROR_FILESYSTEM,"Read past file end",file->ptr,file->file.size);
+			return(0);
+		}
 		result&=FileRead(&file->file,file->buffer);	// Read to temporary buffer, allowing us to preserve any leftover for the next read.
-		FileNextSector(&file->file);
 		for(i=0;i<bytes;++i)
 		{
 			*pBuffer++=file->buffer[i];
 		}
 		file->ptr+=bytes;
+		if(file->ptr<file->file.size)
+			FileNextSector(&file->file);
 	}
 	return(result);
 }
@@ -62,6 +75,11 @@ int RAReadLine(RAFile *file,unsigned char *pBuffer, unsigned long bytes)
 		int l=blockoffset+bytes;
 		if(!blockoffset)
 		{
+			if(file->ptr>=file->file.size)
+			{
+				SetError(ERROR_FILESYSTEM,"Read past file end",file->ptr,file->file.size);
+				return(0);
+			}
 			result&=FileRead(&file->file,file->buffer);	// Read to temporary buffer, allowing us to preserve any leftover for the next read.
 			FileNextSector(&file->file);
 		}

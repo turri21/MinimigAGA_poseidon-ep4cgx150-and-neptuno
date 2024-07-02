@@ -51,8 +51,8 @@ $(PROJECT).bin: bootdiag.h $(ALL_SOURCES)
 # clean
 clean:
 	@echo clean
-	@rm -rf $(BUILD_DIR)/*.o
-	@rm *.asm
+	@-rm -rf $(BUILD_DIR)/*.o
+	@-rm *.asm
 
 $(ROMGEN): ../romgen/romgen.c
 	make -C ../romgen/
