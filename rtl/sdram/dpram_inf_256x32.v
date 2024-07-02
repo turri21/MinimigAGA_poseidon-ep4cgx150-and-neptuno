@@ -17,16 +17,21 @@ module dpram_inf_256x32 (
 // memory
 reg [32-1:0] mem [0:256-1];
 
+reg [32-1:0] q_a_i;
+reg [32-1:0] q_b_i;
+
 // port a
 always @ (posedge clock) begin
   if (wren_a) mem[address_a] <= #1 data_a;
-  q_a <= #1 mem[address_a];
+  q_a_i <= #1 mem[address_a];
+  q_a <= #1 q_a_i;
 end
 
 // port b
 always @ (posedge clock) begin
   if (wren_b) mem[address_b] <= #1 data_b;
-  q_b <= #1 mem[address_b];
+  q_b_i <= #1 mem[address_b];
+  q_b <= #1 q_b_i;
 end
 
 endmodule

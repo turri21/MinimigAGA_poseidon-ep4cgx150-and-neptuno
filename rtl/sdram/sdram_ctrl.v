@@ -447,19 +447,20 @@ reg rtg_extendable;
 reg rtg_extend;
 wire rtg_blockingbus = cpu_reservertg | wb_reservertg | refresh_pending;
 wire [1:0] rtg_bank = rtgAddr[24:23];
+wire rtg_hungry = rtgce && rtgpri;
 
 always @(posedge sysclk) begin
 
 	// CPU will defer to RTG on slot 2, and avoid using slot 2 when a refresh is pending.
 	cpu_reservertg <= rtgce && rtgpri && cpuAddr_r[24:23]==rtg_bank ? 1'b1 : 1'b0;
 	cpu_slot1ok <= !zatn && (slot2_type == IDLE || slot2_bank != cpuAddr_r[24:23]) ? 1'b1 : 1'b0;
-	cpu_slot2ok <= !refresh_pending && ((shortcut | |cpuAddr_r[24:23])   // Reserve bank 0 for slot 1
+	cpu_slot2ok <= !rtg_hungry && !refresh_pending && ((shortcut | |cpuAddr_r[24:23])   // Reserve bank 0 for slot 1
 	               && (slot1_type == IDLE || slot1_bank != cpuAddr_r[24:23])) ? 1'b1 : 1'b0;
 
 	// Writebuffer will defer to RTG on slot 2, and avoid using slot 2 when a refresh is pending.
 	wb_reservertg <= rtgce && rtgpri && writebufferAddr[24:23]==rtg_bank ? 1'b1 : 1'b0;
 	wb_slot1ok <= (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23]) ? 1'b1 : 1'b0;
-	wb_slot2ok <= !refresh_pending && (shortcut | (|writebufferAddr[24:23]) // Reserve bank 0 for slot 1
+	wb_slot2ok <= !rtg_hungry && !refresh_pending && (shortcut | (|writebufferAddr[24:23]) // Reserve bank 0 for slot 1
 	           && (slot1_type == IDLE || slot1_bank != writebufferAddr[24:23])) ? 1'b1 : 1'b0;
 
 	// Other ports need to avoid bank clashes.
@@ -471,7 +472,7 @@ always @(posedge sysclk) begin
 	zatn <= !(|hostslot_cnt) && hostce;
 	
 	// Is the RTG subsystem requesting the last word of a column, or blocking the CPU?
-	rtg_extendable <= rtgce && rtgpri && (!refresh_pending) && rtgAddr[9:4]!=6'b111111 ? 1'b1 : 1'b0;
+	rtg_extendable <= rtg_hungry && (!refresh_pending) && rtgAddr[9:4]!=6'b111111 ? 1'b1 : 1'b0;
 end
 
 //// sdram control ////

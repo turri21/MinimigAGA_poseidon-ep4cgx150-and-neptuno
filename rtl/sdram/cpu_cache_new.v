@@ -372,7 +372,6 @@ always @ (posedge clk) begin
               if (cpu_32bit) begin
                 cpu_sm_state <= #1 CPU_SM_WAIT_LOWORD;
               end else begin
-                sdr_write_req <= #1 1'b1;
                 cpu_sm_state <= #1 CPU_SM_WRITE;
                 cpu_dat_l <= cpu_dat_w;
                 cpu_bs_l <= cpu_bs;
@@ -427,6 +426,7 @@ always @ (posedge clk) begin
           cpu_sm_dram1_we <= #1 dtag1_match && dtag1_valid /*&& !cc_fr*/;
       end
       CPU_SM_WRITE : begin
+        sdr_write_req <= #1 1'b1;
         // on hit update cache, on miss no update neccessary; tags don't get updated on writes
         cpu_sm_adr <= #1 {cpu_adr_idx_l, cpu_adr_blk_l};
         cpu_sm_bs <= #1 cpu_adr_blk_ptr[0] ? {cpu_bs_l, 2'b00} : {2'b00, cpu_bs_l};
