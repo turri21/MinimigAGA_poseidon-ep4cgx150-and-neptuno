@@ -53,7 +53,7 @@ port (
 	rtg_base : out std_logic_vector(25 downto 4);
 	rtg_vbend : out std_logic_vector(6 downto 0);
 	rtg_ext : out std_logic;
-	rtg_pixelclock : out std_logic_vector(3 downto 0);
+	rtg_pixelclock : out std_logic_vector(5 downto 0);
 	rtg_clut : out std_logic;
 	rtg_16bit : out std_logic;
 	rtg_clut_idx : in std_logic_vector(7 downto 0);
@@ -191,9 +191,8 @@ begin
 
 		if havertg=true then
 	
-			-- RTG registers.  Will need a secondary framebuffer address to support
-			-- screen dragging, but I suspect screen dragging will cause a display "ReThink"
-			-- and thus mess with the AGA registers, so will probably need a full CRTC too.
+			-- RTG registers, includes a secondary framebuffer address to support
+			-- screen dragging.
 			if req='1' and wr='1' then
 				if rtg_sel='1' then
 					case addr(4 downto 1) is
@@ -201,8 +200,8 @@ begin
 							rtg_addr(25 downto 16)<=d(9 downto 0);
 						when X"1" =>	-- Low word of framebuffer address
 							rtg_addr(15 downto 4)<=d(15 downto 4);
-						when X"2" =>	-- CLUT (15) : Extend (14) : VBEnd(n downto 6) : PixelClock (3 downto 0)
-							rtg_pixelclock<=d(3 downto 0);
+						when X"2" =>	-- CLUT (15) : Extend (14) : VBEnd(n downto 6) : PixelClock (5 downto 0)
+							rtg_pixelclock<=d(5 downto 0);
 							rtg_vbend<=d(rtg_vbend'high + 6 downto 6);
 							rtg_clut<=d(15);
 							rtg_ext<=d(14);

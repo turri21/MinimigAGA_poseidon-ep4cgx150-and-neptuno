@@ -96,7 +96,7 @@ port(
 	rtg_addr : out std_logic_vector(25 downto 4);
 	rtg_vbend : out std_logic_vector(6 downto 0);
 	rtg_ext : out std_logic;
-	rtg_pixelclock : out std_logic_vector(3 downto 0);
+	rtg_pixelclock : out std_logic_vector(5 downto 0);
 	rtg_clut : out std_logic;
 	rtg_16bit : out std_logic;
 	rtg_clut_idx : in std_logic_vector(7 downto 0) := X"00";

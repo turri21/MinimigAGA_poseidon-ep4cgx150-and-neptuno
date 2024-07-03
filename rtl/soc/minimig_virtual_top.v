@@ -269,8 +269,8 @@ wire rtg_ena;	// RTG screen on/off
 wire rtg_ena_mm; // RTG screen on/off
 wire rtg_clut;	// Are we in high-colour or 8-bit CLUT mode?
 wire rtg_16bit; // Is high-colour mode 15- or 16-bit?
-reg [3:0] rtg_pixelctr;	// Counter, compared against rtg_pixelwidth
-wire [3:0] rtg_pixelwidth; // Number of clocks per fetch - 1
+reg [5:0] rtg_pixelctr;	// Counter, compared against rtg_pixelwidth
+wire [5:0] rtg_pixelwidth; // Number of clocks per fetch - 1
 wire [7:0] rtg_clut_idx;	// The currently selected colour in indexed mode
 wire rtg_pixel;	// Strobe the next pixel from the FIFO
 wire rtg_linecompare; // Used for screen splitting / dragging
@@ -322,12 +322,12 @@ always @(posedge CLK_114) begin
 	rtg_clut_in_sel_d<=rtg_clut_in_sel;
 
 	// Alternate colour index at twice the fetch clock.
-	if(rtg_pixelctr=={1'b0,rtg_pixelwidth[3:1]})
+	if(rtg_pixelctr=={1'b0,rtg_pixelwidth[5:1]})
 		rtg_clut_in_sel<=1'b1;
 	
 	// Increment the fetch clock, reset during blank.
 	if(rtg_blank || rtg_pixel) begin
-		rtg_pixelctr<=3'b0;
+		rtg_pixelctr<=6'b0;
 		rtg_clut_in_sel<=1'b0;
 	end else begin
 		rtg_pixelctr<=rtg_pixelctr+1;

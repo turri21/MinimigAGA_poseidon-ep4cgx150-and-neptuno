@@ -6,6 +6,21 @@ Huge thanks to the Replay team for releasing their own
 P96 driver as open-source - this driver is based heavily
 upon their work, and is thus under the same license - LGPL2.1.
 
+V1.1 adds support for screen dragging, removing a couple of ugly hacks
+and solving the issue of resyncing when flipping screens.
+
+V1.2 adds support for a VIDEOMEMORY tooltype which can be set to an
+integer between 1 and 7 to select how many megabytes the driver reserves
+for RTG.  (Please note, if the driver can't allocate a large enough chunk
+it will halve the requested size and try again until it succeeds.
+
+V1.3 has a few bug fixes, and now supports vertical autoscrolling.
+(Horizontal autoscrolling remains unsupported.)
+
+V1.4 adds a few more pixel clocks (slower ones) to allow for the creation
+of lower-res screenmodes suitable for games. (The scandoubler currently
+remains unavailable in RTG mode, however.)
+
 
 Installation
 ~~~~~~~~~~~~
@@ -20,6 +35,9 @@ Installation
 
 * Edit the monitor file's tooltypes, changing the BOARDTYPE tooltype
   to minimig then save the changes.
+
+* Optionally add a tooltype, VIDEOMEMORY=<n> to set the amount of used
+  video memory to <n> megabytes.
 
 * Copy the minimig.card file to libs:picasso96/
 
