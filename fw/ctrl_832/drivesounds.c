@@ -312,7 +312,7 @@ int pickstep(int maxactive,enum DriveSound_Type type)
 	int best=0;
 	int count;
 	int step;
-	while(count>maxactive)
+	do
 	{
 		best=0;
 		bestcursor=0;
@@ -335,6 +335,7 @@ int pickstep(int maxactive,enum DriveSound_Type type)
 			drivesounds.sounds[type+best].cursor=0;
 		}
 	}
+	while(count>maxactive);
 	step=TIMER&3;
 	while(drivesounds.sounds[type+step].active)
 		step=(step+1)&3;
