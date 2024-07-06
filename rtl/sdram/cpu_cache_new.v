@@ -293,7 +293,7 @@ assign cpu_cacheline_d_valid = cpu_cacheline_d_match && (cpu_sm_state == CPU_SM_
 always @(posedge clk) cpu_cacheline_i_match <= addr_prefix_match && cpu_adr[25:4] == cpu_cacheline_i_adr && !cpu_cacheline_i_dirty;
 assign cpu_cacheline_i_valid = cpu_cacheline_i_match && (cpu_sm_state == CPU_SM_IDLE) && cpu_ir && !cache_inhibit;
 
-assign cpu_wr_ena = addr_prefix_match && cpu_cs && cpu_we && !sdr_write_req && !sdr_write_ack
+assign cpu_wr_ena = addr_prefix_match && cpu_cs && cpu_we && (sdr_write_req == sdr_write_ack)
 	&& (cpu_sm_state==CPU_SM_IDLE || cpu_sm_state==CPU_SM_WRITE_32BIT) ;
 
 assign cpu_ack = cpu_cache_ack || cpu_cacheline_d_valid || cpu_cacheline_i_valid || cpu_wr_ena;
@@ -365,7 +365,7 @@ always @ (posedge clk) begin
 
             cpu_sm_adr <= #1 {cpu_adr_idx, cpu_adr_blk_ptr};
 
-            if (!sdr_write_req && !sdr_write_ack) begin
+            if (sdr_write_req == sdr_write_ack) begin
               sdr_adr <= #1 cpu_adr[25:1];
               sdr_dqm_w <= #1 {2'b11, ~cpu_bs};
               sdr_dat_w <= #1 {cpu_dat_w, cpu_dat_w};
@@ -398,7 +398,6 @@ always @ (posedge clk) begin
           cpu_adr_blk_ptr <= #1 cpu_adr_blk;
           sdr_dqm_w[3:2] <= #1 ~cpu_bs;
           sdr_dat_w[31:16] <= #1 cpu_dat_w;
-          sdr_write_req <= #1 1'b1;
 
           if (cpu_cacheline_i_match && cpu_bs[0]) cpu_cacheline_i_lo[cpu_adr_blk] <= #1 cpu_dat_w[ 7: 0]; //update low byte
           if (cpu_cacheline_i_match && cpu_bs[1]) cpu_cacheline_i_hi[cpu_adr_blk] <= #1 cpu_dat_w[15: 8]; //update hi byte
@@ -418,6 +417,7 @@ always @ (posedge clk) begin
             cpu_sm_bs <= #1 {cpu_bs, ~sdr_dqm_w[1:0]};
             cpu_sm_mem_dat_w <= #1 {cpu_dat_w, sdr_dat_w[15:0]};
             cpu_adr_blk_ptr <= #1 cpu_adr_blk;
+            sdr_write_req <= !sdr_write_req;
             cpu_sm_state <= #1 CPU_SM_IDLE;
           end
           cpu_sm_iram0_we <= #1 itag0_match && itag0_valid /*&& !cc_fr*/;
@@ -426,7 +426,7 @@ always @ (posedge clk) begin
           cpu_sm_dram1_we <= #1 dtag1_match && dtag1_valid /*&& !cc_fr*/;
       end
       CPU_SM_WRITE : begin
-        sdr_write_req <= #1 1'b1;
+        sdr_write_req <= !sdr_write_req;
         // on hit update cache, on miss no update neccessary; tags don't get updated on writes
         cpu_sm_adr <= #1 {cpu_adr_idx_l, cpu_adr_blk_l};
         cpu_sm_bs <= #1 cpu_adr_blk_ptr[0] ? {cpu_bs_l, 2'b00} : {2'b00, cpu_bs_l};
@@ -452,7 +452,7 @@ always @ (posedge clk) begin
           cpu_cache_ack <= #1 1'b1; //early ack
         end
 
-        cpu_sm_adr[2:1] <= cpu_sm_adr[2:1] + 1;
+        cpu_sm_adr[2:1] <= cpu_sm_adr[2:1] + 1'b1;
 
         cpu_adr_blk_ptr <= cpu_adr_blk_ptr_next;
         // on hit update LRU flag in tag memory
@@ -630,9 +630,6 @@ always @ (posedge clk) begin
       end
       default: ;
     endcase
-
-    // when the SDRAM ack'ed the write, lower the request
-    if (sdr_write_ack) sdr_write_req <= #1 1'b0;
 
     // when CPU lowers its request signal, lower ack too
     if (!cpu_cs) cpu_cache_ack <= #1 1'b0;

@@ -500,8 +500,6 @@ always @ (posedge sysclk) begin
 	cache_fill_2                <= #1 1'b0;
 	snoop_act                   <= #1 1'b0;
 
-	writebuffer_ack             <= #1 1'b0;
-
 	if(!init_done) begin
 		if(sdram_state == ph1) begin
 			case(initstate)
@@ -592,7 +590,7 @@ always @ (posedge sysclk) begin
 				end
 				// the Amiga CPU gets next bite of the cherry, unless the OSD CPU has been cycle-starved
 				// request from write buffer
-				else if(writebuffer_req && wb_slot1ok && !wb_reservertg) begin
+				else if((writebuffer_req ^ writebuffer_ack) && wb_slot1ok && !wb_reservertg) begin
 					// We only yield to the OSD CPU if it's both cycle-starved and ready to go.
 					slot1_type          <= #1 CPU_WRITECACHE;
 					sdaddr              <= #1 writebufferAddr[22:10];
@@ -603,7 +601,7 @@ always @ (posedge sysclk) begin
 					sd_cmd              <= #1 CMD_ACTIVE;
 					slot1_addr          <= #1 {writebufferAddr[25:1], 1'b0};
 					slot1_write         <= #1 1'b1;
-					writebuffer_ack     <= #1 1'b1; // let the write buffer know we're about to write
+					writebuffer_ack     <= #1 writebuffer_req; // let the write buffer know we're about to write
 				end
 				// request from read cache
 				else if(cache_req && cpu_slot1ok && !cpu_reservertg) begin 
@@ -765,7 +763,7 @@ always @ (posedge sysclk) begin
 					slot2_dqm         <= #1 2'b11;
 					slot2_addr        <= #1 rtgAddr[25:0];
 				end
-				else if(writebuffer_req && wb_slot2ok && !wb_reservertg) begin
+				else if((writebuffer_req ^ writebuffer_ack) && wb_slot2ok && !wb_reservertg) begin
 					// We only yield to the OSD CPU if it's both cycle-starved and ready to go.
 					slot2_type        <= #1 CPU_WRITECACHE;
 					sdaddr            <= #1 writebufferAddr[22:10];
@@ -776,7 +774,7 @@ always @ (posedge sysclk) begin
 					sd_cmd            <= #1 CMD_ACTIVE;
 					slot2_addr        <= #1 {writebufferAddr[25:1], 1'b0};
 					slot2_write       <= #1 1'b1;
-					writebuffer_ack   <= #1 1'b1; // let the write buffer know we're about to write
+					writebuffer_ack   <= #1 writebuffer_req; // let the write buffer know we're about to write
 				end
 				// request from read cache
 				else if(cache_req && cpu_slot2ok && !cpu_reservertg) begin
