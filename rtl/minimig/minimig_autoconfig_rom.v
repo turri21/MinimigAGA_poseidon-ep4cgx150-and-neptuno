@@ -17,6 +17,7 @@ localparam z3base2='h80;
 localparam z3base3='hc0;
 localparam ethbase='h100;
 localparam sndbase='h140;
+localparam ctrlbase='h180;
 
 initial
 begin
@@ -103,12 +104,25 @@ begin
 	ram[sndbase+'h2/2] = 4'b0001; // Next board not related, size 'h64k
 	// Inverted from here on
 	ram[sndbase+'h6/2] = 4'b0011; // Lower byte product number
-	ram[ethbase+'ha/2] = 4'b1101;   // logical size 64k
+	ram[sndbase+'ha/2] = 4'b1101;   // logical size 64k
 	ram[sndbase+'h10/2] = 4'b1011; // Manufacturer ID: 0x4754
 	ram[sndbase+'h12/2] = 4'b1000;
 	ram[sndbase+'h14/2] = 4'b1010;
 	ram[sndbase+'h16/2] = 4'b1011;
 	
+	// Minimig Control board
+
+	ram[ctrlbase+'h0] = 4'b1100; // Zorro-II card, no link, no ROM
+	ram[ctrlbase+'h2/2] = 4'b0001; // Next board not related, size 'h64k
+	// Inverted from here on
+	ram[ctrlbase+'h4/2] = 4'b1110;	// ProductID = 0x11
+	ram[ctrlbase+'h6/2] = 4'b1101;	// ProductID = 0x12
+	ram[ctrlbase+'ha/2] = 4'b1101;   // logical size 64k
+	ram[ctrlbase+'h10/2] = 4'b1110;	// Manufacturer ID: 0x1399
+	ram[ctrlbase+'h12/2] = 4'b1100;
+	ram[ctrlbase+'h14/2] = 4'b0110;
+	ram[ctrlbase+'h16/2] = 4'b0110;
+
 end
 
 reg [3:0] q_loc;

@@ -103,8 +103,6 @@ module paula
 	input qsck,           //QSPI clock
 	input [3:0] qdat,     //QSPI data input
 	//audio outputs
-	output	left,					//audio bitstream left
-	output	right,					//audio bitstream right
 	output	[15:0]ldata,			//left DAC data
 	output	[15:0]rdata, 			//right DAC data
   // system configuration
@@ -332,8 +330,6 @@ paula_audio ad1
 	.audpen(audpen),
 	.dmal(audio_dmal),
 	.dmas(audio_dmas),
-	.left(left),
-	.right(right),	
 	.ldata(ldata),
 	.rdata(rdata),
 	.filter(filter)

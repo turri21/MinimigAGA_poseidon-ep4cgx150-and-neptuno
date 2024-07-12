@@ -188,6 +188,8 @@ module minimig
 	input cck,			// colour clock enable
 	input [9:0] eclk,			// ECLK enable (1/10th of CLK)
 	//rs232 pins
+	input   midi_rx,
+	output  midi_tx,
 	input	rxd,				//rs232 receive
 	output	txd,				//rs232 send
 	input	cts,				//rs232 clear to send
@@ -228,14 +230,6 @@ module minimig
 	input qcs,            //QSPI cs
 	input qsck,           //QSPI clock
 	input [3:0] qdat,     //QSPI data input
- // // host
- // output wire           host_cs,
- // output wire [ 24-1:0] host_adr,
- // output wire           host_we,
- // output wire [  2-1:0] host_bs,
- // output wire [ 16-1:0] host_wdat,
- // input  wire [ 16-1:0] host_rdat,
- // input  wire           host_ack,
 	//video
 	output	_hsync,				//horizontal sync
 	output	hsyncpol,
@@ -247,15 +241,15 @@ module minimig
 	output	[7:0] green,		//green
 	output	[7:0] blue,			//blue
 	//audio
-	output	left,				//audio bitstream left
-	output	right,				//audio bitstream right
-	output	[15:0]ldata,			//left DAC data
-	output	[15:0]rdata, 			//right DAC data
-	output	[15:0]cdda_l,
-	output	[15:0]cdda_r,
+	output	[23:0]ldata,			//left DAC data
+	output	[23:0]rdata, 			//right DAC data
+    input   [15:0]aux_left_1,		// Auxiliary audio channels
+    input   [15:0]aux_right_1,		// Auxiliary audio channels
+    input   [15:0]aux_left_2,		// Auxiliary audio channels
+    input   [15:0]aux_right_2,		// Auxiliary audio channels
 	//user i/o
   output  [3:0] cpu_config,
-  output  [4:0] board_configured,
+  output  [5:0] board_configured,
   output  turbochipram,
   output  turbokick,
   output  [1:0] slow_config,
@@ -309,6 +303,7 @@ wire		[15:0] gary_data_out;	//data out from memory bus multiplexer
 wire		[15:0] gayle_data_out;	//Gayle data out
 wire		[15:0] cia_data_out;	//cia A+B data bus out
 wire		[15:0] toc_data_out; //Toccata sound card data out
+wire		[15:0] ctrl_data_out; //Toccata sound card data out
 wire		[15:0] rtc_data_out;  //RTC data out
 wire		[15:0] ar3_data_out;	//Action Replay data out
 
@@ -341,9 +336,6 @@ wire		kbdrst;					//keyboard reset
 wire		reset;					//global reset
 wire		aflock;
 wire		cpu_custom;
-wire		autoconfig_done;
-wire		[7:0] toccata_base_addr; // IO base address for Toccata card
-wire		[4:0] autoconfig_shutup; // IO shutup register, when bit 1 board needs to shut up
 wire		dbr;					//data bus request, Agnus tells CPU that she is using the bus
 wire		dbwe;					//data bus write enable, Agnus tells the RAM it's writing data
 wire		dbs;					//data bus slow down, used for slowing down CPU access to chip, slow and custor register address space
@@ -361,6 +353,7 @@ wire		sel_cia_a;				//cia A select
 wire		sel_cia_b;				//cia B select
 wire		sel_rtc;      // RTC select
 wire		sel_toccata; // Toccata sound card select
+wire		sel_control; // Control board select
 wire		sel_autoconfig;
 wire		int2;					//intterrupt 2
 wire		int3;					//intterrupt 3 
@@ -600,6 +593,20 @@ agnus AGNUS1
 //	.vblank_out(vblank_out)
 );
 
+wire insert_sound_i;
+wire eject_sound_i;
+wire motor_sound_i;
+wire step_sound_i;
+wire hdd_sound_i;
+
+wire rxd_i;
+wire txd_i;
+
+wire ser_midi;
+assign rxd_i = ser_midi ? midi_rx : rxd;
+assign midi_tx = txd_i | ~ser_midi;
+assign txd = txd_i | ser_midi;
+
 //instantiate paula
 paula PAULA1
 (
@@ -610,8 +617,8 @@ paula PAULA1
 	.reg_address_in(reg_address),
 	.data_in(custom_data_in),
 	.data_out(paula_data_out),
-	.txd(txd),
-	.rxd(rxd),
+	.txd(txd_i),
+	.rxd(rxd_i),
   .ntsc(ntsc),
 	.sof(sof),
   .strhor(strhor_paula),
@@ -642,8 +649,6 @@ paula PAULA1
 	.qcs(qcs),
 	.qsck(qsck),
 	.qdat(qdat),
-	.left(left),
-	.right(right),
 	.ldata(ldata_paula),
 	.rdata(rdata_paula),
 
@@ -668,11 +673,19 @@ paula PAULA1
   .floppy_fwr (floppy_fwr),
   .floppy_frd (floppy_frd),
   .filter(~|audio_filter_mode ? !_led : audio_filter_mode[1]),
-  .insert_sound(insert_sound),
-  .eject_sound(eject_sound),
-  .motor_sound(motor_sound),
-  .step_sound(step_sound)
+  .insert_sound(insert_sound_i),
+  .eject_sound(eject_sound_i),
+  .motor_sound(motor_sound_i),
+  .step_sound(step_sound_i)
 );
+
+wire drivesound_fdd;
+wire drivesound_hdd;
+
+assign insert_sound = drivesound_fdd & insert_sound_i;
+assign eject_sound = drivesound_fdd & eject_sound_i;
+assign motor_sound = drivesound_fdd & motor_sound_i;
+assign step_sound = drivesound_fdd & step_sound_i;
 
 wire	[6:0] userio_memory_config;	//memory configuration
 wire	[3:0] userio_floppy_config;	//floppy drives configuration (drive number and speed)
@@ -981,11 +994,11 @@ minimig_bankmapper BMAP1
 	.slow2(sel_slow[2]),
 	.kick(sel_kick),
 	.kickext(sel_kickext),
-  .kick1mb(sel_kick1mb),
+	.kick1mb(sel_kick1mb),
 	.cart(sel_cart),
 	.drivesounds(sel_drivesounds),
 //	.aron(1'b0),
-  .ecs(|chipset_config[4:3]),
+	.ecs(|chipset_config[4:3]),
 	.memory_config(memory_config[3:0]),
 	.bank(bank)
 );
@@ -1047,6 +1060,10 @@ assign _cpu_ipl = int7 ? 3'b000 : _iplx;	//m68k interrupt request
 
 assign cpu_data_in2 = chip48[47:32];
 
+wire [7:0] toccata_base_addr; // IO base address for Toccata card
+wire [7:0] control_base_addr; // IO base address for control card
+wire [5:0] board_configured_i;// IO board configured
+
 wire sel_drivesounds;
 //instantiate gary
 gary GARY1 
@@ -1065,7 +1082,7 @@ gary GARY1
 	.cpu_lwr(cpu_lwr),
 	.cpu_hwr2(cpu_hwr2),
 	.cpu_lwr2(cpu_lwr2),
-  .cpu_hlt(cpuhlt),
+	.cpu_hlt(cpuhlt),
 	.ovl(ovl),
 	.dbr(dbr),
 	.dbwe(dbwe),
@@ -1078,8 +1095,8 @@ gary GARY1
 	.ram_lwr(ram_lwr),
 	.ram_hwr2(ram_hwr2),
 	.ram_lwr2(ram_lwr2),
-  .ecs(|chipset_config[4:3]),
-  .a1k(chipset_config[2]),
+	.ecs(|chipset_config[4:3]),
+	.a1k(chipset_config[2]),
 	.sel_chip(sel_chip),
 	.sel_slow(sel_slow),
 	.sel_kick(sel_kick),
@@ -1091,14 +1108,15 @@ gary GARY1
 	.sel_cia_b(sel_cia_b),
 	.sel_rtc(sel_rtc),
 	.sel_toccata(sel_toccata),
+	.sel_control(sel_control),
 	.sel_ide(sel_ide),
 	.sel_gayle(sel_gayle),
 	.sel_autoconfig(sel_autoconfig),
 	.sel_drivesounds(sel_drivesounds),
 	// Auto config IO BASE
-	.autoconfig_done(autoconfig_done),
-	.autoconfig_shutup(autoconfig_shutup),
-	.toccata_base_addr(toccata_base_addr)
+	.board_configured(board_configured_i),
+	.toccata_base_addr(toccata_base_addr),
+	.control_base_addr(control_base_addr)
 );
 
 gayle GAYLE1
@@ -1130,8 +1148,10 @@ gayle GAYLE1
 	.hdd_data_rd(hdd_data_rd),
 	.hd_fwr(hd_fwr),
 	.hd_frd(hd_frd),
-	.hdd_step(hdd_sound)
+	.hdd_step(hdd_sound_i)
 );
+
+assign hdd_sound = drivesound_hdd & hdd_sound_i;
 
 reg         cen_44100;
 reg  [31:0] cen_44100_cnt;
@@ -1144,6 +1164,9 @@ always @(posedge clk) begin
 		cen_44100_cnt <= cen_44100_cnt_next - (28*1000000);
 	end
 end
+
+wire [15:0] cdda_l;
+wire [15:0] cdda_r;
 
 cdda_fifo cdda_fifo (
 	.clk_sys       ( clk          ),
@@ -1163,7 +1186,7 @@ cdda_fifo cdda_fifo (
 minimig_syscontrol CONTROL1 
 (	
 	.clk(clk),
-  .clk7_en (clk7_en),
+	.clk7_en (clk7_en),
 	.cnt(sof),
 	.mrst(kbdrst | usrrst | rst_ext | !kbd_reset_n),// | ~_cpu_reset_in),
 	.reset(sys_reset)
@@ -1172,10 +1195,18 @@ minimig_syscontrol CONTROL1
 wire [15:0] autoconfig_data_out;
 
 `ifdef MINIMIG_TOCCATA
-minimig_autoconfig#(.TOCCATA_SND(1'b1)) autoconfig
+localparam MMTOC = 1'b1;
 `else
-minimig_autoconfig#(.TOCCATA_SND(1'b0)) autoconfig
+localparam MMTOC = 1'b0;
 `endif
+
+`ifdef MINIMIG_CONTROL_BOARD
+localparam MMCB = 1'b1;
+`else
+localparam MMCB = 1'b0;
+`endif
+
+minimig_autoconfig#(.TOCCATA_SND(MMTOC),.CONTROL_BOARD(MMCB)) autoconfig
 (
 	.clk(clk),
 	.clk7_en(clk7_en),
@@ -1191,11 +1222,12 @@ minimig_autoconfig#(.TOCCATA_SND(1'b0)) autoconfig
 	.m68020(cpu_config[1]),
 	.ram_64meg(ram_64meg),
 	.slowram_config(memory_config[3:2]),
-	.board_configured(board_configured),
-	.autoconfig_done(autoconfig_done),
+	.board_configured(board_configured_i),
 	.toccata_base_addr(toccata_base_addr),
-	.board_shutup(autoconfig_shutup)
+	.control_base_addr(control_base_addr)
 );
+
+assign board_configured = board_configured_i;
 
 //-------------------------------------------------------------------------------------
 assign rtc_data_out = (sel_rtc && cpu_rd) ? {12'h000, rtc[{cpu_address_out[5:2], 2'b00} +:4]} : 16'h0000;
@@ -1220,25 +1252,82 @@ toccata #(
   .out_right(rdata_toc)
 );
 
-// Mix the Paula and the Toccata data
+`else
+	assign int6_toc = 1'b0;
+	assign toc_data_out = 16'h0000;
+	assign ldata_toc=0;
+	assign rdata_toc=0;
+`endif
+
+wire [7:0] paula_vol;
+wire [7:0] toccata_vol;
+wire [7:0] cdda_vol;
+wire [7:0] aux1_vol;
+wire [7:0] aux2_vol;
+wire aud_overflow;
+
+`ifdef MINIMIG_CONTROL_BOARD
+
+minimig_control_board myctrlboard (
+  .clk(clk),
+  .rst(reset),
+  .data_in(cpu_data_out),
+  .data_out(ctrl_data_out),
+  .addr(cpu_address_out[15:1]),
+  .rd(cpu_rd),
+  .hwr(cpu_hwr),
+  .lwr(cpu_lwr),
+  .sel(sel_control),
+  .audio_overflow(aud_overflow),
+  .vol1(paula_vol),
+  .vol2(toccata_vol),
+  .vol3(cdda_vol),
+  .vol4(aux1_vol),
+  .vol5(aux2_vol),
+  .sermidi(ser_midi),
+  .drivesound_fdd(drivesound_fdd),
+  .drivesound_hdd(drivesound_hdd)  
+);
+
+`else
+
+assign paula_vol=8'd128;
+assign toccata_vol=8'd128;
+assign cdda_vol=8'd128;
+assign aux1_vol=8'd128;
+assign aux2_vol=8'd128;
+assign aud_overflow=1'b0;
+assign drivesound_fdd=1'b0;
+assign drivesound_hdd=1'b0;
+
+`endif
+
+// Mix the Paula, CDDA, Toccata and auxiliary audio data
+
 AudioMix tocAudioMix
 (
   .clk(clk),
   .reset_n(!reset),
   .audio_in_l1(ldata_paula),
-  .audio_in_l2(ldata_toc),
   .audio_in_r1(rdata_paula),
+  .audio_vol1(paula_vol),
+  .audio_in_l2(ldata_toc),
   .audio_in_r2(rdata_toc),
+  .audio_vol2(toccata_vol),
+  .audio_in_l3(cdda_l),
+  .audio_in_r3(cdda_r),
+  .audio_vol3(cdda_vol),
+  .audio_in_l4(aux_left_1),
+  .audio_in_r4(aux_right_1),
+  .audio_vol4(aux1_vol),
+  .audio_in_l5(aux_left_2),
+  .audio_in_r5(aux_right_2),
+  .audio_vol5(aux2_vol),
   .audio_l(ldata),
-  .audio_r(rdata)
+  .audio_r(rdata),
+  .audio_overflow(aud_overflow)
 );
 
-`else
-	assign int6_toc = 1'b0;
-	assign toc_data_out = 16'h0000;
-	assign ldata = ldata_paula;
-	assign rdata = rdata_paula;	
-`endif
 
 //data multiplexer
 assign cpu_data_in[15:0] = gary_data_out[15:0]
@@ -1247,6 +1336,7 @@ assign cpu_data_in[15:0] = gary_data_out[15:0]
              | cart_data_out[15:0]
              | rtc_data_out
 				 | toc_data_out[15:0]
+				 | ctrl_data_out
 				 | autoconfig_data_out;
 
 assign custom_data_out[15:0] = agnus_data_out[15:0]

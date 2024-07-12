@@ -14,7 +14,7 @@ module minimig_bankmapper
 	input	kickext,				// Kickstart extended ROM select
 	input	kick1mb,				// 1MB Kickstart 'upper' half
 	input	cart,					// Action Replay memory range select
-	input drivesounds,      // RAM buffer for uploading drive sounds
+	input	drivesounds,			// RAM buffer for uploading drive sounds
 //	input	aron,					// Action Replay enable
 	input	ecs,					// ECS chipset enable
 	input	[3:0] memory_config,	// memory configuration

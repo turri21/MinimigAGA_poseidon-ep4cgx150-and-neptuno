@@ -93,27 +93,17 @@ module gary
 	output	sel_rtc,				//select $DCxxxx
 	output	sel_ide,				//select $DAxxxx
 	output	sel_toccata,            //select toccata sound card
+	output	sel_control,            //select toccata sound card
 	output	sel_gayle,				//select $DExxxx
 	output	sel_autoconfig,		// select $E8xxxx
 	output   sel_drivesounds,     // select $EAxxxx - $EFxxxx
-	input		autoconfig_done,   // 1 if the autoconfig is done
-	input		[4:0] autoconfig_shutup, // autoconfig shutup register, silence card if one
-	input		[7:0] toccata_base_addr //base address for the Toccata sound card
+	input		[5:0] board_configured,  //autoconfig board configured, base address valid
+	input		[7:0] toccata_base_addr, //base address for the Toccata sound card
+	input		[7:0] control_base_addr  //base address for the Toccata sound card
 );
 
 wire	[2:0] t_sel_slow;
-wire	sel_bank_1; 				// $200000-$3FFFFF
-
-reg     [7:0]   toccata_base_addr_reg;
-reg             autoconfig_done_reg;
-reg     [4:0]   autoconfig_shutup_reg;
-  
-always @(*) begin
-	// (AMR - let's not import a clock into Gary just for this) Pipeline base address registers
-	toccata_base_addr_reg <= toccata_base_addr;
-	autoconfig_done_reg <= autoconfig_done;
-	autoconfig_shutup_reg <= autoconfig_shutup;
-end
+wire	sel_bank_1; 				// $200000-$3FFFFF  
 
 //--------------------------------------------------------------------------------------
 
@@ -183,11 +173,13 @@ assign sel_gayle = |hdc_ena && cpu_address_in[23:12]==12'b1101_1110_0001 ? 1'b1 
 
 assign sel_autoconfig = cpu_address_in[23:16]==12'b1110_1000 ? 1'b1 : 1'b0;		//AUTOCONFIG registers at $E80000 - $E8FFFF
 
-assign sel_drivesounds = cpu_address_in[23:19]==12'b1110_1 ? |cpu_address_in[18:17] : 1'b0;		//Drivesound RAM at $EA0000 - $EF0000
+assign sel_drivesounds = cpu_address_in[23:19]==12'b1110_1 ? (cpu_address_in[18] | (&cpu_address_in[17:16])) : 1'b0;		//Drivesound RAM at $EB0000 - $EF0000
 
 assign sel_rtc = (cpu_address_in[23:16]==8'b1101_1100) ? 1'b1 : 1'b0;   //RTC registers at $DC0000 - $DCFFFF
 
-assign sel_toccata = (cpu_address_in[23:16] == toccata_base_addr_reg) && (autoconfig_shutup_reg[4] == 1'b0) && (autoconfig_done_reg == 1'b1) ? 1'b1 : 1'b0; //Toccata sound card at $E90000 - $E9FFFF
+assign sel_toccata = (cpu_address_in[23:16] == toccata_base_addr) && board_configured[4] ? 1'b1 : 1'b0; //Toccata sound card at $E90000 - $E9FFFF
+
+assign sel_control = (cpu_address_in[23:16] == control_base_addr) && board_configured[5] ? 1'b1 : 1'b0; //Control board at $EA0000 - $EAFFFF
 
 assign sel_reg = cpu_address_in[23:21]==3'b110 ? ~(|t_sel_slow | sel_rtc | sel_ide | sel_gayle) : 1'b0;		//chip registers at $DF0000 - $DFFFFF
 

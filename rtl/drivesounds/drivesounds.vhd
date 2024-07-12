@@ -22,7 +22,7 @@ end entity;
 
 -- Drive sounds are stored in memory at Amiga address 0xeb0000, SDRAM address 0x6b0000
 -- The drive sounds are stored in the following structure:
--- 32bit signature 1 "DRIV" - the 'V' is replaced with a configuration nybble to enable or disable sounds.
+-- 32bit signature 1 "DRIV"
 -- 32bit signature 2 "ESND"
 -- for each sound:
 -- {
@@ -38,7 +38,7 @@ end entity;
 -- FIXME - should perform some kind of checksum to detect corrupted data.
 
 architecture rtl of drivesounds is
-	constant DRIVESOUND_BASE : unsigned(23 downto 0) := X"6B0000";
+	constant DRIVESOUND_BASE : unsigned(23 downto 0) := X"6b0000";
 
 	constant DRIVESOUND_INSERT : natural := 0;
 	constant DRIVESOUND_EJECT : natural := 1;
@@ -76,10 +76,6 @@ architecture rtl of drivesounds is
 
 	signal mem_addr_i : std_logic_vector(23 downto 0);
 	signal mem_req_i : std_logic;
-	
-	signal config : std_logic_vector(3 downto 0);
-	constant CONFIG_FLOPPY_BIT : integer := 0;
-	constant CONFIG_HDD_BIT : integer := 1;	
 begin
 
 	-- SDRAM - for timing
@@ -133,7 +129,7 @@ begin
 		signal soundslot : unsigned(DRIVESOUND_COUNT_LOG2-1 downto 0);
 		signal nextslot : unsigned(DRIVESOUND_COUNT_LOG2-1 downto 0);
 		signal fetch_addr : unsigned(23 downto 0);
-		signal fetch_q : std_logic_vector(31 downto 0);
+		signal fetch_q : std_logic_vector(15 downto 0);
 		
 		signal offset : unsigned(23 downto 0);
 		signal wordtoggle : std_logic;
@@ -186,7 +182,7 @@ begin
 					triggers <= (others => '0');
 				else
 
-					if fd_step='1' and fd_prev='0' and config(CONFIG_FLOPPY_BIT)='1' then	-- Use an LFSR to pick a random step sound
+					if fd_step='1' and fd_prev='0' then	-- Use an LFSR to pick a random step sound
 						fd_step_trigger<='1';
 					end if;
 					
@@ -201,7 +197,7 @@ begin
 					end if;
 
 
-					if hd_step='1' and hd_prev='0' and config(CONFIG_HDD_BIT)='1' then	-- Use an LFSR to pick a random step sound
+					if hd_step='1' and hd_prev='0' then	-- Use an LFSR to pick a random step sound
 						hd_step_trigger<='1';
 					end if;
 					
@@ -215,22 +211,22 @@ begin
 						end if;
 					end if;
 				
-					if fd_motor='1' and fd_motor_d='0' and config(CONFIG_FLOPPY_BIT)='1' then
+					if fd_motor='1' and fd_motor_d='0' then
 						triggers(DRIVESOUND_MOTORSTART)<='1';
 						triggers(DRIVESOUND_MOTORLOOP)<='1';
 					end if;
 
 					if fd_motor='0' and fd_motor_d='1' then
 						playing(DRIVESOUND_MOTORLOOP)<='0';
-						triggers(DRIVESOUND_MOTORSTOP)<=config(CONFIG_FLOPPY_BIT);
+						triggers(DRIVESOUND_MOTORSTOP)<='1';
 					end if;
 					fd_motor_d<=fd_motor;
 					
-					if fd_insert='1' and config(CONFIG_FLOPPY_BIT)='1' then
+					if fd_insert='1' then
 						triggers(DRIVESOUND_INSERT)<='1';					
 					end if;
 					
-					if fd_eject='1' and config(CONFIG_FLOPPY_BIT)='1' then
+					if fd_eject='1' then
 						triggers(DRIVESOUND_EJECT)<='1';					
 					end if;				
 				end if;
@@ -282,9 +278,9 @@ begin
 						when mem5 =>
 							-- Handle potential misaligned reads.
 							if fetch_addr(1)='1' then
-								fetch_q <= fetch_q(15 downto 0) & ds_q(15 downto 0);
+								fetch_q <= ds_q(15 downto 0);
 							else
-								fetch_q <= fetch_q(15 downto 0) & ds_q(31 downto 16);
+								fetch_q <= ds_q(31 downto 16);
 							end if;
 							ds_state<=ds_memreturnstate;
 
@@ -328,9 +324,13 @@ begin
 							ds_state<=mem;
 							
 						when validate2 =>
-							if fetch_q(15 downto 4) = X"445" then
-								config <= fetch_q(3 downto 0);
+							if fetch_q(15 downto 0) = X"4452" then
 								ds_state<=init;
+							else
+								-- If validation failed, try again if we receive a step pulse
+								if fd_step='1' or hd_step='1' then
+									ds_state<=validate;
+								end if;
 							end if;
 							
 						-- Initialisation - reads and stores the base and length of each sample.

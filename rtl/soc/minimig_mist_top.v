@@ -262,6 +262,9 @@ wire     [1:0] clock_override;
 wire           clock_ntsc;
 wire     [1:0] switches;
 wire           uart_in;
+wire           uart_out;
+wire           midi_in;
+wire           midi_out;
 
 `ifdef MINIMIG_USE_HDMI
 wire        i2c_start;
@@ -699,10 +702,14 @@ user_io user_io(
 );
 
 `ifdef MINIMIG_USE_MIDI_PINS
-     assign MIDI_OUT = UART_TX;
-     assign uart_in = switches[1] ? MIDI_IN : UART_RX;
+  assign uart_in=UART_RX;
+  assign UART_TX=uart_out;
+  assign midi_in = MIDI_IN;
+  assign MIDI_OUT = midi_out;
 `else
-     assign uart_in = UART_RX;
+   assign uart_in = UART_RX;
+   assign midi_in = UART_RX;
+   assign UART_TX = uart_out & midi_out;
 `endif
 
 wire           VGA_CS_INT;     // VGA C_SYNC
@@ -717,6 +724,13 @@ wire fd_insert;
 wire fd_eject;
 wire fd_motor;
 wire hd_step;
+
+wire [23:0] aud_amiga_left;
+wire [23:0] aud_amiga_right;    // sigma-delta DAC output right
+reg [15:0] aud_aux_left;
+reg [15:0] aud_aux_right;
+wire [15:0] ds_aud;
+
 
 //// minimig top ////
 minimig minimig (
@@ -760,8 +774,10 @@ minimig minimig (
   .cck          (cck              ), // colour clock output (3.54 MHz)
   .eclk         (eclk             ), // 0.709379 MHz clock enable output (clk domain pulse)
   //rs232 pins
+  .midi_rx      (midi_in          ),  // RS232 receive
+  .midi_tx      (midi_out         ),  // RS232 send
   .rxd          (uart_in          ),  // RS232 receive
-  .txd          (UART_TX          ),  // RS232 send
+  .txd          (uart_out         ),  // RS232 send
   .cts          (1'b0             ),  // RS232 clear to send
   .rts          (                 ),  // RS232 request to send
   //I/O
@@ -808,12 +824,12 @@ minimig minimig (
   .green        (green            ),  // green
   .blue         (blue             ),  // blue
   //audio
-  .left         (                 ),  // audio bitstream left
-  .right        (                 ),  // audio bitstream right
   .ldata        (aud_amiga_left   ),  // left DAC data
   .rdata        (aud_amiga_right  ),  // right DAC data
-  .cdda_l       (aud_cdda_left    ),
-  .cdda_r       (aud_cdda_right   ),
+  .aux_left_1   (aud_aux_left     ),  // Auxiliary audio
+  .aux_right_1  (aud_aux_right    ),  // Auxiliary audio
+  .aux_left_2   (ds_aud           ),  // Auxiliary audio
+  .aux_right_2  (ds_aud           ),  // Auxiliary audio
   //user i/o
   .cpu_config   (cpu_config       ), // CPU config
   .board_configured(board_configured),
@@ -1146,13 +1162,6 @@ end
 
 // Auxiliary audio
 
-wire [15:0] aud_amiga_left;
-wire [15:0] aud_amiga_right;    // sigma-delta DAC output right
-wire [15:0] aud_cdda_left;
-wire [15:0] aud_cdda_right;
-reg [15:0] aud_aux_left;
-reg [15:0] aud_aux_right;    // sigma-delta DAC output right
-
 reg aud_tick;
 reg aud_tick_d;
 reg aud_next;
@@ -1215,7 +1224,6 @@ VideoStream myaudiostream
 
 // Drive sounds
 
-wire [15:0] ds_aud;
 `ifdef MINIMIG_DRIVESOUNDS
 drivesounds ds_inst
 (
@@ -1238,34 +1246,18 @@ assign ds_aud = 16'h0000;
 
 // Audio mixing
 
-wire [15:0] ldata;
-wire [15:0] rdata;
-
-AudioMix myaudiomix
-(
-	.clk(clk_28),
-	.reset_n(~reset_out),
-	.audio_in_l1(aud_amiga_left),
-	.audio_in_l2(aud_aux_left),
-	.audio_in_l3(aud_cdda_left),
-	.audio_in_l4(ds_aud),
-	.audio_in_r1(aud_amiga_right),
-	.audio_in_r2(aud_aux_right),
-	.audio_in_r3(aud_cdda_right),
-	.audio_in_r4(ds_aud),
-	.audio_l(ldata),
-	.audio_r(rdata)
-);
+wire [23:0] ldata = aud_amiga_left;
+wire [23:0] rdata = aud_amiga_right;
 
 // Audio DAC
 
 wire [15:0] lunsigned;
-assign lunsigned[15]=!ldata[15];
-assign lunsigned[14:0]=ldata[14:0];
+assign lunsigned[15]=!ldata[23];
+assign lunsigned[14:0]=ldata[22:8];
 
 wire [15:0] runsigned;
-assign runsigned[15]=!rdata[15];
-assign runsigned[14:0]=rdata[14:0];
+assign runsigned[15]=!rdata[23];
+assign runsigned[14:0]=rdata[22:8];
 
 hybrid_pwm_sd sd(
 	.clk(clk_114),
@@ -1276,7 +1268,7 @@ hybrid_pwm_sd sd(
 );
 
 `ifdef MINIMIG_I2S_AUDIO
-i2s i2s (
+i2s #(.AUDIO_DW(24)) i2s (
 	.reset(1'b0),
 	.clk(clk_114),
 	.clk_rate(clock_ntsc ? 32'd114_545_440 : 32'd113_500_640),
@@ -1309,7 +1301,7 @@ spdif spdif
 	.rst_i(1'b0),
 	.clk_rate_i(clock_ntsc ? 32'd114_545_440 : 32'd113_500_640),
 	.spdif_o(SPDIF),
-	.sample_i({rdata, ldata})
+	.sample_i({rdata[23:8], ldata[23:8]})
 );
 `endif
 

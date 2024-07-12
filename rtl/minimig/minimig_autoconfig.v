@@ -1,7 +1,8 @@
 // Minimig autoconfig logic
 
 module minimig_autoconfig #(
-	parameter TOCCATA_SND = 1'b0 // Toccata sound card enabled?
+	parameter TOCCATA_SND = 1'b0, // Toccata sound card enabled?
+	parameter CONTROL_BOARD = 1'b0 // Control board enabled?
 ) (
 	input clk,
 	input clk7_en,
@@ -17,9 +18,10 @@ module minimig_autoconfig #(
 	input	[1:0] fastram_config,
 	input m68020,
 	input [1:0] ram_64meg,
-	output reg [4:0] board_configured,
-	output reg [4:0] board_shutup,
+	output reg [5:0] board_configured,
+	output reg [5:0] board_shutup,
 	output reg [7:0] toccata_base_addr, // Base address for the cards
+	output reg [7:0] control_base_addr, // Base address for the cards
 	output reg autoconfig_done
 );
 
@@ -54,11 +56,11 @@ begin
 	if(reset)
 	begin
 		init=1'b1;
-		board_configured<=5'b00000;
+		board_configured<=6'b000000;
 		acdevice<=3'b000;
 		ramsize<=4'b1111;	// Disable RAM briefly at reset
 		roma_wr<=9'h001;
-		board_shutup<=5'b00000;
+		board_shutup<=6'b000000;
 		autoconfig_done<=1'b0;
 		toccata_base_addr<=8'h0;
 	end
@@ -100,8 +102,13 @@ begin
 							end
 						3'b101: begin // Toccata sound card
 								board_configured[4] <= 1'b1;
-								acdevice<=3'b111; // NULL device to terminate the chain
+								acdevice<=CONTROL_BOARD ? 3'b110 : 3'b111; // NULL device to terminate the chain
 								toccata_base_addr <= data_in[7:0]; // Store Toccata base address
+							end
+						3'b110: begin // Minimig Control board
+								board_configured[5] <= 1'b1;
+								acdevice<=3'b111; // NULL device to terminate the chain
+								control_base_addr <= data_in[7:0]; // Store Toccata base address
 							end
 						default :
 							;
@@ -133,7 +140,7 @@ begin
 								if (TOCCATA_SND == 1'b1) begin
 									acdevice<=3'b101; // Toccata sound card
 								end else begin
-									acdevice<=3'b111; // NULL device to terminate the chain
+									acdevice<=CONTROL_BOARD ? 3'b110 : 3'b111; // Either control board or NULL device to terminate the chain
 								end
 							end
 						3'b100 : begin // ETH
@@ -144,11 +151,15 @@ begin
 							;
 					endcase
 				end
-				9'h04c : begin // Zorre II / III shut up register
+				9'h04c : begin // Zorro II / III shut up register
 					case(acdevice)
 						3'b101: begin // Shut up Toccata Sound card
-								acdevice<=3'b111; // NULL device to terminate the chain
+								acdevice<=CONTROL_BOARD ? 3'b110 : 3'b111; // Either control board or NULL device to terminate the chain
 								board_shutup[4] <= 1'b1;
+							end
+						3'b110: begin // Shut up Control board
+								acdevice<=3'b111; // NULL device to terminate the chain
+								board_shutup[5] <= 1'b1;
 							end
 						default:
 							;
