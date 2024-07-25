@@ -145,7 +145,7 @@ localparam CMD_AUTO_REFRESH    = 4'b0001;
 localparam CMD_LOAD_MODE       = 4'b0000;
 
 //// local signals ////
-reg  [ 4-1:0] initstate;
+reg  [ 5-1:0] initstate;
 reg  [ 2-1:0] slot1_dqm;
 reg  [ 2-1:0] slot1_dqm2;
 reg  [ 2-1:0] slot2_dqm;
@@ -378,16 +378,19 @@ end
 
 
 //// init counter ////
+
+reg init_sync;
 always @ (posedge sysclk) begin
 	if(!reset) begin
-		initstate <= #1 {4{1'b0}};
+		initstate <= #1 {5{1'b0}};
 		init_done <= #1 1'b0;
 	end else begin
 		case(sdram_state) // LATENCY=3
-		ph15 : begin
-			if(initstate != 4'b 1111) begin
-				initstate <= #1 initstate + 4'd1;
+		ph15: begin
+			if(initstate != 5'b11111) begin
+				initstate <= #1 initstate + 5'd1;
 			end else begin
+				init_sync <= #1 1'b1;
 				init_done <= #1 1'b1;
 			end
 		end
@@ -400,11 +403,13 @@ end
 
 //// sdram state ////
 always @ (posedge sysclk) begin
-	if(!init_done && clk7_enD & ~clk7_en) begin
-		sdram_state   <= #1 ph1;
-	end else begin
 	case(sdram_state) // LATENCY=3
-		ph0     : sdram_state <= #1 ph1;
+		ph0     : begin
+				if(!init_done)	// Use a shorter cycle during init (removes a comparison with init_done from critical paths)
+					sdram_state <= #1 ph10;
+				else if(shortcut || (clk7_enD & ~clk7_en))
+					sdram_state <= #1 ph1;		
+			end
 		ph1     : sdram_state <= #1 ph2;
 		ph2     : begin
 				if(init_done && shortcut==1 && (!rtgce) && slot1_type==IDLE && slot2_type==IDLE)	// Shortcut back to ph0 if both slots are idle.
@@ -426,7 +431,6 @@ always @ (posedge sysclk) begin
 		ph14    : sdram_state <= #1 ph15;
 		default : sdram_state <= #1 ph0;
 	endcase
-	end
 end
 
 reg zatn;
@@ -483,6 +487,8 @@ end
 
 assign sdata = sdata_oe ? sdata_out : 16'bzzzzzzzzzzzzzzzz;
 
+reg [ 13-1:0] sdaddr_next;
+
 always @ (posedge sysclk) begin
 	if(!reset) begin
 		refresh_pending           <= #1 1'b0;
@@ -493,389 +499,444 @@ always @ (posedge sysclk) begin
 	end
 	sdata_oe                    <= #1 1'b0;
 	sd_cmd                      <= #1 CMD_INHIBIT;
-	sdaddr                      <= #1 13'b0;
+//	sdaddr                      <= #1 13'b0;
 	ba                          <= #1 2'b00;
 	dqm                         <= #1 2'b00;
 	cache_fill_1                <= #1 1'b0;
 	cache_fill_2                <= #1 1'b0;
 	snoop_act                   <= #1 1'b0;
 
-	if(!init_done) begin
-		if(sdram_state == ph1) begin
+	sdaddr<=sdaddr_next;
+	
+	// Time slot control
+	case(sdram_state)
+		ph0 : begin
+			cache_fill_2          <= #1 1'b1; // slot 2
+			if(slot2_write) begin // Write cycle
+//				sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b0, slot2_addr[25], slot2_addr[9:4]}; // Can't auto-precharge, since we need to interrupt the burst
+//				sdaddr[2:0]         <= #1 slot2_addr[3:1];
+				sdata_out           <= #1 writebufferWR_reg;
+				sdata_oe            <= #1 1'b1;
+				ba                  <= #1 slot2_bank;
+				sd_cmd              <= #1 CMD_WRITE;
+				dqm                 <= #1 slot2_dqm;
+			end
+			
+		end
+
+		ph1 : begin
+			cache_fill_2          <= #1 1'b1; // slot 2
+			slot1_write           <= #1 1'b0;
+			slot1_type            <= #1 IDLE;
+			if(|hostslot_cnt) begin
+				hostslot_cnt        <= #1 hostslot_cnt - 8'd1;
+			end
+			// we give the chipset first priority
+			// (this includes anything on the "motherboard" - chip RAM, slow RAM and Kickstart, turbo modes notwithstanding)
+			if(!chip_dma || !chipRW) begin
+				slot1_type          <= #1 CHIP;
+				sdaddr              <= #1 chipAddr[22:10];
+				ba                  <= #1 2'b00; // always bank zero for chipset accesses, so we can interleave Fast RAM access
+				sd_cmd              <= #1 CMD_ACTIVE;
+				slot1_bank          <= #1 2'b00;
+				slot1_dqm           <= #1 {chipU,chipL};
+				slot1_dqm2          <= #1 {chipU2,chipL2};
+				slot1_addr          <= #1 {2'b00, chipAddr, 1'b0};
+				slot1_write         <= #1 !chipRW;
+
+//					cache_snoop_adr <= {2'b00, chipAddr, 1'b0}; // snoop address
+				cache_snoop_dat_w <={chipWR2, chipWR}; // snoop write data
+				cache_snoop_bs <= {!chipU2, !chipL2, !chipU, !chipL}; // Byte selects
+			end
+			// Now continue an in-progress RTG transaction if appropriate
+			else if(rtg_extend) begin
+				slot1_type        <= #1 RTG;
+				sdaddr            <= #1 rtgAddr[22:10];
+				ba                <= #1 rtg_bank;
+				slot1_bank        <= #1 rtg_bank;
+				slot1_dqm         <= #1 2'b11;
+				slot1_addr        <= #1 rtgAddr[25:0];
+			end
+			// next in line is refresh
+			// (a refresh cycle doesn't block slot 2)
+			else if(refresh_pending && slot2_type == IDLE) begin
+				sd_cmd              <= #1 CMD_AUTO_REFRESH;
+				slot1_type          <= #1 REFRESH;
+				refresh_pending     <= #1 1'b0;
+			end
+			// the Amiga CPU gets next bite of the cherry, unless the OSD CPU has been cycle-starved
+			// request from write buffer
+			else if((writebuffer_req ^ writebuffer_ack) && wb_slot1ok && !wb_reservertg) begin
+				// We only yield to the OSD CPU if it's both cycle-starved and ready to go.
+				slot1_type          <= #1 CPU_WRITECACHE;
+				sdaddr              <= #1 writebufferAddr[22:10];
+				ba                  <= #1 writebufferAddr[24:23];
+				slot1_bank          <= #1 writebufferAddr[24:23];
+				slot1_dqm           <= #1 writebuffer_dqm;
+				slot1_dqm2          <= #1 writebuffer_dqm2;
+				sd_cmd              <= #1 CMD_ACTIVE;
+				slot1_addr          <= #1 {writebufferAddr[25:1], 1'b0};
+				slot1_write         <= #1 1'b1;
+				writebuffer_ack     <= #1 writebuffer_req; // let the write buffer know we're about to write
+			end
+			// request from read cache
+			else if(cache_req && cpu_slot1ok && !cpu_reservertg) begin 
+				// we only yield to the OSD CPU if it's both cycle-starved and ready to go
+				slot1_type          <= #1 CPU_READCACHE;
+				sdaddr              <= #1 cpuAddr_r[22:10];
+				ba                  <= #1 cpuAddr_r[24:23];
+				slot1_bank          <= #1 cpuAddr_r[24:23];
+				slot1_dqm           <= #1 {cpuU,cpuL};
+				sd_cmd              <= #1 CMD_ACTIVE;
+				slot1_addr          <= #1 {cpuAddr_r[25:1], 1'b0};
+			end
+			else if(audce & aud_slot1ok) begin
+				slot1_type          <= #1 AUDIO;
+				sdaddr              <= #1 audAddr[22:10];
+				ba                  <= #1 2'b00;	// Always bank zero for audio
+				slot1_bank          <= #1 2'b00;
+				slot1_dqm           <= #1 2'b00;
+				slot1_dqm2          <= #1 2'b00;
+				sd_cmd              <= #1 CMD_ACTIVE;
+				slot1_addr          <= #1 {3'b000, audAddr};
+			end
+			else if(hostce && host_slot1ok) begin
+				hostslot_cnt        <= #1 8'b00001111;
+				slot1_type          <= #1 HOST;
+				sdaddr              <= #1 hostAddr[22:10];
+				ba                  <= #1 hostAddr[24:23];
+				// Always bank zero for SPI host CPU
+				slot1_bank          <= #1 hostAddr[24:23];
+				slot1_dqm           <= #1 {!hostbytesel[0],!hostbytesel[1]};
+				slot1_dqm2          <= #1 {!hostbytesel[2],!hostbytesel[3]};
+				sd_cmd              <= #1 CMD_ACTIVE;
+				slot1_addr          <= #1 {hostAddr[25:2],2'b00};
+				slot1_write         <= #1 hostwe;
+//					cache_snoop_adr <= {hostAddr[25:2], 2'b00}; // snoop address
+				cache_snoop_dat_w <={hostWR}; // snoop write data
+				cache_snoop_bs <= {hostbytesel[2],hostbytesel[3],hostbytesel[0],hostbytesel[1]}; // Byte selects
+			end
+
+			if(slot2_write) begin // Write cycle (2nd word)
+				sdaddr_next[12:3]        <= #1 {1'b0, 1'b0, 1'b1, slot2_addr[25], slot2_addr[9:4]}; // auto-precharge
+				sdaddr_next[2:0]         <= #1 slot2_addr[3:1] + 1'd1;
+			end
+		end
+
+		ph2 : begin
+			if(slot2_write) begin // Write cycle (2nd word)
+//				sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b1, slot2_addr[25], slot2_addr[9:4]}; // auto-precharge
+//				sdaddr[2:0]         <= #1 slot2_addr[3:1] + 1'd1;
+				sdata_out           <= #1 writebufferWR2_reg;
+				sdata_oe            <= #1 1'b1;
+				ba                  <= #1 slot2_bank;
+				dqm                 <= #1 slot2_dqm2;
+				sd_cmd              <= #1 CMD_WRITE;
+			end
+			// Get next writebuffer data from cache (still valid)
+			writebufferWR_reg   <= #1 writebufferWR;
+			writebufferWR2_reg  <= #1 writebufferWR2;
+			// slot 2
+			cache_fill_2                <= #1 1'b1;
+
+			// Evaluate refresh counter in ph2.  The chipset and RTG can still potentially hold
+			// off the refresh for two more rounds, so we start counting again immediately,
+			// instead of waiting for the refresh to be actioned.
+			if(~|refreshcnt) begin
+				refresh_pending     <= #1 1'b1;
+				refreshcnt          <= #1 REFRESHSCHEDULE;
+			end else begin
+				refreshcnt          <= #1 refreshcnt - 9'd1;
+			end
+
+		end
+
+		ph3 : begin
+			if((slot1_type == CHIP || slot1_type == HOST) && slot1_write) snoop_act <= #1 1'b1;
+			// slot 2
+			cache_fill_2                <= #1 1'b1;
+
+			if(slot1_type!=IDLE && slot1_type!=REFRESH && !slot1_write) begin // Read cycle
+				sdaddr_next         <= #1 {1'b0, 1'b0, 1'b1, slot1_addr[25], slot1_addr[9:1]}; // AUTO PRECHARGE
+				if(slot1_type == RTG) begin // Don't precharge if we're going to extend the cycle
+					sdaddr_next[10] <= ~rtg_extendable;
+				end
+			end
+			
+			if(fast_write && slot1_write && (slot2_write || slot2_type == IDLE)) begin // Write cycle
+				sdaddr_next[12:3]        <= #1 {1'b0, 1'b0, 1'b0, slot1_addr[25], slot1_addr[9:4]}; // no auto-precharge
+				sdaddr_next[2:0]         <= #1 slot1_addr[3:1];
+			end
+
+		end
+
+		ph4 : begin
+			cache_fill_2                <= #1 1'b1;
+			if(slot1_type!=IDLE && slot1_type!=REFRESH && !slot1_write) begin // Read cycle
+				ba                  <= #1 slot1_bank;
+				sd_cmd              <= #1 CMD_READ;
+//				sdaddr              <= #1 {1'b0, 1'b0, 1'b1, slot1_addr[25], slot1_addr[9:1]}; // AUTO PRECHARGE
+				if(slot1_type == RTG) begin // Don't precharge if we're going to extend the cycle
+					rtg_extend<=~sdaddr_next[10]; // rtg_extendable;
+//					sdaddr[10] <= ~rtg_extendable;
+				end
+			end
+
+			if(fast_write && slot1_write && (slot2_write || slot2_type == IDLE)) begin // Write cycle
+//				sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b0, slot1_addr[25], slot1_addr[9:4]}; // no auto-precharge
+//				sdaddr[2:0]         <= #1 slot1_addr[3:1];
+				ba                  <= #1 slot1_bank;
+				dqm                 <= #1 slot1_dqm;
+				sd_cmd              <= #1 CMD_WRITE;
+				case (slot1_type)
+					CHIP:           sdata_out <= #1 chipWR;
+					CPU_WRITECACHE:	sdata_out <= #1 writebufferWR_reg;
+					default :       sdata_out <= #1 hostWR[31:16];
+				endcase
+				sdata_oe            <= #1 1'b1;
+			end
+
+			if(fast_write && slot1_write && (slot2_write || slot2_type == IDLE)) begin // Write cycle (2nd word)
+				sdaddr_next[12:3]    <= #1 {1'b0, 1'b0, 1'b1, slot1_addr[25], slot1_addr[9:4]}; // auto-precharge
+				sdaddr_next[2:0]     <= #1 slot1_addr[3:1] + 1'd1;
+			end
+	end
+
+		ph5 : begin
+			cache_fill_2                <= #1 1'b1;
+			if(fast_write && slot1_write && (slot2_write || slot2_type == IDLE)) begin // Write cycle (2nd word)
+//				sdaddr[12:3]    <= #1 {1'b0, 1'b0, 1'b1, slot1_addr[25], slot1_addr[9:4]}; // auto-precharge
+//				sdaddr[2:0]     <= #1 slot1_addr[3:1] + 1'd1;
+				ba              <= #1 slot1_bank;
+				case (slot1_type)
+					CHIP:           sdata_out <= #1 chipWR2;
+					CPU_WRITECACHE:	sdata_out <= #1 writebufferWR2_reg;
+					default :       sdata_out <= #1 hostWR[15:0];
+				endcase
+				sdata_oe            <= #1 1'b1;
+				sd_cmd              <= #1 CMD_WRITE;
+				dqm                 <= #1 slot1_dqm2;
+				slot1_write         <= #1 1'b0;
+				slot1_type          <= #1 IDLE;
+			end
+			// Don't block slot 2 with refresh on slot 1
+			if(slot1_type == REFRESH) slot1_type <= #1 IDLE;
+		end
+
+		ph6 : begin
+			cache_fill_2                <= #1 1'b1;
+		end
+
+		ph7 : begin
+			cache_fill_2                <= #1 1'b1;
+			if(slot1_write) begin // Write cycle
+				sdaddr_next[12:3]        <= #1 {1'b0, 1'b0, 1'b0, slot1_addr[25], slot1_addr[9:4]}; // Can't auto-precharge, since we need to interrupt the burst
+				sdaddr_next[2:0]         <= #1 slot1_addr[3:1];
+			end
+		end
+
+		ph8 : begin
+			if(slot1_write) begin // Write cycle
+//				sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b0, slot1_addr[25], slot1_addr[9:4]}; // Can't auto-precharge, since we need to interrupt the burst
+//				sdaddr[2:0]         <= #1 slot1_addr[3:1];
+				ba                  <= #1 slot1_bank;
+				dqm                 <= #1 slot1_dqm;
+				sd_cmd              <= #1 CMD_WRITE;
+				case (slot1_type)
+					CHIP:           sdata_out <= #1 chipWR;
+					CPU_WRITECACHE:	sdata_out <= #1 writebufferWR_reg;
+					default :       sdata_out <= #1 hostWR[31:16];
+				endcase
+				sdata_oe            <= #1 1'b1;
+			end
+			cache_fill_1          <= #1 1'b1;
+		end
+
+		ph9 : begin
+			cache_fill_1          <= #1 1'b1;
+
+			// Access slot 2, RAS
+			slot2_type            <= #1 IDLE;
+			slot2_write           <= #1 1'b0;
+
+			if(rtg_extend) begin
+				slot2_type        <= #1 RTG;
+				sdaddr            <= #1 rtgAddr[22:10];
+				ba                <= #1 rtg_bank;
+				slot2_bank        <= #1 rtg_bank;
+				slot2_dqm         <= #1 2'b11;
+				slot2_addr        <= #1 rtgAddr[25:0];
+			end
+			else if((writebuffer_req ^ writebuffer_ack) && wb_slot2ok && !wb_reservertg) begin
+				// We only yield to the OSD CPU if it's both cycle-starved and ready to go.
+				slot2_type        <= #1 CPU_WRITECACHE;
+				sdaddr            <= #1 writebufferAddr[22:10];
+				ba                <= #1 writebufferAddr[24:23];
+				slot2_bank        <= #1 writebufferAddr[24:23];
+				slot2_dqm         <= #1 writebuffer_dqm;
+				slot2_dqm2        <= #1 writebuffer_dqm2;
+				sd_cmd            <= #1 CMD_ACTIVE;
+				slot2_addr        <= #1 {writebufferAddr[25:1], 1'b0};
+				slot2_write       <= #1 1'b1;
+				writebuffer_ack   <= #1 writebuffer_req; // let the write buffer know we're about to write
+			end
+			// request from read cache
+			else if(cache_req && cpu_slot2ok && !cpu_reservertg) begin
+				slot2_type        <= #1 CPU_READCACHE;
+				sdaddr            <= #1 cpuAddr_r[22:10];
+				ba                <= #1 cpuAddr_r[24:23];
+				slot2_bank        <= #1 cpuAddr_r[24:23];
+				slot2_dqm         <= #1 {cpuU, cpuL};
+				slot2_addr        <= #1 {cpuAddr_r[25:1], 1'b0};
+				sd_cmd            <= #1 CMD_ACTIVE;
+			end
+			else if(rtgce && rtg_slot2ok) begin // RTG is high priority if 'hungry', low priority otherwise
+				slot2_type        <= #1 RTG;
+				sdaddr            <= #1 rtgAddr[22:10];
+				ba                <= #1 rtg_bank;
+				slot2_bank        <= #1 rtg_bank;
+				slot2_dqm         <= #1 2'b11;
+				sd_cmd            <= #1 CMD_ACTIVE;
+				slot2_addr        <= #1 rtgAddr[25:0];
+			end
+
+			if(slot1_write) begin // Write cycle (2nd word)
+				sdaddr_next[12:3]    <= #1 {1'b0, 1'b0, 1'b1, slot1_addr[25], slot1_addr[9:4]}; // auto-precharge
+				sdaddr_next[2:0]     <= #1 slot1_addr[3:1] + 1'd1;
+			end
+
+		end
+
+		ph10 : begin
+			if(slot1_write) begin // Write cycle (2nd word)
+//				sdaddr[12:3]    <= #1 {1'b0, 1'b0, 1'b1, slot1_addr[25], slot1_addr[9:4]}; // auto-precharge
+//				sdaddr[2:0]     <= #1 slot1_addr[3:1] + 1'd1;
+				ba              <= #1 slot1_bank;
+				case (slot1_type)
+					CHIP:           sdata_out <= #1 chipWR2;
+					CPU_WRITECACHE:	sdata_out <= #1 writebufferWR2_reg;
+					default :       sdata_out <= #1 hostWR[15:0];
+				endcase
+				sdata_oe            <= #1 1'b1;
+				sd_cmd              <= #1 CMD_WRITE;
+				dqm                 <= #1 slot1_dqm2;
+			end
+			// Get next writebuffer data from cache (still valid)
+			writebufferWR_reg <= #1 writebufferWR;
+			writebufferWR2_reg <= #1 writebufferWR2;
+
+			cache_fill_1          <= #1 1'b1;
+
+			// For init cycles;
+			sdaddr_next             <= #1 13'b0001000110011; // BURST=8 LATENCY=3, no write bursts
+			if(initstate==5'b00100)
+				sdaddr_next[10]     <= #1 1'b1; // Precharge all banks
+
+		end
+
+		ph11 : begin
+			cache_fill_1          <= #1 1'b1;
+
 			case(initstate)
-				4'b0010 : begin // PRECHARGE
-					sdaddr[10]          <= #1 1'b1; // all banks
+				5'b00100 : begin // PRECHARGE
+//					sdaddr[10]          <= #1 1'b1; // all banks
 					sd_cmd              <= #1 CMD_PRECHARGE;
 				end
-				4'b0011,
-				4'b0100,
-				4'b0101,
-				4'b0110,
-				4'b0111,
-				4'b1000,
-				4'b1001,
-				4'b1010,
-				4'b1011,
-				4'b1100 : begin // AUTOREFRESH
+				5'b00110,
+				5'b01000,
+				5'b01010,
+				5'b01100,
+				5'b01110,
+				5'b10000,
+				5'b10010,
+				5'b10100,
+				5'b10110,
+				5'b11000 : begin // AUTOREFRESH
 					sd_cmd              <= #1 CMD_AUTO_REFRESH;
 				end
-				4'b1101 : begin // LOAD MODE REGISTER
+				5'b11010 : begin // LOAD MODE REGISTER
 					sd_cmd              <= #1 CMD_LOAD_MODE;
 					//sdaddr              <= #1 13'b0001000100010; // BURST=4 LATENCY=2
 					//sdaddr              <= #1 13'b0001000110010; // BURST=4 LATENCY=3
 					//sdaddr              <= #1 13'b0001000110000; // noBURST LATENCY=3
-					sdaddr              <= #1 13'b0001000110011; // BURST=8 LATENCY=3, no write bursts
+//					sdaddr              <= #1 13'b0001000110011; // BURST=8 LATENCY=3, no write bursts
 				end
 				default : begin
 					// NOP
 				end
 			endcase
+
+			if (slot2_type!=IDLE && !slot2_write) begin // Read cycle
+				sdaddr_next       <= #1 {1'b0, 1'b0, 1'b1, slot2_addr[25], slot2_addr[9:1]}; // AUTO PRECHARGE
+				if(slot2_type == RTG) begin // Don't precharge if we're going to extend the cycle
+					sdaddr_next[10] <= ~rtg_extendable;
+				end
+			end
+			if(fast_write && slot2_write && (slot1_write || slot1_type == IDLE)) begin // Write cycle
+				sdaddr_next[12:3]        <= #1 {1'b0, 1'b0, 1'b0, slot2_addr[25], slot2_addr[9:4]}; // Can't auto-precharge, since we need to interrupt the burst
+				sdaddr_next[2:0]         <= #1 slot2_addr[3:1];
+			end
 		end
-	end else begin
-		// Time slot control
-		case(sdram_state)
-			ph0 : begin
-				cache_fill_2          <= #1 1'b1; // slot 2
-				if(slot2_write) begin // Write cycle
-					sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b0, slot2_addr[25], slot2_addr[9:4]}; // Can't auto-precharge, since we need to interrupt the burst
-					sdaddr[2:0]         <= #1 slot2_addr[3:1];
-					sdata_out           <= #1 writebufferWR_reg;
-					sdata_oe            <= #1 1'b1;
-					ba                  <= #1 slot2_bank;
-					sd_cmd              <= #1 CMD_WRITE;
-					dqm                 <= #1 slot2_dqm;
-				end
-				
-			end
 
-			ph1 : begin
-				cache_fill_2          <= #1 1'b1; // slot 2
-				slot1_write           <= #1 1'b0;
-				slot1_type            <= #1 IDLE;
-				if(|hostslot_cnt) begin
-					hostslot_cnt        <= #1 hostslot_cnt - 8'd1;
-				end
-				// we give the chipset first priority
-				// (this includes anything on the "motherboard" - chip RAM, slow RAM and Kickstart, turbo modes notwithstanding)
-				if(!chip_dma || !chipRW) begin
-					slot1_type          <= #1 CHIP;
-					sdaddr              <= #1 chipAddr[22:10];
-					ba                  <= #1 2'b00; // always bank zero for chipset accesses, so we can interleave Fast RAM access
-					sd_cmd              <= #1 CMD_ACTIVE;
-					slot1_bank          <= #1 2'b00;
-					slot1_dqm           <= #1 {chipU,chipL};
-					slot1_dqm2          <= #1 {chipU2,chipL2};
-					slot1_addr          <= #1 {2'b00, chipAddr, 1'b0};
-					slot1_write         <= #1 !chipRW;
-
-//					cache_snoop_adr <= {2'b00, chipAddr, 1'b0}; // snoop address
-					cache_snoop_dat_w <={chipWR2, chipWR}; // snoop write data
-					cache_snoop_bs <= {!chipU2, !chipL2, !chipU, !chipL}; // Byte selects
-				end
-				// Now continue an in-progress RTG transaction if appropriate
-				else if(rtg_extend) begin
-					slot1_type        <= #1 RTG;
-					sdaddr            <= #1 rtgAddr[22:10];
-					ba                <= #1 rtg_bank;
-					slot1_bank        <= #1 rtg_bank;
-					slot1_dqm         <= #1 2'b11;
-					slot1_addr        <= #1 rtgAddr[25:0];
-				end
-				// next in line is refresh
-				// (a refresh cycle doesn't block slot 2)
-				else if(refresh_pending && slot2_type == IDLE) begin
-					sd_cmd              <= #1 CMD_AUTO_REFRESH;
-					slot1_type          <= #1 REFRESH;
-					refresh_pending     <= #1 1'b0;
-				end
-				// the Amiga CPU gets next bite of the cherry, unless the OSD CPU has been cycle-starved
-				// request from write buffer
-				else if((writebuffer_req ^ writebuffer_ack) && wb_slot1ok && !wb_reservertg) begin
-					// We only yield to the OSD CPU if it's both cycle-starved and ready to go.
-					slot1_type          <= #1 CPU_WRITECACHE;
-					sdaddr              <= #1 writebufferAddr[22:10];
-					ba                  <= #1 writebufferAddr[24:23];
-					slot1_bank          <= #1 writebufferAddr[24:23];
-					slot1_dqm           <= #1 writebuffer_dqm;
-					slot1_dqm2          <= #1 writebuffer_dqm2;
-					sd_cmd              <= #1 CMD_ACTIVE;
-					slot1_addr          <= #1 {writebufferAddr[25:1], 1'b0};
-					slot1_write         <= #1 1'b1;
-					writebuffer_ack     <= #1 writebuffer_req; // let the write buffer know we're about to write
-				end
-				// request from read cache
-				else if(cache_req && cpu_slot1ok && !cpu_reservertg) begin 
-					// we only yield to the OSD CPU if it's both cycle-starved and ready to go
-					slot1_type          <= #1 CPU_READCACHE;
-					sdaddr              <= #1 cpuAddr_r[22:10];
-					ba                  <= #1 cpuAddr_r[24:23];
-					slot1_bank          <= #1 cpuAddr_r[24:23];
-					slot1_dqm           <= #1 {cpuU,cpuL};
-					sd_cmd              <= #1 CMD_ACTIVE;
-					slot1_addr          <= #1 {cpuAddr_r[25:1], 1'b0};
-				end
-				else if(audce & aud_slot1ok) begin
-					slot1_type          <= #1 AUDIO;
-					sdaddr              <= #1 audAddr[22:10];
-					ba                  <= #1 2'b00;	// Always bank zero for audio
-					slot1_bank          <= #1 2'b00;
-					slot1_dqm           <= #1 2'b00;
-					slot1_dqm2          <= #1 2'b00;
-					sd_cmd              <= #1 CMD_ACTIVE;
-					slot1_addr          <= #1 {3'b000, audAddr};
-				end
-				else if(hostce && host_slot1ok) begin
-					hostslot_cnt        <= #1 8'b00001111;
-					slot1_type          <= #1 HOST;
-					sdaddr              <= #1 hostAddr[22:10];
-					ba                  <= #1 hostAddr[24:23];
-					// Always bank zero for SPI host CPU
-					slot1_bank          <= #1 hostAddr[24:23];
-					slot1_dqm           <= #1 {!hostbytesel[0],!hostbytesel[1]};
-					slot1_dqm2          <= #1 {!hostbytesel[2],!hostbytesel[3]};
-					sd_cmd              <= #1 CMD_ACTIVE;
-					slot1_addr          <= #1 {hostAddr[25:2],2'b00};
-					slot1_write         <= #1 hostwe;
-//					cache_snoop_adr <= {hostAddr[25:2], 2'b00}; // snoop address
-					cache_snoop_dat_w <={hostWR}; // snoop write data
-					cache_snoop_bs <= {hostbytesel[2],hostbytesel[3],hostbytesel[0],hostbytesel[1]}; // Byte selects
+		// slot 2 CAS
+		ph12 : begin
+			cache_fill_1          <= #1 1'b1;
+			if (slot2_type!=IDLE && !slot2_write) begin // Read cycle
+//				sdaddr              <= #1 {1'b0, 1'b0, 1'b1, slot2_addr[25], slot2_addr[9:1]}; // AUTO PRECHARGE
+				ba                  <= #1 slot2_bank;
+				sd_cmd              <= #1 CMD_READ;
+				if(slot2_type == RTG) begin // Don't precharge if we're going to extend the cycle
+					rtg_extend<=~sdaddr_next[10]; //rtg_extendable;
+//					sdaddr[10] <= ~rtg_extendable;
 				end
 			end
-
-			ph2 : begin
-				if(slot2_write) begin // Write cycle (2nd word)
-					sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b1, slot2_addr[25], slot2_addr[9:4]}; // auto-precharge
-					sdaddr[2:0]         <= #1 slot2_addr[3:1] + 1'd1;
-					sdata_out           <= #1 writebufferWR2_reg;
-					sdata_oe            <= #1 1'b1;
-					ba                  <= #1 slot2_bank;
-					dqm                 <= #1 slot2_dqm2;
-					sd_cmd              <= #1 CMD_WRITE;
-				end
-				// Get next writebuffer data from cache (still valid)
-				writebufferWR_reg   <= #1 writebufferWR;
-				writebufferWR2_reg  <= #1 writebufferWR2;
-				// slot 2
-				cache_fill_2                <= #1 1'b1;
-
-				// Evaluate refresh counter in ph2.  The chipset and RTG can still potentially hold
-				// off the refresh for two more rounds, so we start counting again immediately,
-				// instead of waiting for the refresh to be actioned.
-				if(~|refreshcnt) begin
-					refresh_pending     <= #1 1'b1;
-					refreshcnt          <= #1 REFRESHSCHEDULE;
-				end else begin
-					refreshcnt          <= #1 refreshcnt - 9'd1;
-				end
+			if(fast_write && slot2_write && (slot1_write || slot1_type == IDLE)) begin // Write cycle
+//				sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b0, slot2_addr[25], slot2_addr[9:4]}; // Can't auto-precharge, since we need to interrupt the burst
+//				sdaddr[2:0]         <= #1 slot2_addr[3:1];
+				sdata_out           <= #1 writebufferWR_reg;
+				sdata_oe            <= #1 1'b1;
+				ba                  <= #1 slot2_bank;
+				sd_cmd              <= #1 CMD_WRITE;
+				dqm                 <= #1 slot2_dqm;
 			end
 
-			ph3 : begin
-				if((slot1_type == CHIP || slot1_type == HOST) && slot1_write) snoop_act <= #1 1'b1;
-				// slot 2
-				cache_fill_2                <= #1 1'b1;
+			if(fast_write && slot2_write && (slot1_write || slot1_type == IDLE)) begin // Write cycle (2nd word)
+				sdaddr_next[12:3]        <= #1 {1'b0, 1'b0, 1'b1, slot2_addr[25], slot2_addr[9:4]}; // auto-precharge
+				sdaddr_next[2:0]         <= #1 slot2_addr[3:1] + 1'd1;
 			end
+		end
 
-			ph4 : begin
-				cache_fill_2                <= #1 1'b1;
-				if(slot1_type!=IDLE && slot1_type!=REFRESH && !slot1_write) begin // Read cycle
-					ba                  <= #1 slot1_bank;
-					sd_cmd              <= #1 CMD_READ;
-					sdaddr              <= #1 {1'b0, 1'b0, 1'b1, slot1_addr[25], slot1_addr[9:1]}; // AUTO PRECHARGE
-					if(slot1_type == RTG) begin // Don't precharge if we're going to extend the cycle
-						rtg_extend<=rtg_extendable;
-						sdaddr[10] <= ~rtg_extendable;
-					end
-				end
-
-				if(fast_write && slot1_write && (slot2_write || slot2_type == IDLE)) begin // Write cycle
-					sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b0, slot1_addr[25], slot1_addr[9:4]}; // no auto-precharge
-					sdaddr[2:0]         <= #1 slot1_addr[3:1];
-					ba                  <= #1 slot1_bank;
-					dqm                 <= #1 slot1_dqm;
-					sd_cmd              <= #1 CMD_WRITE;
-					case (slot1_type)
-						CHIP:           sdata_out <= #1 chipWR;
-						CPU_WRITECACHE:	sdata_out <= #1 writebufferWR_reg;
-						default :       sdata_out <= #1 hostWR[31:16];
-					endcase
-					sdata_oe            <= #1 1'b1;
-				end
+		ph13 : begin
+			cache_fill_1          <= #1 1'b1;
+			if(fast_write && slot2_write && (slot1_write || slot1_type == IDLE)) begin // Write cycle (2nd word)
+//				sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b1, slot2_addr[25], slot2_addr[9:4]}; // auto-precharge
+//				sdaddr[2:0]         <= #1 slot2_addr[3:1] + 1'd1;
+				sdata_out           <= #1 writebufferWR2_reg;
+				sdata_oe            <= #1 1'b1;
+				ba                  <= #1 slot2_bank;
+				dqm                 <= #1 slot2_dqm2;
+				sd_cmd              <= #1 CMD_WRITE;
+				slot2_write         <= #1 1'b0;
+				slot2_type          <= #1 IDLE;
 			end
+		end
 
-			ph5 : begin
-				cache_fill_2                <= #1 1'b1;
-				if(fast_write && slot1_write && (slot2_write || slot2_type == IDLE)) begin // Write cycle (2nd word)
-					sdaddr[12:3]    <= #1 {1'b0, 1'b0, 1'b1, slot1_addr[25], slot1_addr[9:4]}; // auto-precharge
-					sdaddr[2:0]     <= #1 slot1_addr[3:1] + 1'd1;
-					ba              <= #1 slot1_bank;
-					case (slot1_type)
-						CHIP:           sdata_out <= #1 chipWR2;
-						CPU_WRITECACHE:	sdata_out <= #1 writebufferWR2_reg;
-						default :       sdata_out <= #1 hostWR[15:0];
-					endcase
-					sdata_oe            <= #1 1'b1;
-					sd_cmd              <= #1 CMD_WRITE;
-					dqm                 <= #1 slot1_dqm2;
-					slot1_write         <= #1 1'b0;
-					slot1_type          <= #1 IDLE;
-				end
-				// Don't block slot 2 with refresh on slot 1
-				if(slot1_type == REFRESH) slot1_type <= #1 IDLE;
+		ph14 : begin
+			cache_fill_1          <= #1 1'b1;
+		end
+
+		ph15 : begin
+			cache_fill_1          <= #1 1'b1;
+			if(slot2_write) begin // Write cycle
+				sdaddr_next[12:3]        <= #1 {1'b0, 1'b0, 1'b0, slot2_addr[25], slot2_addr[9:4]}; // Can't auto-precharge, since we need to interrupt the burst
+				sdaddr_next[2:0]         <= #1 slot2_addr[3:1];
 			end
+		end
 
-			ph6 : begin
-				cache_fill_2                <= #1 1'b1;
-			end
+		default : begin
+		end
 
-			ph7 : begin
-				cache_fill_2                <= #1 1'b1;
-			end
-
-			ph8 : begin
-				if(slot1_write) begin // Write cycle
-					sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b0, slot1_addr[25], slot1_addr[9:4]}; // Can't auto-precharge, since we need to interrupt the burst
-					sdaddr[2:0]         <= #1 slot1_addr[3:1];
-					ba                  <= #1 slot1_bank;
-					dqm                 <= #1 slot1_dqm;
-					sd_cmd              <= #1 CMD_WRITE;
-					case (slot1_type)
-						CHIP:           sdata_out <= #1 chipWR;
-						CPU_WRITECACHE:	sdata_out <= #1 writebufferWR_reg;
-						default :       sdata_out <= #1 hostWR[31:16];
-					endcase
-					sdata_oe            <= #1 1'b1;
-				end
-				cache_fill_1          <= #1 1'b1;
-			end
-
-			ph9 : begin
-				cache_fill_1          <= #1 1'b1;
-
-				// Access slot 2, RAS
-				slot2_type            <= #1 IDLE;
-				slot2_write           <= #1 1'b0;
-
-				if(rtg_extend) begin
-					slot2_type        <= #1 RTG;
-					sdaddr            <= #1 rtgAddr[22:10];
-					ba                <= #1 rtg_bank;
-					slot2_bank        <= #1 rtg_bank;
-					slot2_dqm         <= #1 2'b11;
-					slot2_addr        <= #1 rtgAddr[25:0];
-				end
-				else if((writebuffer_req ^ writebuffer_ack) && wb_slot2ok && !wb_reservertg) begin
-					// We only yield to the OSD CPU if it's both cycle-starved and ready to go.
-					slot2_type        <= #1 CPU_WRITECACHE;
-					sdaddr            <= #1 writebufferAddr[22:10];
-					ba                <= #1 writebufferAddr[24:23];
-					slot2_bank        <= #1 writebufferAddr[24:23];
-					slot2_dqm         <= #1 writebuffer_dqm;
-					slot2_dqm2        <= #1 writebuffer_dqm2;
-					sd_cmd            <= #1 CMD_ACTIVE;
-					slot2_addr        <= #1 {writebufferAddr[25:1], 1'b0};
-					slot2_write       <= #1 1'b1;
-					writebuffer_ack   <= #1 writebuffer_req; // let the write buffer know we're about to write
-				end
-				// request from read cache
-				else if(cache_req && cpu_slot2ok && !cpu_reservertg) begin
-					slot2_type        <= #1 CPU_READCACHE;
-					sdaddr            <= #1 cpuAddr_r[22:10];
-					ba                <= #1 cpuAddr_r[24:23];
-					slot2_bank        <= #1 cpuAddr_r[24:23];
-					slot2_dqm         <= #1 {cpuU, cpuL};
-					slot2_addr        <= #1 {cpuAddr_r[25:1], 1'b0};
-					sd_cmd            <= #1 CMD_ACTIVE;
-				end
-				else if(rtgce && rtg_slot2ok) begin // RTG is high priority if 'hungry', low priority otherwise
-					slot2_type        <= #1 RTG;
-					sdaddr            <= #1 rtgAddr[22:10];
-					ba                <= #1 rtg_bank;
-					slot2_bank        <= #1 rtg_bank;
-					slot2_dqm         <= #1 2'b11;
-					sd_cmd            <= #1 CMD_ACTIVE;
-					slot2_addr        <= #1 rtgAddr[25:0];
-				end
-
-			end
-
-			ph10 : begin
-				if(slot1_write) begin // Write cycle (2nd word)
-					sdaddr[12:3]    <= #1 {1'b0, 1'b0, 1'b1, slot1_addr[25], slot1_addr[9:4]}; // auto-precharge
-					sdaddr[2:0]     <= #1 slot1_addr[3:1] + 1'd1;
-					ba              <= #1 slot1_bank;
-					case (slot1_type)
-						CHIP:           sdata_out <= #1 chipWR2;
-						CPU_WRITECACHE:	sdata_out <= #1 writebufferWR2_reg;
-						default :       sdata_out <= #1 hostWR[15:0];
-					endcase
-					sdata_oe            <= #1 1'b1;
-					sd_cmd              <= #1 CMD_WRITE;
-					dqm                 <= #1 slot1_dqm2;
-				end
-				// Get next writebuffer data from cache (still valid)
-				writebufferWR_reg <= #1 writebufferWR;
-				writebufferWR2_reg <= #1 writebufferWR2;
-
-				cache_fill_1          <= #1 1'b1;
-
-			end
-
-			ph11 : begin
-				cache_fill_1          <= #1 1'b1;
-			end
-
-			// slot 2 CAS
-			ph12 : begin
-				cache_fill_1          <= #1 1'b1;
-				if (slot2_type!=IDLE && !slot2_write) begin // Read cycle
-					sdaddr              <= #1 {1'b0, 1'b0, 1'b1, slot2_addr[25], slot2_addr[9:1]}; // AUTO PRECHARGE
-					ba                  <= #1 slot2_bank;
-					sd_cmd              <= #1 CMD_READ;
-					if(slot2_type == RTG) begin // Don't precharge if we're going to extend the cycle
-						rtg_extend<=rtg_extendable;
-						sdaddr[10] <= ~rtg_extendable;
-					end
-				end
-				if(fast_write && slot2_write && (slot1_write || slot1_type == IDLE)) begin // Write cycle
-					sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b0, slot2_addr[25], slot2_addr[9:4]}; // Can't auto-precharge, since we need to interrupt the burst
-					sdaddr[2:0]         <= #1 slot2_addr[3:1];
-					sdata_out           <= #1 writebufferWR_reg;
-					sdata_oe            <= #1 1'b1;
-					ba                  <= #1 slot2_bank;
-					sd_cmd              <= #1 CMD_WRITE;
-					dqm                 <= #1 slot2_dqm;
-				end
-
-			end
-
-			ph13 : begin
-				cache_fill_1          <= #1 1'b1;
-				if(fast_write && slot2_write && (slot1_write || slot1_type == IDLE)) begin // Write cycle (2nd word)
-					sdaddr[12:3]        <= #1 {1'b0, 1'b0, 1'b1, slot2_addr[25], slot2_addr[9:4]}; // auto-precharge
-					sdaddr[2:0]         <= #1 slot2_addr[3:1] + 1'd1;
-					sdata_out           <= #1 writebufferWR2_reg;
-					sdata_oe            <= #1 1'b1;
-					ba                  <= #1 slot2_bank;
-					dqm                 <= #1 slot2_dqm2;
-					sd_cmd              <= #1 CMD_WRITE;
-					slot2_write         <= #1 1'b0;
-					slot2_type          <= #1 IDLE;
-				end
-			end
-
-			ph14 : begin
-				cache_fill_1          <= #1 1'b1;
-			end
-
-			ph15 : begin
-				cache_fill_1          <= #1 1'b1;
-			end
-
-			default : begin
-			end
-
-		endcase
-	end
+	endcase
 end
 
 //// Access slots ////

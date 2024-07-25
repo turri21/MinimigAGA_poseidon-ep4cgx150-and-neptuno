@@ -300,11 +300,27 @@ always @(posedge clk) cpu_cacheline_i_match <= addr_prefix_match && cpu_adr[25:4
 always @(posedge clk) cpu_cacheline_i_ready <= addr_prefix_match && cpu_ir && cpu_adr[25:4] == cpu_cacheline_i_adr && !cpu_cacheline_i_dirty && !cache_inhibit;
 assign cpu_cacheline_i_valid = cpu_cacheline_i_ready&& cpu_cacheline_ready;
 
+//always @(posedge clk) cpu_cacheline_w_ready <= addr_prefix_match && cpu_we && (sdr_write_req == sdr_write_ack);
+//assign cpu_wr_ena = cpu_cacheline_w_ready && cpu_cs && cpu_cacheline_ready;
+
 always @(posedge clk) cpu_cacheline_w_ready <= addr_prefix_match && cpu_we;
-assign cpu_wr_ena = cpu_cacheline_w_ready && cpu_cs && (sdr_write_req == sdr_write_ack) && cpu_cacheline_ready;
+assign cpu_wr_ena = cpu_cacheline_w_ready && cpu_cs && cpu_cacheline_ready && (sdr_write_req == sdr_write_ack);
 
 assign cpu_ack = cpu_cache_ack || cpu_cacheline_d_valid || cpu_cacheline_i_valid || cpu_wr_ena;
 
+`ifdef COUNTWAITSTATES
+reg [7:0] writewaitctr /* synthesis noprune */;
+reg [23:0] writeholdoffctr /* synthesis noprune */;
+always @(posedge clk) begin
+	if (cpu_cs && addr_prefix_match && cpu_we && !cpu_cacheline_w_ready)
+		writewaitctr<=writewaitctr + 1'b1;
+	else begin
+		writewaitctr<=8'h00;
+	end
+	if(writewaitctr==8'h01)
+		writeholdoffctr<=writeholdoffctr+1'b1;
+end
+`endif
 
 // cpu side state machine
 always @ (posedge clk) begin
@@ -373,6 +389,7 @@ always @ (posedge clk) begin
 
             cpu_sm_adr <= #1 {cpu_adr_idx, cpu_adr_blk_ptr};
 
+//            if (cpu_cacheline_w_ready) begin
             if (sdr_write_req == sdr_write_ack) begin
               sdr_adr <= #1 cpu_adr[25:1];
               sdr_dqm_w <= #1 {2'b11, ~cpu_bs};

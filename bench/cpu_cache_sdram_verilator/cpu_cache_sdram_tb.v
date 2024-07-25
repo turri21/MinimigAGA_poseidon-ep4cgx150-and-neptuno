@@ -44,7 +44,7 @@ assign    tg68_cuds = cpuU;
 
 //// internal signals ////
 
-wire           clk_7_en = 0;
+wire           clk_7_en;
 // data reg
 reg  [16-1:0] dat;
 
@@ -168,6 +168,13 @@ always @(posedge clk_114) begin
 	end
 end
 
+
+reg [3:0] clk7cnt=4'b0000;
+always @(posedge clk_114) begin
+  clk7cnt<=clk7cnt+1'b1;
+end
+
+assign clk_7_en = &clk7cnt[3:2];
 
 //// modules ////
 

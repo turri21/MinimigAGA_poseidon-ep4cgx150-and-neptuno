@@ -96,8 +96,13 @@ end process;
 
 a<=std_logic_vector(fetch_address);
 
-req<=reset_n and enable and not nearfull;
-pri<=hungry;
+process(clk)
+begin
+	if rising_edge(clk) then
+		req<=reset_n and enable and not nearfull;
+		pri<=hungry;
+	end if;
+end process;
 
 -- Output to video
 
