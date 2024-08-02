@@ -352,16 +352,25 @@ amiga_clk amiga_clk2 (
 
 //// TG68K main CPU ////
 
+`ifdef MINIMIG_AUX_AUDIO
+localparam auxaudio="true";
+`else
+localparam auxaudio="false";
+`endif
 
 `ifdef MINIMIG_DUAL_SDRAM
-	`ifdef MINIMIG_USE_PROFILER
-		TG68K #(.dualsdram("true"),.useprofiler("true")) tg68k (
-	`else
-		TG68K #(.dualsdram("true")) tg68k (
-	`endif
+localparam dualsdram="true";
 `else
-TG68K tg68k (
+localparam dualsdram="false";
 `endif
+
+`ifdef MINIMIG_USE_PROFILER
+localparam useprofiler="true";
+`else
+localparam useprofiler="false";
+`endif
+
+TG68K #(.dualsdram(dualsdram),.useprofiler(useprofiler),.haveaudio(auxaudio)) tg68k (
   .clk          (clk_114          ),
   .reset        (tg68_rst         ),
   .clkena_in    (tg68_ena28       ),
@@ -1161,7 +1170,7 @@ end
 `endif
 
 // Auxiliary audio
-
+`ifdef MINIMIG_AUX_AUDIO
 reg aud_tick;
 reg aud_tick_d;
 reg aud_next;
@@ -1221,6 +1230,17 @@ VideoStream myaudiostream
 	.q(aud_sample)
 );
 
+`else
+
+always @(*) begin
+	aud_aux_left<=0;
+   aud_aux_right<=0;
+end
+
+wire aud_ramreq=1'b0;
+wire [25:0] aud_addr=0;
+
+`endif
 
 // Drive sounds
 

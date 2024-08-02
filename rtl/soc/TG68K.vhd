@@ -268,7 +268,7 @@ DUALRAM_ZIII: if dualsdram=true generate
 -- First block of ZIII RAM - 0x40000000 - 0x43ffffff
 	sel_z3ram       <= '1' WHEN (cpuaddr(31 downto 30)="01") and cpuaddr(26)='0' else '0';
 -- Second block of ZIII RAM - 32 meg from 0x44000000 - 0x45ffffff
--- Also matches third block, 16 meg from 0x46000000 - 0x46ffffff
+-- Also matches third block, 16 meg from 0x46000000 - 0x46ffffff, but excludes 0x47000000 onwards since it would alias onto Bank 0 / chipram
 	sel_z3ram2      <= '1' WHEN (cpuaddr(31 downto 30)="01") and cpuaddr(26)='1' else '0';
 -- Third block of ZIII RAM - either 2 or 4 meg, starting at either 0x41000000 or 0x44000000
 	sel_z3ram3      <= '0'; -- '1' WHEN (cpuaddr(31 downto 30)="01") and (cpuaddr(26)='1' or cpuaddr(24)='1') else '0'; 
@@ -358,11 +358,16 @@ end generate;
 -- addr(21) <= addr(21) xor sel_ziii_3;
  
 DUALRAM_ADDR: if dualsdram=true generate
--- FIXME - fold a 16 meg chunk from the first SDRAM into the memory map.
+
+-- With dual SDRAM setups we have 2 64 meg RAMs, and memory configured like so:
+-- 64 meg from 0x40000000 to 0x43ffffff - bit 30 set, bit 26 clr, bit 25 d/c  =>  26 set, 25 src, 24 src
+-- 32 meg from 0x44000000 to 0x45ffffff - bit 30 set, bit 26 set, bit 25 clr  =>  26 clr, 25 set, 24 d/c
+-- 16 meg from 0x46000000 to 0x47ffffff - bit 30 set, bit 26 set, bit 25 set  =>  26 clr, 25 clr, 24 set
+
   ramaddr(31 downto 27) <= "00000";
   ramaddr(26) <= sel_z3ram;
-  ramaddr(25) <= cpuaddr(25) or sel_z3ram2; -- Second block of 32 meg, in 1st SDRAM.
-  ramaddr(24) <= cpuaddr(24);
+  ramaddr(25) <= cpuaddr(25) xor sel_z3ram2; -- Second block of 32 meg in 1st SDRAM.
+  ramaddr(24) <= cpuaddr(24) xor cpuaddr(25);
   ramaddr(23)<=(cpuaddr(23) xor (cpuaddr(22) or cpuaddr(21))) and not sel_z3ram3; -- ZII address mangling (disabled for RAM overlaid with trapdoor RAM.)
   ramaddr(22)<=cpuaddr(21) when sel_z3ram3='1' else cpuaddr(22);
   ramaddr(21)<=cpuaddr(21) xor sel_z3ram3;

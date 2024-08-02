@@ -57,7 +57,11 @@ end
 
 reg aud_overflow_latched;
 
+`ifdef MINIMIG_AUX_AUDIO
 wire have_16bitaudio=1'b1;
+`else
+wire have_16bitaudio=1'b0;
+`endif
 
 `ifdef MINIMIG_DRIVESOUNDS
 wire have_drivesounds=1'b1;
