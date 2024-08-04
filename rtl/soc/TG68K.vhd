@@ -280,7 +280,7 @@ SINGLERAM_ZIII: if dualsdram=false generate
 -- Second block of ZIII RAM - 32 meg from 0x42000000 - 0x43ffffff
 	sel_z3ram2      <= '1' WHEN (cpuaddr(31 downto 30)="01") and cpuaddr(25)='1' else '0'; -- AND z3ram2_ena='1' ELSE '0';
 -- Third block of ZIII RAM - either 2 or 4 meg, starting at either 0x41000000 or 0x44000000
-	sel_z3ram3      <= '1' WHEN (cpuaddr(31 downto 30)="01") and (cpuaddr(26)='1' or cpuaddr(24)='1') else '0'; -- and z3ram3_ena='1' ELSE '0';
+	sel_z3ram3      <= '1' WHEN (cpuaddr(31 downto 30)="01") and (cpuaddr(26)='1' or cpuaddr(25 downto 24)="01") else '0'; -- and z3ram3_ena='1' ELSE '0';
 end generate;
 
 	sel_gayle_ide <= '1' when state(1 downto 0) = "10" and cpuaddr(31 downto 14)=X"00DA"&"00" else '0';
@@ -376,7 +376,7 @@ DUALRAM_ADDR: if dualsdram=true generate
 end generate;
 
 SINGLERAM_ADDR: if dualsdram=false generate
- 
+
   ramaddr(31 downto 26) <= "000000";
   ramaddr(25) <= sel_z3ram2; -- Second block of 32 meg
   ramaddr(24) <= (cpuaddr(24) and sel_z3ram2) or sel_z3ram; -- Remap the first block of Zorro III RAM to 0x1000000
