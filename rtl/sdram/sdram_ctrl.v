@@ -160,7 +160,6 @@ wire          ccache_fill;
 wire          ccachehit;
 wire          cpuLongword;
 wire          cpuCSn;
-reg  [ 8-1:0] hostslot_cnt;
 reg  [ 8-1:0] reset_cnt;
 reg           reset;
 reg           reset_sdstate;
@@ -433,7 +432,21 @@ always @ (posedge sysclk) begin
 	endcase
 end
 
-reg zatn;
+reg hostatn;
+reg  [ 8-1:0] hostslot_cnt;
+
+always @(posedge sysclk) begin
+
+	if(sdram_state==ph2) begin
+		if(|hostslot_cnt)
+			hostslot_cnt        <= #1 hostslot_cnt - 8'd1;
+		if(slot1_type==HOST)
+			hostslot_cnt        <= #1 8'b00001111;
+	end
+
+	// Has the host been waiting an unreasonably long time?
+	hostatn <= !(|hostslot_cnt) && hostce && (slot2_type==IDLE || slot2_bank != 2'b00);	
+end
 
 reg cpu_reservertg;
 reg cpu_slot1ok;
@@ -456,25 +469,22 @@ wire rtg_hungry = rtgce && rtgpri;
 always @(posedge sysclk) begin
 
 	// CPU will defer to RTG on slot 2, and avoid using slot 2 when a refresh is pending.
-	cpu_reservertg <= rtgce && rtgpri && cpuAddr_r[24:23]==rtg_bank ? 1'b1 : 1'b0;
-	cpu_slot1ok <= !zatn && (slot2_type == IDLE || slot2_bank != cpuAddr_r[24:23]) ? 1'b1 : 1'b0;
-	cpu_slot2ok <= !rtg_hungry && !refresh_pending && ((shortcut | |cpuAddr_r[24:23])   // Reserve bank 0 for slot 1
+	cpu_reservertg <= rtg_hungry && cpuAddr_r[24:23]==rtg_bank ? 1'b1 : 1'b0;
+	cpu_slot1ok <= !hostatn && !cpu_reservertg && (slot2_type == IDLE || slot2_bank != cpuAddr_r[24:23]) ? 1'b1 : 1'b0;
+	cpu_slot2ok <= !cpu_reservertg && !refresh_pending && ((shortcut | |cpuAddr_r[24:23])   // Reserve bank 0 for slot 1
 	               && (slot1_type == IDLE || slot1_bank != cpuAddr_r[24:23])) ? 1'b1 : 1'b0;
 
 	// Writebuffer will defer to RTG on slot 2, and avoid using slot 2 when a refresh is pending.
-	wb_reservertg <= rtgce && rtgpri && writebufferAddr[24:23]==rtg_bank ? 1'b1 : 1'b0;
-	wb_slot1ok <= (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23]) ? 1'b1 : 1'b0;
-	wb_slot2ok <= !rtg_hungry && !refresh_pending && (shortcut | (|writebufferAddr[24:23]) // Reserve bank 0 for slot 1
+	wb_reservertg <= rtg_hungry && writebufferAddr[24:23]==rtg_bank ? 1'b1 : 1'b0;
+	wb_slot1ok <= !wb_reservertg && (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23]) ? 1'b1 : 1'b0;
+	wb_slot2ok <= !wb_reservertg && !refresh_pending && (shortcut | (|writebufferAddr[24:23]) // Reserve bank 0 for slot 1
 	           && (slot1_type == IDLE || slot1_bank != writebufferAddr[24:23])) ? 1'b1 : 1'b0;
 
 	// Other ports need to avoid bank clashes.
 	rtg_slot2ok <= !refresh_pending && (slot1_type == IDLE || slot1_bank != rtg_bank) ? 1'b1 : 1'b0;
 	host_slot1ok <= (slot2_type==IDLE || slot2_bank!=hostAddr[24:23]);
-	aud_slot1ok <= slot1_type!=AUDIO && !zatn && (slot2_type==IDLE || slot2_bank!=2'b00);
+	aud_slot1ok <= slot1_type!=AUDIO && !hostatn && (slot2_type==IDLE || slot2_bank!=2'b00);
 
-	// Has the host been waiting an unreasonably long time?
-	zatn <= !(|hostslot_cnt) && hostce;
-	
 	// Is the RTG subsystem requesting the last word of a column, or blocking the CPU?
 	rtg_extendable <= rtg_hungry && (!refresh_pending) && rtgAddr[9:4]!=6'b111111 ? 1'b1 : 1'b0;
 end
@@ -528,9 +538,6 @@ always @ (posedge sysclk) begin
 			cache_fill_2          <= #1 1'b1; // slot 2
 			slot1_write           <= #1 1'b0;
 			slot1_type            <= #1 IDLE;
-			if(|hostslot_cnt) begin
-				hostslot_cnt        <= #1 hostslot_cnt - 8'd1;
-			end
 			// we give the chipset first priority
 			// (this includes anything on the "motherboard" - chip RAM, slow RAM and Kickstart, turbo modes notwithstanding)
 			if(!chip_dma || !chipRW) begin
@@ -566,7 +573,7 @@ always @ (posedge sysclk) begin
 			end
 			// the Amiga CPU gets next bite of the cherry, unless the OSD CPU has been cycle-starved
 			// request from write buffer
-			else if((writebuffer_req ^ writebuffer_ack) && wb_slot1ok && !wb_reservertg) begin
+			else if((writebuffer_req ^ writebuffer_ack) && wb_slot1ok) begin
 				// We only yield to the OSD CPU if it's both cycle-starved and ready to go.
 				slot1_type          <= #1 CPU_WRITECACHE;
 				sdaddr              <= #1 writebufferAddr[22:10];
@@ -580,7 +587,7 @@ always @ (posedge sysclk) begin
 				writebuffer_ack     <= #1 writebuffer_req; // let the write buffer know we're about to write
 			end
 			// request from read cache
-			else if(cache_req && cpu_slot1ok && !cpu_reservertg) begin 
+			else if(cache_req && cpu_slot1ok) begin 
 				// we only yield to the OSD CPU if it's both cycle-starved and ready to go
 				slot1_type          <= #1 CPU_READCACHE;
 				sdaddr              <= #1 cpuAddr_r[22:10];
@@ -601,7 +608,6 @@ always @ (posedge sysclk) begin
 				slot1_addr          <= #1 {3'b000, audAddr};
 			end
 			else if(hostce && host_slot1ok) begin
-				hostslot_cnt        <= #1 8'b00001111;
 				slot1_type          <= #1 HOST;
 				sdaddr              <= #1 hostAddr[22:10];
 				ba                  <= #1 hostAddr[24:23];
@@ -767,7 +773,7 @@ always @ (posedge sysclk) begin
 				slot2_dqm         <= #1 2'b11;
 				slot2_addr        <= #1 rtgAddr[25:0];
 			end
-			else if((writebuffer_req ^ writebuffer_ack) && wb_slot2ok && !wb_reservertg) begin
+			else if((writebuffer_req ^ writebuffer_ack) && wb_slot2ok) begin
 				// We only yield to the OSD CPU if it's both cycle-starved and ready to go.
 				slot2_type        <= #1 CPU_WRITECACHE;
 				sdaddr            <= #1 writebufferAddr[22:10];
@@ -781,7 +787,7 @@ always @ (posedge sysclk) begin
 				writebuffer_ack   <= #1 writebuffer_req; // let the write buffer know we're about to write
 			end
 			// request from read cache
-			else if(cache_req && cpu_slot2ok && !cpu_reservertg) begin
+			else if(cache_req && cpu_slot2ok) begin
 				slot2_type        <= #1 CPU_READCACHE;
 				sdaddr            <= #1 cpuAddr_r[22:10];
 				ba                <= #1 cpuAddr_r[24:23];
