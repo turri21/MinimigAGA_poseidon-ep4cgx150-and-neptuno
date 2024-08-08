@@ -1108,7 +1108,7 @@ wire           dithered_hs;
 wire           dithered_de;
 
 assign vga_window = 1'b1;
-video_vga_dither #(.outbits(6), .flickerreduce("false")) dither
+video_vga_dither #(.outbits(VGA_WIDTH), .flickerreduce("false")) dither
 (
 	.clk(clk_vid),
 	.ena(rtg_ena),

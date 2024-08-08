@@ -52,6 +52,36 @@ architecture rtl of video_vga_dither is
 	constant vidmax : unsigned(7 downto 0) := "11111111";
 begin
 
+-- On SiDi128 we have 8 bit output, so no need to dither - so we just
+-- handle CSync selection and register everything instead.
+
+bypass: if outbits>7 generate
+
+	process(clk) begin
+		if rising_edge(clk) then
+			if iSelcsync='1' then
+				oHSync<=iCSync;
+				oVSync<='1';
+			else
+				oHsync<=iHSync;
+				oVSync<=iVSync;
+			end if;
+			if vidEna='1' then
+				oRed <= ired;
+				oGreen <= igreen;
+				oBlue <= iblue;
+			else
+				oRed <= (others=>'0');
+				oGreen <= (others=>'0');
+				oBlue <= (others=>'0');
+			end if;
+		end if;
+	end process;
+
+end generate;
+
+dither: if outbits<8 generate
+
 	oHsync<=csync when iSelcsync='1' else hsync;
 	oVsync<='1' when iSelcsync='1' else vsync;
 
@@ -59,60 +89,60 @@ begin
 	oGreen <= green when vid_ena_d='1' else (others=>'0');
 	oBlue <= blue when vid_ena_d='1' else (others=>'0');
 
--- Ordered dithering kernel, four-pixel clusters, two bits per pixel:
--- 0, 3,
--- 1, 2
-kernel<="00110110";
+	-- Ordered dithering kernel, four-pixel clusters, two bits per pixel:
+	-- 0, 3,
+	-- 1, 2
+	kernel<="00110110";
 
--- We reflect the kernel both horizontally and vertically each field
-selkernel<=(ctr(0) xor field) & (row xor field);
+	-- We reflect the kernel both horizontally and vertically each field
+	selkernel<=(ctr(0) xor field) & (row xor field);
 
--- Invert the kernel for green, so that we're not boosting the intensity of all three guns
--- at the same time - the overall effect is the same but flicker is reduced.
+	-- Invert the kernel for green, so that we're not boosting the intensity of all three guns
+	-- at the same time - the overall effect is the same but flicker is reduced.
 
-rdither(7 downto 8-outbits)<=(others=>'0');
-with selkernel select rdither(7-outbits downto 6-outbits) <=
-	kernel(7 downto 6) when "00",
-	kernel(5 downto 4) when "01",
-	kernel(3 downto 2) when "10",
-	kernel(1 downto 0) when "11";
+	rdither(7 downto 8-outbits)<=(others=>'0');
+	with selkernel select rdither(7-outbits downto 6-outbits) <=
+		kernel(7 downto 6) when "00",
+		kernel(5 downto 4) when "01",
+		kernel(3 downto 2) when "10",
+		kernel(1 downto 0) when "11";
 
-fr1:
-if flickerreduce=true generate
-gdither(7 downto 8-outbits)<=(others=>'0');
-with selkernel select gdither(7-outbits downto 6-outbits) <=
-	not kernel(7 downto 6) when "00",
-	not kernel(5 downto 4) when "01",
-	not kernel(3 downto 2) when "10",
-	not kernel(1 downto 0) when "11";
-end generate;
+	fr1:
+	if flickerreduce=true generate
+	gdither(7 downto 8-outbits)<=(others=>'0');
+	with selkernel select gdither(7-outbits downto 6-outbits) <=
+		not kernel(7 downto 6) when "00",
+		not kernel(5 downto 4) when "01",
+		not kernel(3 downto 2) when "10",
+		not kernel(1 downto 0) when "11";
+	end generate;
 
-fr2:
-if flickerreduce=false generate
-gdither(7 downto 8-outbits)<=(others=>'0');
-with selkernel select gdither(7-outbits downto 6-outbits) <=
-	kernel(7 downto 6) when "00",
-	kernel(5 downto 4) when "01",
-	kernel(3 downto 2) when "10",
-	kernel(1 downto 0) when "11";
-end generate;
+	fr2:
+	if flickerreduce=false generate
+	gdither(7 downto 8-outbits)<=(others=>'0');
+	with selkernel select gdither(7-outbits downto 6-outbits) <=
+		kernel(7 downto 6) when "00",
+		kernel(5 downto 4) when "01",
+		kernel(3 downto 2) when "10",
+		kernel(1 downto 0) when "11";
+	end generate;
 
-bdither(7 downto 8-outbits)<=(others=>'0');
-with selkernel select bdither(7-outbits downto 6-outbits) <=
-	kernel(7 downto 6) when "00",
-	kernel(5 downto 4) when "01",
-	kernel(3 downto 2) when "10",
-	kernel(1 downto 0) when "11";
+	bdither(7 downto 8-outbits)<=(others=>'0');
+	with selkernel select bdither(7-outbits downto 6-outbits) <=
+		kernel(7 downto 6) when "00",
+		kernel(5 downto 4) when "01",
+		kernel(3 downto 2) when "10",
+		kernel(1 downto 0) when "11";
 
--- If we need more than 2 bits of dithering we make up any shortfall with LFSR-based random
--- dithering.
+	-- If we need more than 2 bits of dithering we make up any shortfall with LFSR-based random
+	-- dithering.
 
-LSBs:
-if outbits<6 generate
-	rdither(5-outbits downto 0)<=lfsr_reg(5-outbits downto 0);
-	gdither(5-outbits downto 0)<=lfsr_reg(5-outbits downto 0);
-	bdither(5-outbits downto 0)<=lfsr_reg(5-outbits downto 0);
-end generate;
+	LSBs:
+	if outbits<6 generate
+		rdither(5-outbits downto 0)<=lfsr_reg(5-outbits downto 0);
+		gdither(5-outbits downto 0)<=lfsr_reg(5-outbits downto 0);
+		bdither(5-outbits downto 0)<=lfsr_reg(5-outbits downto 0);
+	end generate;
 	
 	process(clk)
 	begin
@@ -165,4 +195,7 @@ end generate;
 		end if;
 
 	end process;
+
+end generate;
+
 end architecture;
