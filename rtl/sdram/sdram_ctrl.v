@@ -462,7 +462,6 @@ reg host_slot1ok;
 
 reg rtg_extendable;
 reg rtg_extend;
-wire rtg_blockingbus = cpu_reservertg | wb_reservertg | refresh_pending;
 wire [1:0] rtg_bank = rtgAddr[24:23];
 wire rtg_hungry = rtgce && rtgpri;
 

@@ -92,17 +92,9 @@ port(
 	CACR_out      : buffer  std_logic_vector(3 downto 0);
 	VBR_out       : buffer  std_logic_vector(31 downto 0);
 	-- RTG interface
-	rtg_base : out std_logic_vector(25 downto 4);
-	rtg_addr : out std_logic_vector(25 downto 4);
-	rtg_vbend : out std_logic_vector(6 downto 0);
-	rtg_ext : out std_logic;
-	rtg_pixelclock : out std_logic_vector(5 downto 0);
-	rtg_clut : out std_logic;
-	rtg_16bit : out std_logic;
-	rtg_clut_idx : in std_logic_vector(7 downto 0) := X"00";
-	rtg_clut_r : out std_logic_vector(7 downto 0);
-	rtg_clut_g : out std_logic_vector(7 downto 0);
-	rtg_clut_b : out std_logic_vector(7 downto 0);
+	rtg_reg_addr : out std_logic_vector(10 downto 0);
+	rtg_reg_d    : out std_logic_vector(15 downto 0);
+	rtg_reg_wr   : out std_logic;
 	-- Audio interface
 	audio_buf : in std_logic;
 	audio_ena : out std_logic;
@@ -462,17 +454,9 @@ port map
 	host_req => host_req_r,
 	host_ack => host_ack,
 	host_q => host_q,
-	rtg_addr => rtg_addr,
-	rtg_base => rtg_base,
-	rtg_vbend => rtg_vbend,
-	rtg_ext => rtg_ext,
-	rtg_pixelclock => rtg_pixelclock,
-	rtg_16bit => rtg_16bit,
-	rtg_clut => rtg_clut,
-	rtg_clut_idx => rtg_clut_idx,
-	rtg_clut_r => rtg_clut_r,
-	rtg_clut_g => rtg_clut_g,
-	rtg_clut_b => rtg_clut_b,
+	rtg_reg_addr => rtg_reg_addr,
+	rtg_reg_d => rtg_reg_d,
+	rtg_reg_wr => rtg_reg_wr,
 	audio_buf => audio_buf,
 	audio_ena => audio_ena,
 	audio_int => audio_int

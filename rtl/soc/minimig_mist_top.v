@@ -210,16 +210,6 @@ wire           vsyncpol;
 wire           cs;
 wire           vs;
 wire           hs;
-wire [  8-1:0] red;
-wire [  8-1:0] green;
-wire [  8-1:0] blue;
-
-reg            vs_reg;
-reg            hs_reg;
-reg            cs_reg;
-reg  [  8-1:0] red_reg;
-reg  [  8-1:0] green_reg;
-reg  [  8-1:0] blue_reg;
 
 wire           vga_window;
 wire           vga_selcsync;
@@ -370,6 +360,10 @@ localparam useprofiler="true";
 localparam useprofiler="false";
 `endif
 
+wire [10:0] rtg_reg_addr;
+wire [15:0] rtg_reg_d;
+wire rtg_reg_wr;
+
 TG68K #(.dualsdram(dualsdram),.useprofiler(useprofiler),.haveaudio(auxaudio)) tg68k (
   .clk          (clk_114          ),
   .reset        (tg68_rst         ),
@@ -424,17 +418,9 @@ TG68K #(.dualsdram(dualsdram),.useprofiler(useprofiler),.haveaudio(auxaudio)) tg
   .CACR_out     (tg68_CACR_out    ),
   .VBR_out      (tg68_VBR_out     ),
   // RTG signals
-  .rtg_addr(rtg_baseaddr),
-  .rtg_base(rtg_baseaddr2),
-  .rtg_vbend(rtg_vbend),
-  .rtg_ext(rtg_ext),
-  .rtg_pixelclock(rtg_pixelwidth),
-  .rtg_16bit(rtg_16bit),
-  .rtg_clut(rtg_clut),
-  .rtg_clut_idx(rtg_clut_idx),
-  .rtg_clut_r(rtg_clut_r),
-  .rtg_clut_g(rtg_clut_g),
-  .rtg_clut_b(rtg_clut_b),
+  .rtg_reg_addr(rtg_reg_addr),
+  .rtg_reg_d(rtg_reg_d),
+  .rtg_reg_wr(rtg_reg_wr),
   .audio_ena(aud_ena_cpu),
   .audio_buf(aud_addr[15]),
   .audio_int(aud_int),
@@ -448,6 +434,16 @@ wire [23:0] host_addr;
 wire [15:0] host_data;
 wire host_req;
 wire host_ack;
+
+// RTG to RAM interface
+wire [25:0] rtg_fetch_addr;
+wire rtg_ramreq;
+wire [15:0] rtg_fromram;
+wire rtg_fill;
+wire rtg_rampri;
+wire rtg_ack;
+
+// SDRAM controller(s)
 
 `ifndef MINIMIG_DUAL_SDRAM
 
@@ -498,7 +494,7 @@ sdram_ctrl sdram (
   .chipRD       (ramdata_in       ),
   .chip48       (chip48           ),
   // RTG
-  .rtgAddr      (rtg_addr_mangled ),
+  .rtgAddr      (rtg_fetch_addr   ),
   .rtgce        (rtg_ramreq       ),
   .rtgack       (rtg_ack          ),
   .rtgpri       (rtg_rampri       ),
@@ -581,7 +577,7 @@ sdram_ctrl #(.addr_prefix_bits(1), .addr_prefix(0), .fast_write(1)) sdram (
   .chipRD       (ramdata_in       ),
   .chip48       (chip48           ),
   // RTG
-  .rtgAddr      (rtg_addr_mangled ),
+  .rtgAddr      (rtg_fetch_addr   ),
   .rtgce        (rtg_ramreq       ),
   .rtgack       (rtg_ack          ),
   .rtgpri       (rtg_rampri       ),
@@ -721,13 +717,6 @@ user_io user_io(
    assign UART_TX = uart_out & midi_out;
 `endif
 
-wire           VGA_CS_INT;     // VGA C_SYNC
-wire           VGA_HS_INT;     // VGA H_SYNC
-wire           VGA_VS_INT;     // VGA V_SYNC
-wire [  8-1:0] VGA_R_INT;      // VGA Red[5:0]
-wire [  8-1:0] VGA_G_INT;      // VGA Green[5:0]
-wire [  8-1:0] VGA_B_INT;      // VGA Blue[5:0]
-
 wire fd_step;
 wire fd_insert;
 wire fd_eject;
@@ -740,6 +729,14 @@ reg [15:0] aud_aux_left;
 reg [15:0] aud_aux_right;
 wire [15:0] ds_aud;
 
+wire [7:0] red_amiga;
+wire [7:0] green_amiga;
+wire [7:0] blue_amiga;
+wire blank_amiga;
+wire hblank_amiga;
+wire vblank_amiga;
+
+wire rtg_ena;
 
 //// minimig top ////
 minimig minimig (
@@ -829,9 +826,9 @@ minimig minimig (
   .hsyncpol     (hsyncpol         ),
   ._vsync       (vs               ),  // vertical sync
   .vsyncpol     (vsyncpol         ),
-  .red          (red              ),  // red
-  .green        (green            ),  // green
-  .blue         (blue             ),  // blue
+  .red          (red_amiga        ),  // red
+  .green        (green_amiga      ),  // green
+  .blue         (blue_amiga       ),  // blue
   //audio
   .ldata        (aud_amiga_left   ),  // left DAC data
   .rdata        (aud_amiga_right  ),  // right DAC data
@@ -856,9 +853,9 @@ minimig minimig (
   .floppy_frd   (                 ),  // floppy fifo reading
   .hd_fwr       (                 ),  // hd fifo writing
   .hd_frd       (                 ),  // hd fifo  ading
-  .hblank_out   (hblank_out       ),
-  .vblank_out   (vblank_out       ),
-  .blank_out    (blank_out        ),  // Composite blank
+  .hblank_out   (hblank_amiga     ),
+  .vblank_out   (vblank_amiga     ),
+  .blank_out    (blank_amiga      ),  // Composite blank
   .osd_blank_out(osd_window       ),  // Let the toplevel dither module handle drawing the OSD.
   .osd_pixel_out(osd_pixel        ),
   .rtg_ena      (rtg_ena          ),
@@ -887,163 +884,44 @@ vidclkcntrl vidclkcntrl (
 	.outclk    ( clk_vid )
 );
 
-wire rtg_ena;	// RTG screen on/off
-wire rtg_clut;	// Are we in high-colour or 8-bit CLUT mode?
-wire rtg_16bit; // Is high-colour mode 15 or 16 bit?
-
-reg [5:0] rtg_pixelctr;	// Counter, compared against rtg_pixelwidth
-wire [5:0] rtg_pixelwidth; // Number of clocks per fetch - 1
-wire [7:0] rtg_clut_idx;	// The currently selected colour in indexed mode
-wire rtg_pixel;	// Strobe the next pixel from the FIFO
-wire rtg_linecompare;
-
-wire blank_out;
-wire hblank_out;
-wire vblank_out;
-reg rtg_vblank;
-wire rtg_blank;
-reg rtg_blank_d;
-reg rtg_blank_d2;
-reg [6:0] rtg_vbcounter;	// Vvbco counter
-wire [6:0] rtg_vbend; // Size of VBlank area
-
-
 wire [7:0] rtg_r;	// 16-bit mode RGB data
 wire [7:0] rtg_g;
 wire [7:0] rtg_b;
-reg rtg_clut_in_sel;	// Select first or second byte of 16-bit word as CLUT index
-reg rtg_clut_in_sel_d;
-wire rtg_ext;	// Extend the active area by one clock.
-wire [7:0] rtg_clut_r;	// RGB data from CLUT
-wire [7:0] rtg_clut_g;
-wire [7:0] rtg_clut_b;
 
+wire rtg_de;
 
-// RTG data fetch strobe
-assign rtg_pixel=(rtg_ena && (!rtg_blank || (!rtg_blank_d && rtg_ext)) && rtg_pixelctr==rtg_pixelwidth) ? 1'b1 : 1'b0;
+rtg_video rtg (
+	.clk_114(clk_114),
+	.clk_28(clk_28),
+	.clk7_en(clk7_en),
+	.rtg_ena(rtg_ena),
+	.rtg_linecompare(rtg_linecompare),
+	.reg_addr(rtg_reg_addr),
+	.reg_wr(rtg_reg_wr),
+	.reg_d(rtg_reg_d),
 
-wire rtg_clut_pixel;
-assign rtg_clut_pixel = rtg_clut_in_sel & !rtg_clut_in_sel_d; // Detect rising edge;
-reg rtg_pixel_d;
-// Export a VGA pixel strobe for the dither module.
-assign vga_pixel=rtg_ena ? (rtg_pixel_d | (rtg_clut_pixel & rtg_clut)) : 1'b1;
+	.fetch_addr(rtg_fetch_addr),
+	.fetch_req(rtg_ramreq),
+	.fetch_pri(rtg_rampri),
+	.fetch_d(rtg_fromram),
+	.fetch_ack(rtg_ack),
+	.fetch_fill(rtg_fill),
+		
+	.amiga_r(red_amiga),
+	.amiga_g(green_amiga),
+	.amiga_b(blue_amiga),
+	.amiga_hb(hblank_amiga),
+	.amiga_vb(vblank_amiga),
+	.amiga_hs(hs),
 
-always @(posedge clk_114) begin
-	rtg_pixel_d<=rtg_pixel;
-
-	// Delayed copies of signals
-	rtg_blank_d<=rtg_blank;
-	rtg_blank_d2<=rtg_blank_d;
-	rtg_clut_in_sel_d<=rtg_clut_in_sel;
-
-	// Alternate colour index at twice the fetch clock.
-	if(rtg_pixelctr=={1'b0,rtg_pixelwidth[5:1]})
-		rtg_clut_in_sel<=1'b1;
-	
-	// Increment the fetch clock, reset during blank.
-	if(rtg_blank || rtg_pixel) begin
-		rtg_pixelctr<=6'b0;
-		rtg_clut_in_sel<=1'b0;
-	end else begin
-		rtg_pixelctr<=rtg_pixelctr+1'd1;
-	end
-end
-
-reg linecompare_d;
-wire linecompare_trigger = rtg_linecompare & !linecompare_d;
-reg [3:0] linecompare_fillmask_ctr;
-wire linecompare_fillmask=|linecompare_fillmask_ctr;
-
-always @(posedge clk_28)
-begin
-	// Handle vblank manually, since the OS makes it awkward to use the chipset for this.
-	cs_reg    <= #1 cs;
-	vs_reg    <= #1 vs;
-	hs_reg    <= #1 hs;
-	linecompare_d<=rtg_linecompare;
-
-	// When we change the RTG address we must ensure any existing transaction has finished
-	if(|linecompare_fillmask_ctr)
-		linecompare_fillmask_ctr=linecompare_fillmask_ctr-1'd1;
-	if(linecompare_trigger)
-		linecompare_fillmask_ctr=4'hf;
-
-	if(vblank_out) begin
-		rtg_vblank<=1'b1;
-		rtg_vbcounter<=5'b0;
-	end else if(rtg_vbcounter==rtg_vbend) begin
-		rtg_vblank<=1'b0;
-	end else if(hs & !hs_reg) begin
-		rtg_vbcounter<=rtg_vbcounter+1'd1;
-	end
-end
-
-assign rtg_blank = rtg_vblank | hblank_out;
-
-assign rtg_clut_idx = rtg_clut_in_sel_d ? rtg_dat[7:0] : rtg_dat[15:8];
-assign rtg_r=rtg_16bit ? {rtg_dat[15:11],rtg_dat[15:13]} : {rtg_dat[14:10],rtg_dat[14:12]};
-assign rtg_g=rtg_16bit ? {rtg_dat[10:5],rtg_dat[10:9]} : {rtg_dat[9:5],rtg_dat[9:7]};
-assign rtg_b={rtg_dat[4:0],rtg_dat[4:2]};
-
-wire [25:4] rtg_baseaddr;
-wire [25:4] rtg_baseaddr2;
-wire [25:0] rtg_addr;
-wire [15:0] rtg_dat;
-
-wire rtg_ramreq;
-wire [15:0] rtg_fromram;
-wire rtg_fill;
-
-// Replicate the CPU's address mangling.
-wire [25:0] rtg_addr_mangled;
-assign rtg_addr_mangled[25:24]=rtg_addr[25:24];
-assign rtg_addr_mangled[23]=rtg_addr[23]^(rtg_addr[22]|rtg_addr[21]);
-assign rtg_addr_mangled[22:0]=rtg_addr[22:0];
-
-wire rtg_rampri;
-wire rtg_ack;
-
-reg [1:0] rtg_reset;
-
-always @(posedge clk_114) begin
-	if(clk7_en)
-		rtg_reset <= {1'b1,rtg_reset[1]};
-	if(!rtg_ena || vblank_out || linecompare_fillmask)
-		rtg_reset <= 1'b00;
-end
-
-VideoStream myvs
-(
-	.clk(clk_114),
-	.reset_n(rtg_reset[0]),
-	.enable(rtg_ena),
-	.baseaddr({rtg_linecompare ? rtg_baseaddr2[24:4] : rtg_baseaddr[24:4],4'b0}),
-	// SDRAM interface
-	.a(rtg_addr),
-	.req(rtg_ramreq),
-	.ack(rtg_ack),
-	.pri(rtg_rampri),
-	.d(rtg_fromram),
-	.fill(rtg_fill),
-	// Display interface
-	.rdreq(rtg_pixel & !rtg_linecompare), // Allow one blank line for fetch to get ahead of display
-	.q(rtg_dat)
+	.red(rtg_r),
+	.green(rtg_g),
+	.blue(rtg_b),
+	.de(rtg_de)
 );
 
 
-// Select between RTG hi-colour, RTG CLUT and native video
-reg de_reg;
-
-always @ (posedge clk_vid) begin
-  red_reg   <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_r : rtg_r : red;
-  green_reg <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_g : rtg_g : green;
-  blue_reg  <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_b : rtg_b : blue;
-  de_reg <= rtg_ena ? ~rtg_blank_d2 : ~blank_out;
-end
-
-
 // Overlaying of OSD graphics
-
 
 wire osd_window;
 wire osd_pixel;
@@ -1053,12 +931,18 @@ wire [1:0] osd_b;
 assign osd_r = osd_pixel ? 2'b11 : 2'b00;
 assign osd_g = osd_pixel ? 2'b11 : 2'b00;
 assign osd_b = osd_pixel ? 2'b11 : 2'b10;
-assign VGA_CS_INT           = cs_reg;
-assign VGA_VS_INT           = vs_reg;
-assign VGA_HS_INT           = hs_reg;
-assign VGA_R_INT[7:0]       = osd_window ? {osd_r,red_reg[7:2]} : red_reg[7:0];
-assign VGA_G_INT[7:0]       = osd_window ? {osd_g,green_reg[7:2]} : green_reg[7:0];
-assign VGA_B_INT[7:0]       = osd_window ? {osd_b,blue_reg[7:2]} : blue_reg[7:0];
+reg       VGA_CS_INT;
+reg       VGA_VS_INT;
+reg       VGA_HS_INT;
+wire [7:0] VGA_R_INT = osd_window ? {osd_r,rtg_r[7:2]} : rtg_r;
+wire [7:0] VGA_G_INT = osd_window ? {osd_g,rtg_g[7:2]} : rtg_g;
+wire [7:0] VGA_B_INT = osd_window ? {osd_b,rtg_b[7:2]} : rtg_b;
+
+always @(posedge clk_vid) begin
+	VGA_CS_INT = cs;
+	VGA_HS_INT = hs;
+	VGA_VS_INT = vs;
+end
 
 
 // Conversion to YPbPr
@@ -1084,7 +968,7 @@ RGBtoYPbPr videoconvert
 	.hs_in(VGA_HS_INT),
 	.vs_in(VGA_VS_INT),
 	.cs_in(VGA_CS_INT),
-	.de_in(de_reg),
+	.de_in(rtg_de),
 	.pixel_in(vga_pixel),
 	
 	.red_out(mixer_red),

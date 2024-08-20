@@ -49,17 +49,9 @@ port (
 	host_ack : in std_logic;
 	host_q : in std_logic_vector(15 downto 0);
 	-- RTG signals
-	rtg_addr : out std_logic_vector(25 downto 4);
-	rtg_base : out std_logic_vector(25 downto 4);
-	rtg_vbend : out std_logic_vector(6 downto 0);
-	rtg_ext : out std_logic;
-	rtg_pixelclock : out std_logic_vector(5 downto 0);
-	rtg_clut : out std_logic;
-	rtg_16bit : out std_logic;
-	rtg_clut_idx : in std_logic_vector(7 downto 0);
-	rtg_clut_r : out std_logic_vector(7 downto 0);
-	rtg_clut_g : out std_logic_vector(7 downto 0);
-	rtg_clut_b : out std_logic_vector(7 downto 0);
+	rtg_reg_addr : out std_logic_vector(10 downto 0);
+	rtg_reg_d : out std_logic_vector(15 downto 0);
+	rtg_reg_wr : out std_logic;
 	-- Audio signals
 	audio_buf : in std_logic;
 	audio_ena : out std_logic;
@@ -81,13 +73,6 @@ signal host_ack_d : std_logic;
 
 signal rtg_sel : std_logic;
 signal rtg_ack : std_logic;
-signal clut_sel : std_logic;
-signal clut_wr : std_logic;
-signal clut_idx_w : std_logic_vector(7 downto 0);
-signal clut_high : std_logic_vector(7 downto 0);
-type clutarray is array(0 to 255) of std_logic_vector(31 downto 0);
-signal clut : clutarray;
-signal clut_rgb : std_logic_vector(31 downto 0);
 
 signal ahi_sel : std_logic;
 signal ahi_q : std_logic_vector(15 downto 0);
@@ -130,7 +115,7 @@ end generate;
 -- Host interface
 -- Defer any requests not handled by the Cornerturn or RTG to the host CPU
 
-host_sel <= not (rtg_sel or clut_sel or ahi_sel or ct_sel or id_sel);
+host_sel <= not (rtg_sel or ahi_sel or ct_sel or id_sel);
 host_req <= req and host_sel;
 
 -- Audio registers
@@ -172,22 +157,14 @@ end process;
 
 -- RTG registers and CLUT
 
-rtg_sel <='1' when addr(10 downto 8)="001" else '0';	-- RTG registers at 0xb801xx
-clut_sel <='1' when addr(10)='1' else '0';	-- RTG CLUT at 0xb80400 - 7ff
-clut_idx_w <= addr(9 downto 2);	-- 256 CLUT entries mapped from b80400 - b807ff
-clut_wr <= wr and addr(1); -- Write 32-bit clut entry on write to lower word.
+rtg_sel <='1' when addr(10)='1' or addr(9 downto 8)="01" else '0';	-- RTG registers at 0xb801xx
 
-rtg_ack <=req and (rtg_sel or clut_sel);
-
-rtg_clut_r<=clut_rgb(23 downto 16);
-rtg_clut_g<=clut_rgb(15 downto 8);
-rtg_clut_b<=clut_rgb(7 downto 0);
+rtg_ack <=req and rtg_sel;
 
 process(clk)
 begin
 	if rising_edge(clk) then
-
-		clut_rgb<=clut(to_integer(unsigned(rtg_clut_idx)));
+		rtg_reg_wr<='0';
 
 		if havertg=true then
 	
@@ -195,35 +172,12 @@ begin
 			-- screen dragging.
 			if req='1' and wr='1' then
 				if rtg_sel='1' then
-					case addr(4 downto 1) is
-						when X"0" =>	-- High word of framebuffer address
-							rtg_addr(25 downto 16)<=d(9 downto 0);
-						when X"1" =>	-- Low word of framebuffer address
-							rtg_addr(15 downto 4)<=d(15 downto 4);
-						when X"2" =>	-- CLUT (15) : Extend (14) : VBEnd(n downto 6) : PixelClock (5 downto 0)
-							rtg_pixelclock<=d(5 downto 0);
-							rtg_vbend<=d(rtg_vbend'high + 6 downto 6);
-							rtg_clut<=d(15);
-							rtg_ext<=d(14);
-						when X"3" =>	-- PixelFormat - 16bit (0) 
-							rtg_16bit<=d(0);
-						when X"4" =>	-- High word of 2nd address (for screendragging)
-							rtg_base(25 downto 16)<=d(9 downto 0);
-						when X"5" =>	-- Low word
-							rtg_base(15 downto 4)<=d(15 downto 4);
-						when others =>
-							null;
-					end case;
+					rtg_reg_wr<='1';
+					rtg_reg_addr<=addr(10 downto 0);
+					rtg_reg_d<=d;
 				end if;
-				if clut_sel='1' then
-					if clut_wr='1' then
-						clut(to_integer(unsigned(clut_idx_w)))<=X"00"&clut_high&d;
-					else
-						clut_high<=d(7 downto 0);
-					end if;
-				end if;		
 			end if;
-		end if;	
+		end if;
 	end if;
 end process;
 
