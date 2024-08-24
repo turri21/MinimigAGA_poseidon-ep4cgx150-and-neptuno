@@ -707,10 +707,21 @@ user_io user_io(
 );
 
 `ifdef MINIMIG_USE_MIDI_PINS
+
+`ifdef MINIMIG_USE_JTAG_MIDI
+	rs232_jtag jtag_midi (
+		.clk(clk_28),
+		.reset_n(pll_locked),
+		.rxd(midi_out),
+		.txd(midi_in)
+	);
+`else
   assign uart_in=UART_RX;
   assign UART_TX=uart_out;
   assign midi_in = MIDI_IN;
   assign MIDI_OUT = midi_out;
+`endif
+
 `else
    assign uart_in = UART_RX;
    assign midi_in = UART_RX;

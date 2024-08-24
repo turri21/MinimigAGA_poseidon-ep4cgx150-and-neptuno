@@ -451,6 +451,8 @@ set_global_assignment -name OPTIMIZATION_MODE "HIGH PERFORMANCE EFFORT"
 set_global_assignment -name VERILOG_MACRO "MINIMIG_DRIVESOUNDS=1"
 set_global_assignment -name VERILOG_MACRO "MINIMIG_CONTROL_BOARD=1"
 set_global_assignment -name VERILOG_MACRO "MINIMIG_AUX_AUDIO=1"
+set_global_assignment -name VHDL_FILE ../../rtl/jtag/simple_uart.vhd
+set_global_assignment -name VERILOG_FILE ../../rtl/jtag/rs232_jtag.v
 set_global_assignment -name VERILOG_FILE ../../rtl/rtg/rtg_video.v
 set_global_assignment -name VHDL_FILE ../../EightThirtyTwo/RTL/debug_fifo.vhd
 set_global_assignment -name VHDL_FILE ../../EightThirtyTwo/RTL/altera/debug_bridge_jtag.vhd
