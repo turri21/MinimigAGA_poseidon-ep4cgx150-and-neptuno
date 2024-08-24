@@ -1265,6 +1265,7 @@ wire [7:0] cdda_vol;
 wire [7:0] aux1_vol;
 wire [7:0] aux2_vol;
 wire aud_overflow;
+wire swap_channels;
 
 `ifdef MINIMIG_CONTROL_BOARD
 
@@ -1279,6 +1280,7 @@ minimig_control_board myctrlboard (
   .lwr(cpu_lwr),
   .sel(sel_control),
   .audio_overflow(aud_overflow),
+  .swap_channels(swap_channels),
   .vol1(paula_vol),
   .vol2(toccata_vol),
   .vol3(cdda_vol),
@@ -1299,6 +1301,7 @@ assign aux2_vol=8'd128;
 assign aud_overflow=1'b0;
 assign drivesound_fdd=1'b0;
 assign drivesound_hdd=1'b0;
+assign swap_channels=1'b0;
 
 `endif
 
@@ -1308,6 +1311,7 @@ AudioMix tocAudioMix
 (
   .clk(clk),
   .reset_n(!reset),
+  .swap_channels(swap_channels),
   .audio_in_l1(ldata_paula),
   .audio_in_r1(rdata_paula),
   .audio_vol1(paula_vol),

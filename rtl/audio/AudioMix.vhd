@@ -14,6 +14,7 @@ generic (
 port (
 	clk : in std_logic;
 	reset_n : in std_logic;
+	swap_channels : in std_logic;
 
 	audio_in_l1 : in signed(signalwidth-1 downto 0);
 	audio_in_r1 : in signed(signalwidth-1 downto 0);
@@ -120,11 +121,11 @@ begin
 		if rising_edge(clk) then
 		    audio_overflow<=overflow;
 
-			if inmux_sel(3 downto 0)="0110" then
+			if inmux_sel(3 downto 0) = (not swap_channels) & "110" then
 				audio_l<=clipped(signalwidth+volumewidth-1 downto 0);
 			end if;
 
-			if inmux_sel(3 downto 0)="1110" then
+			if inmux_sel(3 downto 0) = swap_channels&"110" then
 				audio_r<=clipped(signalwidth+volumewidth-1 downto 0);
 			end if;
 

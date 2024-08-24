@@ -354,7 +354,7 @@ DUALRAM_ADDR: if dualsdram=true generate
 -- With dual SDRAM setups we have 2 64 meg RAMs, and memory configured like so:
 -- 64 meg from 0x40000000 to 0x43ffffff - bit 30 set, bit 26 clr, bit 25 d/c  =>  26 set, 25 src, 24 src
 -- 32 meg from 0x44000000 to 0x45ffffff - bit 30 set, bit 26 set, bit 25 clr  =>  26 clr, 25 set, 24 d/c
--- 16 meg from 0x46000000 to 0x47ffffff - bit 30 set, bit 26 set, bit 25 set  =>  26 clr, 25 clr, 24 set
+-- 16 meg from 0x46000000 to 0x46ffffff - bit 30 set, bit 26 set, bit 25 set  =>  26 clr, 25 clr, 24 set
 
   ramaddr(31 downto 27) <= "00000";
   ramaddr(26) <= sel_z3ram;

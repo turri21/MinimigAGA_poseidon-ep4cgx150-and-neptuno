@@ -14,11 +14,13 @@ module minimig_control_board (
   output [7:0] vol3,
   output [7:0] vol4,
   output [7:0] vol5,
+  output swap_channels,
   output sermidi,
   output drivesound_fdd,
   output drivesound_hdd  
 );
 
+reg swap_channels_i = 1'b0;
 reg sermidi_i = 1'b1;
 reg drivesound_fdd_i= 1'b0;
 reg drivesound_hdd_i= 1'b0;
@@ -28,6 +30,7 @@ reg [7:0] vol3_i = 8'h80;
 reg [7:0] vol4_i = 8'h80;
 reg [7:0] vol5_i = 8'h80;
 
+assign swap_channels = swap_channels_i;
 assign sermidi=sermidi_i;
 assign drivesound_fdd=drivesound_fdd_i;
 assign drivesound_hdd=drivesound_hdd_i;
@@ -42,6 +45,7 @@ always @(posedge clk) begin
 		case (addr[8:1])
 			8'h00: sermidi_i <= data_in[0];
 			8'h01: {drivesound_hdd_i,drivesound_fdd_i} <= data_in[1:0];
+			8'h02: swap_channels_i <= data_in[0];
 			8'h06: aud_overflow_latched<= 1'b0;
 			8'h08: vol1_i <= data_in[7:0];
 			8'h09: vol2_i <= data_in[7:0];
@@ -91,6 +95,7 @@ always @(posedge clk) begin
 		case (addr[8:1])
 			8'h00:   data_out <= {15'h0,sermidi_i};
 			8'h01:   data_out <= {14'h0,drivesound_hdd_i,drivesound_fdd_i};
+			8'h02:   data_out <= {15'h0,swap_channels_i};
 			8'h06:   data_out <= {15'h0,aud_overflow_latched};
 			8'h07:   data_out <= capabilities; // sermidi enable, bit mask for audio channels
 			8'h08:   data_out <= {8'h00,vol1_i};
