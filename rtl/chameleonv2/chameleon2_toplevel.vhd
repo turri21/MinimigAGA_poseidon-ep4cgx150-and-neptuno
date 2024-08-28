@@ -154,15 +154,11 @@ architecture rtl of chameleon2_toplevel is
 	signal sdram_q : unsigned(7 downto 0);
 
 	-- Video
-	signal vga_r: std_logic_vector(7 downto 0);
-	signal vga_g: std_logic_vector(7 downto 0);
-	signal vga_b: std_logic_vector(7 downto 0);
-	signal vga_pixel : std_logic;
-	signal vga_window : std_logic;
+	signal vga_r: std_logic_vector(4 downto 0);
+	signal vga_g: std_logic_vector(4 downto 0);
+	signal vga_b: std_logic_vector(4 downto 0);
 	signal vga_hsync : std_logic;
 	signal vga_vsync : std_logic;
-	signal vga_csync : std_logic;
-	signal vga_selcsync : std_logic;
 	
 	signal red_dithered :unsigned(7 downto 0);
 	signal grn_dithered :unsigned(7 downto 0);
@@ -230,7 +226,11 @@ architecture rtl of chameleon2_toplevel is
 	  spimux : integer := 0;
 	  havespirtc : integer := 0;
 	  haveiec : integer := 0;
-	  havereconfig : integer := 0
+	  haveaudio : integer := 1;
+	  havertg : integer := 1;
+	  havec2p : integer := 1;
+	  havereconfig : integer := 0;
+	  vga_width : integer := 4
 	);
 	PORT
 	(
@@ -245,14 +245,11 @@ architecture rtl of chameleon2_toplevel is
 		CTRL_RX		:	 IN STD_LOGIC;
 		AMIGA_TX		:	 OUT STD_LOGIC;
 		AMIGA_RX		:	 IN STD_LOGIC;
-		VGA_PIXEL   :   OUT STD_LOGIC;
-		VGA_SELCS   :   OUT STD_LOGIC;
-		VGA_CS		:	 OUT STD_LOGIC;
 		VGA_HS		:	 OUT STD_LOGIC;
 		VGA_VS		:	 OUT STD_LOGIC;
-		VGA_R		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-		VGA_G		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-		VGA_B		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+		VGA_R		:	 OUT STD_LOGIC_VECTOR(vga_width-1 DOWNTO 0);
+		VGA_G		:	 OUT STD_LOGIC_VECTOR(vga_width-1 DOWNTO 0);
+		VGA_B		:	 OUT STD_LOGIC_VECTOR(vga_width-1 DOWNTO 0);
 		SDRAM_DQ		:	 INOUT STD_LOGIC_VECTOR(15 DOWNTO 0);
 		SDRAM_A		:	 OUT STD_LOGIC_VECTOR(12 DOWNTO 0);
 		SDRAM_DQML		:	 OUT STD_LOGIC;
@@ -488,9 +485,6 @@ joy2<="1" & c64_joy2(6) & (c64_joy2(5 downto 0) and cdtv_joyb);
 joy3<="1" & joystick3;
 joy4<="1" & joystick4;
 	
-
-vga_window<='1';
-
 amiser_rxd <= midi_rxd and (not iecserial or external_rxd);
 
 virtual_top : COMPONENT minimig_virtual_top
@@ -500,7 +494,10 @@ generic map
 		spimux => 0,
 		havespirtc => 1,
 		haveiec => 1,
-		havereconfig => 1
+		haveaudio => 0,
+		havec2p => 0,
+		havereconfig => 1,
+		vga_width => 5
 	)
 PORT map
 	(
@@ -515,9 +512,6 @@ PORT map
 		CTRL_RX => rs232_rxd,
 		AMIGA_TX => amiser_txd,
 		AMIGA_RX => amiser_rxd,
-		VGA_PIXEL => vga_pixel,
-		VGA_SELCS => vga_selcsync,
-		VGA_CS => vga_csync,
 		VGA_HS => vga_hsync,
 		VGA_VS => vga_vsync,
 		VGA_R	=> vga_r,
@@ -569,45 +563,15 @@ PORT map
 		IECSERIAL => iecserial
 	);
 	
--- Dither the video down to 5 bits per gun.
-	vga_window<='1';
---	hsync_n<= not vga_hsync;
---	vsync_n<= not vga_vsync;
---	red<=unsigned(vga_r(7 downto 3));
---	grn<=unsigned(vga_g(7 downto 3));
---	blu<=unsigned(vga_b(7 downto 3));
-	
-	mydither : entity work.video_vga_dither
-		generic map(
-			outbits => 5
-		)
-		port map(
-			clk=>clk_114,
-			pixel=>vga_pixel,
---			invertSync=>'1',
-			iSelcsync=>vga_selcsync,
-			iCsync=>vga_csync,
-			iHsync=>vga_hsync,
-			iVsync=>vga_vsync,
-			vidEna=>vga_window,
-			iRed => unsigned(vga_r),
-			iGreen => unsigned(vga_g),
-			iBlue => unsigned(vga_b),
-			oHsync=>hsync_n_dithered,
-			oVsync=>vsync_n_dithered,
-			oRed(7 downto 0) => red_dithered,
-			oGreen(7 downto 0) => grn_dithered,
-			oBlue(7 downto 0) => blu_dithered
-		);
 		
 process(clk_114)
 begin
 	if rising_edge(clk_114) then
-		red<=red_dithered(7 downto 3);
-		grn<=grn_dithered(7 downto 3);
-		blu<=blu_dithered(7 downto 3);
-		hsync_n<=hsync_n_dithered;
-		vsync_n<=vsync_n_dithered;
+		red<=unsigned(vga_r);
+		grn<=unsigned(vga_g);
+		blu<=unsigned(vga_b);
+		hsync_n<=vga_hsync;
+		vsync_n<=vga_vsync;
 	end if;
 end process;
 

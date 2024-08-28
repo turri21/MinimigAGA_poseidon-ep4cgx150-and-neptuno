@@ -171,9 +171,9 @@ architecture rtl of chameleon_toplevel is
 	signal vga_csync : std_logic;
 	signal vga_hsync : std_logic;
 	signal vga_vsync : std_logic;
-	signal vga_red : std_logic_vector(7 downto 0);
-	signal vga_green : std_logic_vector(7 downto 0);
-	signal vga_blue : std_logic_vector(7 downto 0);
+	signal vga_red : std_logic_vector(4 downto 0);
+	signal vga_green : std_logic_vector(4 downto 0);
+	signal vga_blue : std_logic_vector(4 downto 0);
 	signal HSync : std_logic;
 	signal VSync : std_logic;
 	
@@ -216,7 +216,8 @@ architecture rtl of chameleon_toplevel is
 	  spimux : integer := 0;
 	  havespirtc : integer := 0;
 	  haveiec : integer := 0;
-	  havereconfig : integer := 0
+	  havereconfig : integer := 0;
+	  vga_width : integer := 5
 	);
 	PORT
 	(
@@ -232,14 +233,11 @@ architecture rtl of chameleon_toplevel is
 		CTRL_RX		:	 IN STD_LOGIC;
 		AMIGA_TX		:	 OUT STD_LOGIC;
 		AMIGA_RX		:	 IN STD_LOGIC;
-		VGA_PIXEL   :   OUT STD_LOGIC;
-		VGA_SELCS	:	 OUT STD_LOGIC;
-		VGA_CS		:	 OUT STD_LOGIC;
 		VGA_HS		:	 OUT STD_LOGIC;
 		VGA_VS		:	 OUT STD_LOGIC;
-		VGA_R		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-		VGA_G		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-		VGA_B		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+		VGA_R		:	 OUT STD_LOGIC_VECTOR(vga_width-1 DOWNTO 0);
+		VGA_G		:	 OUT STD_LOGIC_VECTOR(vga_width-1 DOWNTO 0);
+		VGA_B		:	 OUT STD_LOGIC_VECTOR(vga_width-1 DOWNTO 0);
 		SDRAM_DQ		:	 INOUT STD_LOGIC_VECTOR(15 DOWNTO 0);
 		SDRAM_A		:	 OUT STD_LOGIC_VECTOR(12 DOWNTO 0);
 		SDRAM_DQML		:	 OUT STD_LOGIC;
@@ -439,7 +437,8 @@ generic map
 		spimux => 1,
 		havespirtc => 1,
 		haveiec => 1,
-		havereconfig => 1
+		havereconfig => 1,
+		vga_width => 5
 	)
 PORT map
 	(
@@ -455,9 +454,6 @@ PORT map
 		CTRL_RX => rs232_rxd,
 		AMIGA_TX => midi_txd,
 		AMIGA_RX => midi_rxd and (not iecserial or external_rxd),
-		VGA_PIXEL => vga_pixel,
-		VGA_SELCS => vga_selcsync,
-		VGA_CS => vga_csync,
 		VGA_HS => vga_hsync,
 		VGA_VS => vga_vsync,
 		VGA_R	=> vga_red,
@@ -509,45 +505,15 @@ PORT map
 		IECSERIAL => iecserial
 	);
 
-vga_window<='1';
---nHSync<=vga_hsync;
---nVSync<=vga_vsync;
---red<=unsigned(vga_red(7 downto 3));
---grn<=unsigned(vga_green(7 downto 3));
---blu<=unsigned(vga_blue(7 downto 3));
-
-	mydither : entity work.video_vga_dither
-		generic map(
-			outbits => 5
-		)
-		port map(
-			clk=>clk_114,
---			invertSync=>'1',
-			iSelcsync=>vga_selcsync,
-			iCsync=>vga_csync,
-			iHsync=>vga_hsync,
-			iVsync=>vga_vsync,
-			pixel=>vga_pixel,
-			vidEna=>vga_window,
-			iRed => unsigned(vga_red),
-			iGreen => unsigned(vga_green),
-			iBlue => unsigned(vga_blue),
-			oHsync=>hsync_n_dithered,
-			oVsync=>vsync_n_dithered,
-			oRed => red_dithered,
-			oGreen => grn_dithered,
-			oBlue => blu_dithered
-		);
-
 
 process(clk_114)
 begin
 	if rising_edge(clk_114) then
-		red<=red_dithered(7 downto 3);
-		grn<=grn_dithered(7 downto 3);
-		blu<=blu_dithered(7 downto 3);
-		nHSync<=not hsync_n_dithered;
-		nVSync<=not vsync_n_dithered;
+		red<=unsigned(vga_red);
+		grn<=unsigned(vga_green);
+		blu<=unsigned(vga_blue);
+		nHSync<=not vga_hsync;
+		nVSync<=not vga_vsync;
 	end if;
 end process;
 
