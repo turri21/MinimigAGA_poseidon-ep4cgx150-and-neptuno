@@ -294,13 +294,12 @@ assign vga_strobe = vga_strobe_ctr==3'b000 ? 1'b1 : 1'b0;
 
 assign rtg_blank = rtg_vblank | hblank_amiga;
 
-wire rtg_de;
 wire rtg_pixel;
 
 rtg_video rtg (
 	.clk_114(CLK_114),
 	.clk_28(CLK_28),
-	.clk7_en(clk7_en),
+	.clk_vid(CLK_114),
 	.rtg_ena(rtg_ena),
 	.rtg_linecompare(rtg_linecompare),
 	.reg_addr(rtg_reg_addr),
@@ -324,8 +323,7 @@ rtg_video rtg (
 	.red(rtg_r),
 	.green(rtg_g),
 	.blue(rtg_b),
-	.pixel(rtg_pixel),
-	.de(rtg_de)
+	.pixel(rtg_pixel)
 );
 
 

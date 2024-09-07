@@ -904,7 +904,7 @@ wire rtg_de;
 rtg_video rtg (
 	.clk_114(clk_114),
 	.clk_28(clk_28),
-	.clk7_en(clk7_en),
+	.clk_vid(clk_vid),
 	.rtg_ena(rtg_ena),
 	.rtg_linecompare(rtg_linecompare),
 	.reg_addr(rtg_reg_addr),
@@ -924,6 +924,7 @@ rtg_video rtg (
 	.amiga_hb(hblank_amiga),
 	.amiga_vb(vblank_amiga),
 	.amiga_hs(hs),
+	.amiga_blank(blank_amiga),
 
 	.red(rtg_r),
 	.green(rtg_g),

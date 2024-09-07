@@ -2,7 +2,7 @@
 module rtg_video (
 	input         clk_114,
 	input         clk_28,
-	input         clk7_en,
+	input         clk_vid,
 	input         reset_n,
 	input         rtg_ena,       // RTG on/off
 	input         rtg_linecompare,
@@ -21,9 +21,10 @@ module rtg_video (
 	input   [7:0] amiga_r,
 	input   [7:0] amiga_g,
 	input   [7:0] amiga_b,
-	input         amiga_vb,
-	input         amiga_hb,
-	input         amiga_hs,
+	input         amiga_vb, /* Used for RTG framing */
+	input         amiga_hb, /* Used for RTG framing */
+	input         amiga_hs, /* Used for RTG framing and line compare */
+	input         amiga_blank,
 
 	output reg [7:0] red,
 	output reg [7:0] green,
@@ -172,13 +173,12 @@ assign rtg_b={rtg_dat[4:0],rtg_dat[4:2]};
 
 wire [15:0] rtg_dat;
 
-reg [1:0] rtg_reset;
+reg [7:0] rtg_reset;
 
 always @(posedge clk_28) begin
-	if(clk7_en)
-		rtg_reset <= {1'b1,rtg_reset[1]};
+	rtg_reset <= {1'b1,rtg_reset[7:1]};
 	if(!rtg_ena || amiga_vb || linecompare_fillmask)
-		rtg_reset <= 1'b00;
+		rtg_reset <= 8'h00;
 end
 
 
@@ -209,11 +209,11 @@ assign fetch_addr[22:0]=fetch_addr_raw[22:0];
 
 
 // Select between RTG hi-colour, RTG CLUT and native video
-always @ (posedge clk_114) begin
+always @ (posedge clk_vid) begin
   red   <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_r : rtg_r : amiga_r;
   green <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_g : rtg_g : amiga_g;
   blue  <= #1 rtg_ena && !rtg_blank_d2 ? rtg_clut ? rtg_clut_b : rtg_b : amiga_b;
-  de <= rtg_ena ? ~rtg_blank_d2 : ~(amiga_hb | amiga_vb);
+  de <= rtg_ena ? ~rtg_blank_d2 : ~amiga_blank;
 end
 
 endmodule
