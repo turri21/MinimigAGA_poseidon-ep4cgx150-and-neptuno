@@ -188,6 +188,20 @@ wire           tg68_ovr;
 wire tg68_host_req;
 wire tg68_host_ack;
 
+// rtg
+wire    [10:0] rtg_reg_addr;
+wire    [15:0] rtg_reg_d;
+wire           rtg_reg_wr;
+wire           rtg_linecompare;
+
+// aux audio
+wire           aud_ena_cpu;
+wire    [22:0] aud_ramaddr;
+wire           aud_ack;
+wire           aud_fill;
+wire    [15:0] aud_fromram;
+wire           aud_int;
+
 // minimig
 wire           led;
 wire [ 16-1:0] ram_data;      // sram data bus
@@ -303,7 +317,6 @@ assign no_csync         = core_config[2];
 assign force_csync      = ypbpr | (!no_csync & vga_selcsync);
 assign clock_override   = core_status[2:1];
 assign clock_ntsc       = |clock_override ? clock_override[1] : ntsc;
-wire aud_int;
 
 //// amiga clocks ////
 amiga_clk amiga_clk (
@@ -359,10 +372,6 @@ localparam useprofiler="true";
 `else
 localparam useprofiler="false";
 `endif
-
-wire [10:0] rtg_reg_addr;
-wire [15:0] rtg_reg_d;
-wire rtg_reg_wr;
 
 TG68K #(.dualsdram(dualsdram),.useprofiler(useprofiler),.haveaudio(auxaudio)) tg68k (
   .clk          (clk_114          ),
@@ -1075,13 +1084,8 @@ wire [25:0] aud_addr;
 wire [15:0] aud_sample;
 
 wire aud_ramreq;
-wire aud_ack;
-wire [15:0] aud_fromram;
-wire aud_fill;
-wire aud_ena_cpu;
 wire aud_clear;
 
-wire [22:0] aud_ramaddr;
 assign aud_ramaddr[15:0]=aud_addr[15:0];
 assign aud_ramaddr[22:16]=7'b1101111;  // 0x6f0000 in SDRAM, 0x070000 to host, 0xef0000 to Amiga
 
