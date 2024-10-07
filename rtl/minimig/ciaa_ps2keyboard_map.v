@@ -713,7 +713,7 @@ always @(posedge clk) begin
   			9'h12c:		keyrom[15:0] <= 16'h0000;
   			9'h12d:		keyrom[15:0] <= 16'h0000;
   			9'h12e:		keyrom[15:0] <= 16'h0000;
-  			9'h12f:		keyrom[15:0] <= 16'h28067;// RIGHT AMIGA (APPS) (Duplicate RGUI since smaller keyboards often have only one.
+  			9'h12f:		keyrom[17:0] <= 18'h28067;// RIGHT AMIGA (APPS) (Duplicate RGUI since smaller keyboards often have only one.
   			9'h130:		keyrom[15:0] <= 16'h0000;
   			9'h131:		keyrom[15:0] <= 16'h0000;
   			9'h132:		keyrom[15:0] <= 16'h0000;
