@@ -349,7 +349,7 @@ always @ (posedge clk) begin
     cpu_sm_dram0_we   <= #1 1'b0;
     cpu_sm_dram1_we   <= #1 1'b0;
     cpu_sm_bs         <= #1 4'b1111;
-	cpu_cacheline_ready <= 1'b0;
+    cpu_cacheline_ready <= 1'b0;
 
     cpu_dat_r <= cpu_ir ?
     	{cpu_cacheline_i_hi[cpu_adr_blk], cpu_cacheline_i_lo[cpu_adr_blk]} :
@@ -402,8 +402,8 @@ always @ (posedge clk) begin
                 cpu_bs_l <= cpu_bs;
               end
             end else begin
-			  cpu_cacheline_ready <= 1'b1;
-			end
+              cpu_cacheline_ready <= 1'b1;
+            end
           end else if (!(cpu_cacheline_i_valid | cpu_cacheline_d_valid)) begin
             cpu_sm_adr <= #1 {cpu_adr_idx, cpu_adr_blk_ptr_next};
             cpu_adr_blk_ptr <= #1 cpu_adr_blk_ptr_next;
@@ -414,18 +414,16 @@ always @ (posedge clk) begin
           if (cc_clr)
             cpu_sm_state <= #1 CPU_SM_INIT;
           else
-		    cpu_cacheline_ready <= 1'b1;
-            cpu_sm_state <= #1 CPU_SM_IDLE;
+            cpu_cacheline_ready <= 1'b1;
         end
       end
-      CPU_SM_WAIT_LOWORD : begin
-        if (!cpu_cs) begin
-			cpu_sm_state <= #1 CPU_SM_WRITE_32BIT;
-			cpu_cacheline_ready<= 1'b1;
-		end
+      CPU_SM_WAIT_LOWORD :
+      if (!cpu_cs) begin
+          cpu_sm_state <= #1 CPU_SM_WRITE_32BIT;
+          cpu_cacheline_ready<= 1'b1;
       end
-      CPU_SM_WRITE_32BIT : begin
-		if (cpu_cs) begin
+      CPU_SM_WRITE_32BIT :
+      if (cpu_cs) begin
           cpu_adr_l <= cpu_adr;
           cpu_adr_blk_ptr <= #1 cpu_adr_blk;
           sdr_dqm_w[3:2] <= #1 ~cpu_bs;
@@ -450,16 +448,15 @@ always @ (posedge clk) begin
             cpu_sm_mem_dat_w <= #1 {cpu_dat_w, sdr_dat_w[15:0]};
             cpu_adr_blk_ptr <= #1 cpu_adr_blk;
             sdr_write_req <= !sdr_write_req;
-			cpu_cacheline_ready <= 1'b1;
+            cpu_cacheline_ready <= 1'b1;
             cpu_sm_state <= #1 CPU_SM_IDLE;
           end
           cpu_sm_iram0_we <= #1 itag0_match && itag0_valid /*&& !cc_fr*/;
           cpu_sm_iram1_we <= #1 itag1_match && itag1_valid /*&& !cc_fr*/;
           cpu_sm_dram0_we <= #1 dtag0_match && dtag0_valid /*&& !cc_fr*/;
           cpu_sm_dram1_we <= #1 dtag1_match && dtag1_valid /*&& !cc_fr*/;
-		end else begin
-		  cpu_cacheline_ready <= 1'b1;
-		end
+      end else begin
+          cpu_cacheline_ready <= 1'b1;
       end
       CPU_SM_WRITE : begin
         sdr_write_req <= !sdr_write_req;
@@ -473,7 +470,7 @@ always @ (posedge clk) begin
         cpu_sm_dram1_we <= #1 dtag1_match && dtag1_valid /*&& !cc_fr*/;
 
         cpu_adr_blk_ptr <= #1 cpu_adr_blk;
-		cpu_cacheline_ready <= 1'b1;
+        cpu_cacheline_ready <= 1'b1;
         cpu_sm_state <= #1 CPU_SM_IDLE;
       end
       CPU_SM_READ : begin
@@ -555,12 +552,12 @@ always @ (posedge clk) begin
 
         if(cpu_cacheline_cnt == 2'b11) begin
             cpu_adr_blk_ptr <= #1 cpu_adr_blk;
-			if(cpu_cs)
-				cpu_sm_state<= CPU_SM_WAIT;
-			else begin
-				cpu_cacheline_ready <= 1'b1;
-				cpu_sm_state <= CPU_SM_IDLE;
-			end
+            if(cpu_cs)
+                cpu_sm_state<= CPU_SM_WAIT;
+            else begin
+                cpu_cacheline_ready <= 1'b1;
+                cpu_sm_state <= CPU_SM_IDLE;
+            end
         end
 
       end
@@ -570,11 +567,10 @@ always @ (posedge clk) begin
         cpu_sm_adr <= #1 {cpu_adr_idx, cpu_adr_blk};
         if (!cpu_cs) cpu_sm_state <= #1 CPU_SM_IDLE;
       end
-      CPU_SM_SDWAI : begin
-        if (!sdr_read_ack) begin
-          sdr_read_req <= #1 1'b1;
-          cpu_sm_state <= #1 CPU_SM_FILL1;
-        end
+      CPU_SM_SDWAI :
+      if (!sdr_read_ack) begin
+        sdr_read_req <= #1 1'b1;
+        cpu_sm_state <= #1 CPU_SM_FILL1;
       end
       CPU_SM_FILL1 : begin
         cpu_sm_adr <= #1 {cpu_adr_idx, cpu_adr_blk_ptr};
@@ -638,8 +634,8 @@ always @ (posedge clk) begin
           end
         end
       end
-      CPU_SM_FILL2 : begin
-        if (sdr_read_ack) begin
+      CPU_SM_FILL2 :
+      if (sdr_read_ack) begin
           if (!cpu_cs) cpu_acked <= #1 1'b1;
           // cache line fill 2nd...8th word
           if(level1_i) begin
@@ -658,19 +654,17 @@ always @ (posedge clk) begin
           cpu_sm_iram1_we <= #1 !cpu_sm_ilru &&  cpu_sm_id;
           cpu_sm_dram0_we <= #1  cpu_sm_dlru && !cpu_sm_id;
           cpu_sm_dram1_we <= #1 !cpu_sm_dlru && !cpu_sm_id;
-        end else if (!cpu_cs | cpu_acked) begin
-		  cpu_cacheline_ready <= 1'b1;
+      end else if (!cpu_cs | cpu_acked) begin
+          cpu_cacheline_ready <= 1'b1;
           cpu_sm_state <= #1 CPU_SM_IDLE;
           cpu_adr_blk_ptr <= #1 cpu_adr_blk; // if CS already activated during fill
           cpu_sm_adr <= #1 {cpu_adr_idx, cpu_adr_blk};
-        end
       end
-      CPU_SM_FILLW : begin
-        if (!cpu_cs) begin
-		  cpu_cacheline_ready <= 1'b1;
-          cpu_sm_state <= #1 CPU_SM_IDLE;
-          cpu_adr_blk_ptr <= #1 cpu_adr_blk; // if CS already activated during fill
-        end
+      CPU_SM_FILLW :
+      if (!cpu_cs) begin
+        cpu_cacheline_ready <= 1'b1;
+        cpu_sm_state <= #1 CPU_SM_IDLE;
+        cpu_adr_blk_ptr <= #1 cpu_adr_blk; // if CS already activated during fill
       end
       default: ;
     endcase
