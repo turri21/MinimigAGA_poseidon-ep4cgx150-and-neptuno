@@ -34,7 +34,7 @@ void cpuInternalCycle()
 		tb->cpuU = 1;
 		tb->cpuState = 1;
 		tb->cpuWR = 0xdead;
-		tb->cpuAddr = rand();
+		tb->cpuAddr = rand() & 0x3ffffff;
 		tick(1);
 		tick(0);
 		tick(1);

@@ -12,8 +12,9 @@ Vcpu_cache_sdram_tb.cpp: ${OBJ_DIR}/Vcpu_cache_sdram_tb.cpp
 
 
 ${OBJ_DIR}/Vcpu_cache_sdram_tb.cpp: ${HDL_FILES}
-	verilator --trace --top-module cpu_cache_sdram_tb -cc ${HDL_FILES}
+	verilator -cc -exe -MMD --trace --top-module cpu_cache_sdram_tb -cc cpu_cache_sdram_tb.cpp ${HDL_FILES}
 
 cpu_cache_sdram_tb: ${OBJ_DIR}/Vcpu_cache_sdram_tb.cpp cpu_cache_sdram_tb.cpp
-	g++ -I $(OBJ_DIR) -I$(VERILATOR_DIR) $(VERILATOR_DIR)/verilated.cpp $(VERILATOR_DIR)/verilated_vcd_c.cpp cpu_cache_sdram_tb.cpp  $(OBJ_DIR)/Vcpu_cache_sdram_tb__Trace.cpp $(OBJ_DIR)/Vcpu_cache_sdram_tb__Trace__Slow.cpp $(OBJ_DIR)/Vcpu_cache_sdram_tb.cpp $(OBJ_DIR)/Vcpu_cache_sdram_tb__Syms.cpp -DOPT=-DVL_DEBUG -o cpu_cache_sdram_tb
+	$(MAKE) -j 4 -C obj_dir -f ../Makefile_obj
+#	g++ -I $(OBJ_DIR) -I$(VERILATOR_DIR) $(VERILATOR_DIR)/verilated.cpp $(VERILATOR_DIR)/verilated_vcd_c.cpp cpu_cache_sdram_tb.cpp  $(OBJ_DIR)/Vcpu_cache_sdram_tb__Trace.cpp $(OBJ_DIR)/Vcpu_cache_sdram_tb__Trace__Slow.cpp $(OBJ_DIR)/Vcpu_cache_sdram_tb.cpp $(OBJ_DIR)/Vcpu_cache_sdram_tb__Syms.cpp -DOPT=-DVL_DEBUG -o cpu_cache_sdram_tb
 
