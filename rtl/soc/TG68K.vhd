@@ -50,7 +50,7 @@ port(
 	data_read2    : in      std_logic_vector(15 downto 0);
 	data_write    : out     std_logic_vector(15 downto 0);
 	data_write2   : out     std_logic_vector(15 downto 0);
-    fast_rd       : buffer  std_logic;
+	fast_rd       : buffer  std_logic;
 	as            : out     std_logic;
 	uds           : out     std_logic;
 	lds           : out     std_logic;
@@ -178,7 +178,7 @@ SIGNAL NMI_addr         : std_logic_vector(31 downto 0);
 SIGNAL sel_nmi_vector_addr : std_logic;
 SIGNAL sel_nmi_vector   : std_logic;
 
-signal block_turbo : std_logic;
+signal block_turbo : std_logic := '0';
 signal throttle_sel : std_logic_vector(1 downto 0);
 
 component profile_cpu
@@ -496,18 +496,20 @@ buslogic : block
 	signal clkena_pre		: std_logic;
 begin
 
-	process(clk) begin
-		if rising_edge(clk) then
-			clkena_pre <= '0';
-			if clkena='0' and ((slower(2)='0' and cpu_internal='1') or (slower(1)='0' and (sel_undecoded_d='1' or akiko_ack='1'))) then
-				clkena_pre <= '1';
-			end if;
-		end if;
-	end process;
+--	process(clk) begin
+--		if rising_edge(clk) then
+--			clkena_pre <= '0';
+--			if clkena='0' and ((slower(2)='0' and cpu_internal='1') or (slower(1)='0' and (sel_undecoded_d='1' or akiko_ack='1'))) then
+--				clkena_pre <= '1';
+--			end if;
+--		end if;
+--	end process;
 
-	clkena <= '1' WHEN clkena_pre='1' or (slower(0)='0' and
+--	clkena <= '1' WHEN clkena_pre='1' or (slower(0)='0' and
+	clkena <= '1' WHEN slower(0)='0' and
 					   ((clkena_in='1' and ((ena7RDreg='1' AND clkena_e='1') OR (ena7WRreg='1' AND clkena_f='1') or fast_rd='1')) OR
-					   (ramready='1' and block_turbo='0')))
+					   cpu_internal='1' or (ramready='1' and block_turbo='0') OR sel_undecoded_d='1' OR akiko_ack='1')
+--					   (ramready='1' and block_turbo='0')))
 				  ELSE '0';
 
 	-- AMR - attempt to imitate A1200 speed more closely on chipram fetches:
@@ -526,39 +528,42 @@ begin
 	--   For compatibility, C00000 RAM should probably run at chip RAM speeds
 	--   Fast RAM should perhaps be throttled in Chip (i.e. A1200) mode, but not otherwise?
 
-	PROCESS (clk) BEGIN
-		IF rising_edge(clk) THEN
-			IF (reset='0' OR nResetOut='0') THEN
-				throttle_sel <= "00";
-			ELSIF cpu_internal='1' THEN
-				-- If throttling is enabled, block turbo for CPU data reads, and instruction fetch if cache is disabled.
-				throttle_sel(0) <= freeze or (turbochipram xor turbokick);
-				throttle_sel(1) <= freeze or (turbochipram and not turbokick);
-			END IF;
-			sel_chip_d  <= sel_chip;
-			block_turbo <= aga and sel_chip_d and throttle_sel(0) and (cpu_read or (cpu_fetch and cpu_disablecache));
+--	PROCESS (clk) BEGIN
+--		IF rising_edge(clk) THEN
+--			IF (reset='0' OR nResetOut='0') THEN
+--				throttle_sel <= "00";
+--			ELSIF cpu_internal='1' THEN
+--				-- If throttling is enabled, block turbo for CPU data reads, and instruction fetch if cache is disabled.
+--				throttle_sel(0) <= freeze or (turbochipram xor turbokick);
+--				throttle_sel(1) <= freeze or (turbochipram and not turbokick);
+--			END IF;
+--			sel_chip_d  <= sel_chip;
+--			block_turbo <= aga and sel_chip_d and throttle_sel(0) and (cpu_read or (cpu_fetch and cpu_disablecache));
+--			cache_inhibit <= sel_kickram and aga and (throttle_sel(1) or throttle_sel(0));
+--
+--
+--		END IF;
+--	END PROCESS;
 
-			cache_inhibit <= sel_kickram and aga and (throttle_sel(1) or throttle_sel(0));
+cache_inhibit <= '0';
 
-		END IF;
-	END PROCESS;
-
-	process (clk) begin
-		if rising_edge(clk) then
-			if (clkena='1' or freeze='1') and cpu_write='0' and block_turbo='0' then
-				throttle<=throttle_sel(1) & throttle_sel;
-			elsif clkena_in='1' then
-				throttle<='0'&throttle(throttle'high downto 1);
-			end if;
-		end if;
-	end process;
+--	process (clk) begin
+--		if rising_edge(clk) then
+--			if (clkena='1' or freeze='1') and cpu_write='0' and block_turbo='0' then
+--				throttle<=throttle_sel(1) & throttle_sel;
+--			elsif clkena_in='1' then
+--				throttle<='0'&throttle(throttle'high downto 1);
+--			end if;
+--		end if;
+--	end process;
 
 	PROCESS (clk) BEGIN
 		IF rising_edge(clk) THEN
 			IF clkena='1' THEN
 				slower <= "111"; -- rokk
 			ELSE
-				slower<= (aga and throttle(0))&slower(slower'high downto 1); -- enaWRreg&slower(3 downto 1);
+				slower<= '0'&slower(slower'high downto 1);
+--				slower<= (aga and throttle(0))&slower(slower'high downto 1); -- enaWRreg&slower(3 downto 1);
 			END IF;
 		END IF;
 	END PROCESS;
