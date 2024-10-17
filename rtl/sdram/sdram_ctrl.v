@@ -467,16 +467,16 @@ wire rtg_hungry = rtgce && rtgpri;
 
 always @(posedge sysclk) begin
 
-	// CPU will defer to RTG on slot 2, and avoid using slot 2 when a refresh is pending.
+	// If RTG is "hungry", we reserve slot 2 and prevent both the CPU and Writebuffer from using it.
+	// Additionally, we hold the CPU off slot 1 if it's accessing the same bank as RTG.
 	cpu_reservertg <= rtg_hungry && cpuAddr_r[24:23]==rtg_bank ? 1'b1 : 1'b0;
 	cpu_slot1ok <= !hostatn && !cpu_reservertg && (slot2_type == IDLE || slot2_bank != cpuAddr_r[24:23]) ? 1'b1 : 1'b0;
-	cpu_slot2ok <= !cpu_reservertg && !refresh_pending && ((shortcut | |cpuAddr_r[24:23])   // Reserve bank 0 for slot 1
+	cpu_slot2ok <= !rtg_hungry && !refresh_pending && ((shortcut | |cpuAddr_r[24:23])   // Reserve bank 0 for slot 1
 	               && (slot1_type == IDLE || slot1_bank != cpuAddr_r[24:23])) ? 1'b1 : 1'b0;
 
-	// Writebuffer will defer to RTG on slot 2, and avoid using slot 2 when a refresh is pending.
 	wb_reservertg <= rtg_hungry && writebufferAddr[24:23]==rtg_bank ? 1'b1 : 1'b0;
 	wb_slot1ok <= !wb_reservertg && (slot2_type == IDLE || slot2_bank != writebufferAddr[24:23]) ? 1'b1 : 1'b0;
-	wb_slot2ok <= !wb_reservertg && !refresh_pending && (shortcut | (|writebufferAddr[24:23]) // Reserve bank 0 for slot 1
+	wb_slot2ok <= !rtg_hungry && !refresh_pending && (shortcut | (|writebufferAddr[24:23]) // Reserve bank 0 for slot 1
 	           && (slot1_type == IDLE || slot1_bank != writebufferAddr[24:23])) ? 1'b1 : 1'b0;
 
 	// Other ports need to avoid bank clashes.

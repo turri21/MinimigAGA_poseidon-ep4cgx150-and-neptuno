@@ -100,7 +100,7 @@ process(clk)
 begin
 	if rising_edge(clk) then
 		req<=reset_n and enable and not nearfull;
-		pri<=hungry;
+		pri<=hungry and enable;
 	end if;
 end process;
 
