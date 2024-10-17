@@ -180,6 +180,7 @@ begin
 			
 				if reset_n='0' then
 					triggers <= (others => '0');
+					playing <= (others => '0');
 				else
 
 					if fd_step='1' and fd_prev='0' then	-- Use an LFSR to pick a random step sound
