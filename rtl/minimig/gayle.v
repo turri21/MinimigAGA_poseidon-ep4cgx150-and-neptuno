@@ -213,6 +213,7 @@ ide ide (
 	.address_in(address_in[4:2]),
 	.data_in(data_in),
 	.data_out(ide_out),
+	.data_oe(),
 	.rd(rd),
 	.hwr(hwr),
 	.lwr(lwr),
