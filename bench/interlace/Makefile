@@ -23,7 +23,7 @@ V${TOP}_tb.cpp: ${OBJ_DIR}/V${TOP}_tb.cpp
 
 
 ${OBJ_DIR}/V${TOP}_tb.cpp: ${HDL_FILES}
-	verilator -I${RTL} -cc -exe -MMD --trace --top-module ${TOP}_tb -cc ${TOP}_tb.cpp ${HDL_FILES}
+	verilator -I${RTL} +define+MINIMIG_USE_HDMI=1 -cc -exe -MMD --trace --top-module ${TOP}_tb -cc ${TOP}_tb.cpp ${HDL_FILES}
 
 ${TOP}_tb: ${OBJ_DIR}/V${TOP}_tb.cpp ${TOP}_tb.cpp
 	$(MAKE) -j 4 -C obj_dir -f ../Makefile_obj

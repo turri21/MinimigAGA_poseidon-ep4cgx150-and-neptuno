@@ -28,6 +28,8 @@ wire cck=cck_ctr[2];
 wire [8:0] htotal;
 wire long_frame;
 
+wire track_vsync=1'b1;
+
 agnus_beamcounter beamcounter
 (
 	.clk(clk_28),					// bus clock
@@ -61,6 +63,7 @@ agnus_beamcounter beamcounter
 	.rtg_ena(),
 	.rtg_linecompare(),
 	.hblank_out(),
+	.track_vsync(track_vsync),
 	.long_frame(long_frame)
 );
 
@@ -78,6 +81,7 @@ amber scandoubler
 	.htotal(htotal),         // video line length
 	.hires(1'b1),          // display is in hires mode (from bplcon0)
 	.long_frame(long_frame),
+	.track_vsync(track_vsync),
 	// osd
 	.osd_blank(1'b0),      // OSD overlay enable (blank normal video)
 	.osd_pixel(1'b0),      // OSD pixel(video) data

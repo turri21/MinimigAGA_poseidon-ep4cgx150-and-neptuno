@@ -61,17 +61,20 @@ int main(int argc, char **argv) {
 	int vsync_to_blank=-1;
 	int vsync_to_vsync=0;
 	int vsync_width=0;
+	int activearea=0;
 	while(frames) {
 		if(tb->vsync!=vsp) {
 			if(tb->vsync) {
 				printf("vs high - width: %d\n",vsync_width);
 				printf("vsync to vsync: %d\n",vsync_to_vsync);
+				activearea+=vsync_to_vsync;
 				vsync_to_blank=0;
 				vsync_to_vsync=0;
 			}
 			else {
 				vsync_width=0;
 				printf("vs low - blank to vsync: %d\n",blank_to_vsync);
+				activearea-=blank_to_vsync;
 			}
 			vsp=tb->vsync;
 			--frames;
@@ -81,8 +84,11 @@ int main(int argc, char **argv) {
 				blank_to_vsync=0;
 
 			if(!tb->blank && vsync_to_blank>0) {
-				printf("Blank low - vsync to blank: %d\n\n",vsync_to_blank);	
+				activearea-=vsync_to_vsync;
+				printf("Blank low - vsync to blank: %d\n",vsync_to_blank);	
+				printf("Active area: %d\n\n",activearea);
 				vsync_to_blank=-1;
+				activearea=0;
 			}
 			blankp=tb->blank;
 		}
