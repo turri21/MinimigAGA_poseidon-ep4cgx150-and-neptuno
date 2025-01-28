@@ -298,7 +298,7 @@ assign hbstop  =             varbeamen ? (displaydual ? hbstop_sh : hbstop_reg) 
 assign vtotal  =             varbeamen ? (displaydual ? vtotal_sh : vtotal_reg)  : displaypal ? VTOTAL_PAL_VAL : VTOTAL_NTSC_VAL;
 assign vsstrt  = varvsyen && varbeamen ? (displaydual ? vsstrt_sh : vsstrt_reg)  : VSSTRT_VAL;
 assign vsstop  = varvsyen && varbeamen ? (displaydual ? vsstop_sh : vsstop_reg)  : VSSTOP_VAL;
-assign vbstrt  = varvben  && varbeamen ? (displaydual ? vbstrt_sh : vbstrt_reg)  : (track_vsync & long_frame) ? VBSTRT_VAL + 1 : VBSTRT_VAL;
+assign vbstrt  = varvben  && varbeamen ? (displaydual ? vbstrt_sh : vbstrt_reg)  : (track_vsync && lace) ? vtotal : VBSTRT_VAL;
 assign vbstop  = varvben  && varbeamen ? (displaydual ? vbstop_sh : vbstop_reg)  : displaypal ? VBSTOP_PAL_VAL : VBSTOP_NTSC_VAL;
 
 assign htotal_out    = htotal;
