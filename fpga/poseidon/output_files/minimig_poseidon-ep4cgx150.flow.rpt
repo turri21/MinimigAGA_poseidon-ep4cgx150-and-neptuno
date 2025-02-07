@@ -1,0 +1,166 @@
+Flow report for minimig_poseidon-ep4cgx150
+Thu Feb 06 18:09:57 2025
+Quartus Prime Version 17.0.2 Build 602 07/19/2017 SJ Lite Edition
+
+
+---------------------
+; Table of Contents ;
+---------------------
+  1. Legal Notice
+  2. Flow Summary
+  3. Flow Settings
+  4. Flow Non-Default Global Settings
+  5. Flow Elapsed Time
+  6. Flow OS Summary
+  7. Flow Log
+  8. Flow Messages
+  9. Flow Suppressed Messages
+
+
+
+----------------
+; Legal Notice ;
+----------------
+Copyright (C) 2017  Intel Corporation. All rights reserved.
+Your use of Intel Corporation's design tools, logic functions 
+and other software and tools, and its AMPP partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Intel Program License 
+Subscription Agreement, the Intel Quartus Prime License Agreement,
+the Intel MegaCore Function License Agreement, or other 
+applicable license agreement, including, without limitation, 
+that your use is for the sole purpose of programming logic 
+devices manufactured by Intel and sold by Intel or its 
+authorized distributors.  Please refer to the applicable 
+agreement for further details.
+
+
+
++----------------------------------------------------------------------------------+
+; Flow Summary                                                                     ;
++------------------------------------+---------------------------------------------+
+; Flow Status                        ; Successful - Thu Feb 06 18:09:46 2025       ;
+; Quartus Prime Version              ; 17.0.2 Build 602 07/19/2017 SJ Lite Edition ;
+; Revision Name                      ; minimig_poseidon-ep4cgx150                  ;
+; Top-level Entity Name              ; minimig_mist_top                            ;
+; Family                             ; Cyclone IV GX                               ;
+; Device                             ; EP4CGX150DF27I7                             ;
+; Timing Models                      ; Final                                       ;
+; Total logic elements               ; 24,615 / 149,760 ( 16 % )                   ;
+;     Total combinational functions  ; 20,667 / 149,760 ( 14 % )                   ;
+;     Dedicated logic registers      ; 12,478 / 149,760 ( 8 % )                    ;
+; Total registers                    ; 12531                                       ;
+; Total pins                         ; 81 / 426 ( 19 % )                           ;
+; Total virtual pins                 ; 0                                           ;
+; Total memory bits                  ; 450,400 / 6,635,520 ( 7 % )                 ;
+; Embedded Multiplier 9-bit elements ; 30 / 720 ( 4 % )                            ;
+; Total GXB Receiver Channel PCS     ; 0 / 8 ( 0 % )                               ;
+; Total GXB Receiver Channel PMA     ; 0 / 8 ( 0 % )                               ;
+; Total GXB Transmitter Channel PCS  ; 0 / 8 ( 0 % )                               ;
+; Total GXB Transmitter Channel PMA  ; 0 / 8 ( 0 % )                               ;
+; Total PLLs                         ; 2 / 8 ( 25 % )                              ;
++------------------------------------+---------------------------------------------+
+
+
++------------------------------------------------+
+; Flow Settings                                  ;
++-------------------+----------------------------+
+; Option            ; Setting                    ;
++-------------------+----------------------------+
+; Start date & time ; 02/06/2025 18:03:08        ;
+; Main task         ; Compilation                ;
+; Revision Name     ; minimig_poseidon-ep4cgx150 ;
++-------------------+----------------------------+
+
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Flow Non-Default Global Settings                                                                                                                              ;
++--------------------------------------------------------+-----------------------------------------+----------------------------+------------------+------------+
+; Assignment Name                                        ; Value                                   ; Default Value              ; Entity Name      ; Section Id ;
++--------------------------------------------------------+-----------------------------------------+----------------------------+------------------+------------+
+; ADD_PASS_THROUGH_LOGIC_TO_INFERRED_RAMS                ; Off                                     ; On                         ; --               ; --         ;
+; AUTO_GLOBAL_MEMORY_CONTROLS                            ; -- (Not supported for targeted family)  ; Off                        ; --               ; --         ;
+; AUTO_MERGE_PLLS                                        ; Off                                     ; On                         ; --               ; --         ;
+; BLOCK_RAM_AND_MLAB_EQUIVALENT_PAUSED_READ_CAPABILITIES ; -- (Not supported for targeted family)  ; Care                       ; --               ; --         ;
+; COMPILER_SIGNATURE_ID                                  ; 123719791808553.173885778817284         ; --                         ; --               ; --         ;
+; ENABLE_CLOCK_LATENCY                                   ; On                                      ; Off                        ; --               ; --         ;
+; ENABLE_RECOVERY_REMOVAL_ANALYSIS                       ; On                                      ; Off                        ; --               ; --         ;
+; FINAL_PLACEMENT_OPTIMIZATION                           ; Always                                  ; Automatically              ; --               ; --         ;
+; FITTER_EFFORT                                          ; Standard Fit                            ; Auto Fit                   ; --               ; --         ;
+; FMAX_REQUIREMENT                                       ; 101.58 MHz                              ; --                         ; --               ; --         ;
+; IGNORE_CLOCK_SETTINGS                                  ; On                                      ; Off                        ; --               ; --         ;
+; IGNORE_LCELL_BUFFERS                                   ; On                                      ; Off                        ; --               ; --         ;
+; MAX_CORE_JUNCTION_TEMP                                 ; 85                                      ; --                         ; --               ; --         ;
+; MIN_CORE_JUNCTION_TEMP                                 ; 0                                       ; --                         ; --               ; --         ;
+; MISC_FILE                                              ; ../../rtl/poseidon/amiga_clk_altera.ppf ; --                         ; --               ; --         ;
+; MISC_FILE                                              ; clock27_bb.v                            ; --                         ; --               ; --         ;
+; MISC_FILE                                              ; clock27.ppf                             ; --                         ; --               ; --         ;
+; NUM_PARALLEL_PROCESSORS                                ; 8                                       ; --                         ; --               ; --         ;
+; OPTIMIZATION_MODE                                      ; High Performance Effort                 ; Balanced                   ; --               ; --         ;
+; OPTIMIZE_POWER_DURING_FITTING                          ; Off                                     ; Normal compilation         ; --               ; --         ;
+; PARTITION_COLOR                                        ; -- (Not supported for targeted family)  ; --                         ; minimig_mist_top ; Top        ;
+; PARTITION_FITTER_PRESERVATION_LEVEL                    ; -- (Not supported for targeted family)  ; --                         ; minimig_mist_top ; Top        ;
+; PARTITION_NETLIST_TYPE                                 ; -- (Not supported for targeted family)  ; --                         ; minimig_mist_top ; Top        ;
+; PHYSICAL_SYNTHESIS_COMBO_LOGIC                         ; On                                      ; Off                        ; --               ; --         ;
+; PHYSICAL_SYNTHESIS_REGISTER_RETIMING                   ; On                                      ; Off                        ; --               ; --         ;
+; PLACEMENT_EFFORT_MULTIPLIER                            ; 4.0                                     ; 1.0                        ; --               ; --         ;
+; PRE_MAPPING_RESYNTHESIS                                ; On                                      ; Off                        ; --               ; --         ;
+; PROJECT_OUTPUT_DIRECTORY                               ; output_files                            ; --                         ; --               ; --         ;
+; ROUTER_EFFORT_MULTIPLIER                               ; 2.0                                     ; 1.0                        ; --               ; --         ;
+; ROUTER_TIMING_OPTIMIZATION_LEVEL                       ; MAXIMUM                                 ; Normal                     ; --               ; --         ;
+; TCO_REQUIREMENT                                        ; 5 ns                                    ; --                         ; --               ; --         ;
+; TH_REQUIREMENT                                         ; 5 ns                                    ; --                         ; --               ; --         ;
+; TOP_LEVEL_ENTITY                                       ; minimig_mist_top                        ; minimig_poseidon-ep4cgx150 ; --               ; --         ;
+; TPD_REQUIREMENT                                        ; 5 ns                                    ; --                         ; --               ; --         ;
+; TSU_REQUIREMENT                                        ; 5 ns                                    ; --                         ; --               ; --         ;
+; VERILOG_MACRO                                          ; MINIMIG_I2S_AUDIO=1                     ; --                         ; --               ; --         ;
+; VERILOG_MACRO                                          ; MINIMIG_USE_MIDI_PINS=1                 ; --                         ; --               ; --         ;
+; VERILOG_MACRO                                          ; MINIMIG_TOCCATA=1                       ; --                         ; --               ; --         ;
+; VERILOG_MACRO                                          ; MINIMIG_CDDA=1                          ; --                         ; --               ; --         ;
+; VERILOG_MACRO                                          ; USE_AUDIO_IN=1                          ; --                         ; --               ; --         ;
+; VERILOG_MACRO                                          ; USE_CLOCK_50=1                          ; --                         ; --               ; --         ;
+; VERILOG_MACRO                                          ; BIG_OSD=1                               ; --                         ; --               ; --         ;
+; VERILOG_MACRO                                          ; MINIMIG_DRIVESOUNDS=1                   ; --                         ; --               ; --         ;
+; VERILOG_MACRO                                          ; MINIMIG_CONTROL_BOARD=1                 ; --                         ; --               ; --         ;
+; VERILOG_MACRO                                          ; MINIMIG_AUX_AUDIO=1                     ; --                         ; --               ; --         ;
+; VERILOG_MACRO                                          ; MINIMIG_CAPTURE_SYNC=1                  ; --                         ; --               ; --         ;
++--------------------------------------------------------+-----------------------------------------+----------------------------+------------------+------------+
+
+
++-------------------------------------------------------------------------------------------------------------------------------+
+; Flow Elapsed Time                                                                                                             ;
++---------------------------+--------------+-------------------------+---------------------+------------------------------------+
+; Module Name               ; Elapsed Time ; Average Processors Used ; Peak Virtual Memory ; Total CPU Time (on all processors) ;
++---------------------------+--------------+-------------------------+---------------------+------------------------------------+
+; Analysis & Synthesis      ; 00:03:16     ; 1.0                     ; 5302 MB             ; 00:03:43                           ;
+; Fitter                    ; 00:03:02     ; 1.1                     ; 6571 MB             ; 00:06:59                           ;
+; Assembler                 ; 00:00:09     ; 1.0                     ; 4831 MB             ; 00:00:09                           ;
+; TimeQuest Timing Analyzer ; 00:00:09     ; 1.4                     ; 5206 MB             ; 00:00:12                           ;
+; Total                     ; 00:06:36     ; --                      ; --                  ; 00:11:03                           ;
++---------------------------+--------------+-------------------------+---------------------+------------------------------------+
+
+
++-----------------------------------------------------------------------------------------+
+; Flow OS Summary                                                                         ;
++---------------------------+------------------+------------+------------+----------------+
+; Module Name               ; Machine Hostname ; OS Name    ; OS Version ; Processor type ;
++---------------------------+------------------+------------+------------+----------------+
+; Analysis & Synthesis      ; DESKTOP-570PRUL  ; Windows 10 ; 10.0       ; x86_64         ;
+; Fitter                    ; DESKTOP-570PRUL  ; Windows 10 ; 10.0       ; x86_64         ;
+; Assembler                 ; DESKTOP-570PRUL  ; Windows 10 ; 10.0       ; x86_64         ;
+; TimeQuest Timing Analyzer ; DESKTOP-570PRUL  ; Windows 10 ; 10.0       ; x86_64         ;
++---------------------------+------------------+------------+------------+----------------+
+
+
+------------
+; Flow Log ;
+------------
+quartus_map --read_settings_files=on --write_settings_files=off minimig_poseidon-ep4cgx150 -c minimig_poseidon-ep4cgx150
+quartus_fit --read_settings_files=off --write_settings_files=off minimig_poseidon-ep4cgx150 -c minimig_poseidon-ep4cgx150
+quartus_asm --read_settings_files=off --write_settings_files=off minimig_poseidon-ep4cgx150 -c minimig_poseidon-ep4cgx150
+quartus_sta minimig_poseidon-ep4cgx150 -c minimig_poseidon-ep4cgx150
+
+
+

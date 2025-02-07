@@ -1,0 +1,18 @@
+Analysis & Synthesis Status : Successful - Thu Feb 06 18:06:27 2025
+Quartus Prime Version : 17.0.2 Build 602 07/19/2017 SJ Lite Edition
+Revision Name : minimig_poseidon-ep4cgx150
+Top-level Entity Name : minimig_mist_top
+Family : Cyclone IV GX
+Total logic elements : 26,906
+    Total combinational functions : 20,656
+    Dedicated logic registers : 12,663
+Total registers : 12663
+Total pins : 81
+Total virtual pins : 0
+Total memory bits : 450,400
+Embedded Multiplier 9-bit elements : 30
+Total GXB Receiver Channel PCS : 0
+Total GXB Receiver Channel PMA : 0
+Total GXB Transmitter Channel PCS : 0
+Total GXB Transmitter Channel PMA : 0
+Total PLLs : 2
