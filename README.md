@@ -2,6 +2,9 @@
 
 Temporarily using a 2nd pll (clock27) to send a 27MHz input clock to the first pll (amiga_clk_altera).
 
+Toccata enabled.
+
+The following modules are required to synthesize the core: [EightThirtyTwo](https://github.com/robinsonb5/EightThirtyTwo/), [TG68K](https://github.com/TobiFlex/TG68K.C), [fpga-toccata](https://github.com/ranzbak/fpga-toccata)
 ___
 # Minimig AGA
 For Turbo Chameleon TC64, MiST and other platforms.
