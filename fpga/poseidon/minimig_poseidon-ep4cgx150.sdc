@@ -4,7 +4,7 @@ set_time_format -unit ns -decimal_places 3
 
 
 #create clocks
-create_clock -name pll_in_clk -period 20 [get_ports {CLOCK_50}]
+create_clock -name "CLOCK_50" -period 20 [get_ports {CLOCK_50}]
 create_clock -name spi_clk -period 41.666 -waveform { 20.8 41.666 } [get_ports {SPI_SCK}]
 
 # pll clocks
