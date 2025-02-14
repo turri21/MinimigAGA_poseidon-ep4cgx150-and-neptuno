@@ -217,10 +217,16 @@ set_location_assignment PIN_B1 -to BUS_D[6]
 set_location_assignment PIN_C1 -to BUS_[14]
 set_location_assignment PIN_E1 -to BUS_D[7]
 set_location_assignment PIN_E2 -to BUS_[15]
-set_location_assignment PIN_D1 -to BUS_TX
+
+#set_location_assignment PIN_D1 -to BUS_TX
 set_location_assignment PIN_AF4 -to BUS_TX2
-set_location_assignment PIN_A3 -to BUS_RX
+#set_location_assignment PIN_A3 -to BUS_RX
 set_location_assignment PIN_AE5 -to BUS_RX2
+
+
+set_location_assignment PIN_B2 -to BUS_TX
+set_location_assignment PIN_C5 -to BUS_RX
+
 set_location_assignment PIN_B4 -to BUS_USER1
 set_location_assignment PIN_B5 -to BUS_USER5
 set_location_assignment PIN_B7 -to BUS_USER2
@@ -351,6 +357,8 @@ set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to VGA_HS
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to VGA_VS
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to LED
 
+set_global_assignment -name VERILOG_MACRO "MINIMIG_ALTERA=1"
+set_global_assignment -name VERILOG_MACRO "MINIMIG_CYCLONE4=1"
 set_global_assignment -name VERILOG_MACRO "MINIMIG_I2S_AUDIO=1"
 set_global_assignment -name VERILOG_MACRO "MINIMIG_USE_MIDI_PINS=1"
 set_global_assignment -name VERILOG_MACRO "MINIMIG_TOCCATA=1"
@@ -375,7 +383,7 @@ set_global_assignment -name VHDL_FILE ../../EightThirtyTwo/RTL/debug_fifo.vhd
 set_global_assignment -name VHDL_FILE ../../EightThirtyTwo/RTL/altera/debug_bridge_jtag.vhd
 set_global_assignment -name VHDL_FILE ../../EightThirtyTwo/RTL/altera/debug_virtualjtag.vhd
 set_global_assignment -name VERILOG_FILE ../../rtl/jtag/profile_cpu.v
-set_global_assignment -name SDC_FILE ../mist/minimig_mist.sdc
+set_global_assignment -name SDC_FILE "minimig_poseidon-ep4cgx150.sdc"
 set_global_assignment -name SDC_FILE ../mist/minimig_mist_sdram2.sdc
 set_global_assignment -name QIP_FILE ../../rtl/mist/vidclkcntrl.qip
 set_global_assignment -name VERILOG_FILE ../../rtl/soc/minimig_mist_top.v
