@@ -217,15 +217,13 @@ set_location_assignment PIN_B1 -to BUS_D[6]
 set_location_assignment PIN_C1 -to BUS_[14]
 set_location_assignment PIN_E1 -to BUS_D[7]
 set_location_assignment PIN_E2 -to BUS_[15]
-
-#set_location_assignment PIN_D1 -to BUS_TX
+set_location_assignment PIN_D1 -to BUS_TX
 set_location_assignment PIN_AF4 -to BUS_TX2
-#set_location_assignment PIN_A3 -to BUS_RX
+set_location_assignment PIN_A3 -to BUS_RX
 set_location_assignment PIN_AE5 -to BUS_RX2
 
-
-set_location_assignment PIN_B2 -to BUS_TX
-set_location_assignment PIN_C5 -to BUS_RX
+set_location_assignment PIN_B2 -to MIDI_OUT
+set_location_assignment PIN_C5 -to MIDI_IN
 
 set_location_assignment PIN_B4 -to BUS_USER1
 set_location_assignment PIN_B5 -to BUS_USER5
