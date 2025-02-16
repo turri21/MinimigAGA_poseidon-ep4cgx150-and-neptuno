@@ -4,7 +4,7 @@
 /*                                          */
 /* 2012-2015, rok.krajnc@gmail.com          */
 /********************************************/
-`default_nettype none
+
 
 // board type define
 `define MINIMIG_MIST
@@ -17,11 +17,9 @@
 
 module minimig_mist_top (
   // clock inputs
-//  input  wire [  2-1:0] CLOCK_32,   // 32 MHz
-//  input  wire [  2-1:0] CLOCK_27,   // 27 MHz
-//  input  wire [  2-1:0] CLOCK_50,   // 50 MHz
-  input  wire           CLOCK_50,   // 50 MHz
-
+  input  wire [  2-1:0] CLOCK_32,   // 32 MHz
+  input  wire [  2-1:0] CLOCK_27,   // 27 MHz
+  input  wire [  2-1:0] CLOCK_50,   // 50 MHz
   // LED outputs
   output wire           LED,        // LED Yellow
   // UART
@@ -124,6 +122,7 @@ localparam VGA_WIDTH = 6;
 `endif
 
 // clock
+wire           pll_in_clk;
 wire           clk_114;
 wire           clk_28;
 wire           clk_vid;
@@ -301,15 +300,8 @@ assign SDRAM2_DQMH      = sdram2_dqm[1];
 assign SDRAM2_BA        = sdram2_ba;
 `endif
 
-wire clk_27mhz, pll27_locked;
-
-clock27 pll_inst (
-	.areset(pll_rst),
-	.inclk0(CLOCK_50),       // Connect system clock input to PLL input
-   .c0(clk_27mhz),     // Output 27 MHz clock
-   .locked(pll27_locked) // Output lock status
-);
-
+// clock
+assign pll_in_clk       = CLOCK_27[0];
 
 // reset
 assign pll_rst          = 1'b0;
@@ -326,13 +318,11 @@ assign force_csync      = ypbpr | (!no_csync & vga_selcsync);
 assign clock_override   = core_status[2:1];
 assign clock_ntsc       = |clock_override ? clock_override[1] : ntsc;
 
-
-
 //// amiga clocks ////
 amiga_clk amiga_clk (
   .rst          (pll_rst          ), // async reset input
   .ntsc         (clock_ntsc       ), // pal/ntsc clock select
-  .clk_in       (clk_27mhz       ), // input clock     ( 27.000000MHz)
+  .clk_in       (pll_in_clk       ), // input clock     ( 27.000000MHz)
   .clk_114      (clk_114          ), // output clock c0 (114.750000MHz)
   .clk_sdram    (SDRAM_CLK        ), // output clock c2 (114.750000MHz, -146.25 deg)
   .clk_28       (clk_28           ), // output clock c1 ( 28.687500MHz)
@@ -349,7 +339,7 @@ amiga_clk amiga_clk (
 amiga_clk amiga_clk2 (
   .rst          (pll_rst          ), // async reset input
   .ntsc         (clock_ntsc       ), // pal/ntsc clock select
-  .clk_in       (clk_27mhz       ), // input clock     ( 27.000000MHz)
+  .clk_in       (pll_in_clk       ), // input clock     ( 27.000000MHz)
   .clk_114      (                 ), // output clock c0 (114.750000MHz)
   .clk_sdram    (SDRAM2_CLK       ), // output clock c2 (114.750000MHz, -146.25 deg)
   .clk_28       (                 ), // output clock c1 ( 28.687500MHz)
