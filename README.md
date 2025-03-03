@@ -2,6 +2,14 @@
 
 The following modules are required to synthesize the core: [EightThirtyTwo](https://github.com/robinsonb5/EightThirtyTwo/), [TG68K](https://github.com/TobiFlex/TG68K.C), [fpga-toccata](https://github.com/ranzbak/fpga-toccata)
 
+To build the OSD firmware 832OSDAD.bin do these:
+
+cd MinimigAGA-MiST-TC64/EightThirtyTwo/
+make
+cd ..
+cd fw
+cd ctrl_832/
+make
 ___
 # Minimig AGA
 For Turbo Chameleon TC64, MiST and other platforms.
