@@ -1,6 +1,6 @@
 -=(Neptuno_notes)=-
 
-The following modules are required to synthesize the core: EightThirtyTwo, TG68K, fpga-toccata
+The following modules are required to synthesize the core: [EightThirtyTwo](https://github.com/robinsonb5/EightThirtyTwo/), [TG68K](https://github.com/TobiFlex/TG68K.C), [fpga-toccata](https://github.com/ranzbak/fpga-toccata)
 
 ___
 # Minimig AGA
