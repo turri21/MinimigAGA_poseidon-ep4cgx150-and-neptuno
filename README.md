@@ -6,6 +6,8 @@ Toccata enabled.
 
 The following modules are required to synthesize the core: [EightThirtyTwo](https://github.com/robinsonb5/EightThirtyTwo/), [TG68K](https://github.com/TobiFlex/TG68K.C), [fpga-toccata](https://github.com/ranzbak/fpga-toccata)
 
+___
+
 -=(Neptuno_notes)=-
 
 To build for neptuno use this [branch](https://github.com/turri21/MinimigAGA_poseidon-ep4cgx150-and-neptuno/tree/MinimigAGA_neptuno)
