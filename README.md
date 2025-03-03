@@ -2,13 +2,16 @@
 
 The following modules are required to synthesize the core: [EightThirtyTwo](https://github.com/robinsonb5/EightThirtyTwo/), [TG68K](https://github.com/TobiFlex/TG68K.C), [fpga-toccata](https://github.com/ranzbak/fpga-toccata)
 
-To build the OSD firmware 832OSDAD.bin do these:
+To build the OSD firmware "832OSDAD.bin" do these:
 
-cd MinimigAGA-MiST-TC64/EightThirtyTwo/
+cd MinimigAGA_poseidon-ep4cgx150-and-neptuno-MinimigAGA_neptuno/EightThirtyTwo/
+
 make
+
 cd ..
-cd fw
-cd ctrl_832/
+
+cd fw/ctrl_832/
+
 make
 ___
 # Minimig AGA
