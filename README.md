@@ -4,7 +4,7 @@ The following modules are required to synthesize the core: [EightThirtyTwo](http
 
 Note that after each core update it is adviced to rebuild the OSD firmware "832OSDAD.bin".
 
-To build the OSD firmware "832OSDAD.bin" enter these commands in a shell:
+To build the OSD firmware "832OSDAD.bin" enter the following commands in a shell:
 
 cd MinimigAGA_poseidon-ep4cgx150-and-neptuno-MinimigAGA_neptuno/EightThirtyTwo/
 
