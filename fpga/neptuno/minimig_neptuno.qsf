@@ -188,7 +188,7 @@ set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
 # Analysis & Synthesis Assignments
 # ================================
 set_global_assignment -name FAMILY "Cyclone IV E"
-set_global_assignment -name TOP_LEVEL_ENTITY neptuno_top
+set_global_assignment -name TOP_LEVEL_ENTITY minimig_neptuno_top
 set_global_assignment -name REMOVE_REDUNDANT_LOGIC_CELLS ON
 set_global_assignment -name AUTO_IMPLEMENT_IN_ROM ON
 set_global_assignment -name FLEX10K_OPTIMIZATION_TECHNIQUE AREA
