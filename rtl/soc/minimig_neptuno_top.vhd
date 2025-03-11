@@ -6,7 +6,7 @@ library work;
 use work.minimig_virtual_pkg.all;
 
 -- -----------------------------------------------------------------------
-entity neptuno_top is
+entity minimig_neptuno_top is
 	port
 	(
 		CLOCK_50	:	 IN STD_LOGIC;
@@ -60,7 +60,7 @@ entity neptuno_top is
 END entity;
 
 
-architecture RTL of neptuno_top is
+architecture RTL of minimig_neptuno_top is
    constant reset_cycles : integer := 131071;
 	
 -- System clocks
