@@ -1,3 +1,20 @@
+-=(Poseidon_notes)=-
+ 
+ Temporarily using a 2nd pll (clock27) to send a 27MHz input clock to the first pll (amiga_clk_altera).
+ 
+ Toccata enabled.
+ 
+ The following modules are required to synthesize the core: [EightThirtyTwo](https://github.com/robinsonb5/EightThirtyTwo/), [TG68K](https://github.com/TobiFlex/TG68K.C), [fpga-toccata](https://github.com/ranzbak/fpga-toccata)
+ 
+ ___
+ 
+ -=(Neptuno_notes)=-
+ 
+ To build for neptuno use this [branch](https://github.com/turri21/MinimigAGA_poseidon-ep4cgx150-and-neptuno/tree/MinimigAGA_neptuno)
+ 
+ The following modules are required to synthesize the core: [EightThirtyTwo](https://github.com/robinsonb5/EightThirtyTwo/), [TG68K](https://github.com/TobiFlex/TG68K.C), [fpga-toccata](https://github.com/ranzbak/fpga-toccata)
+ 
+ ___
 # Minimig AGA
 For Turbo Chameleon TC64, MiST and other platforms.
 (This core should be easily portable to any FPGA board with VGA out, PS/2 in, SD-card, about 25,000 logic elements, and a 16-bit wide SDRAM supporting 13x9 layout for 32 megabytes of RAM.)
