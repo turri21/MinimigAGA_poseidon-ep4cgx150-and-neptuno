@@ -1,3 +1,24 @@
+-=(Neptuno_notes)=-
+
+The following modules are required to synthesize the core: EightThirtyTwo, TG68K, fpga-toccata
+
+Note that after each core update it is adviced to rebuild the OSD firmware "832OSDAD.bin".
+
+To build the OSD firmware "832OSDAD.bin" enter the following commands in a shell:
+
+cd MinimigAGA_poseidon-ep4cgx150-and-neptuno-MinimigAGA_neptuno/EightThirtyTwo/
+
+make
+
+cd ..
+
+cd fw/ctrl_832/
+
+make
+
+The "832OSDAD.bin" should be placed at the root of the SD card.
+
+___
 # Minimig AGA
 For Turbo Chameleon TC64, MiST and other platforms.
 (This core should be easily portable to any FPGA board with VGA out, PS/2 in, SD-card, about 25,000 logic elements, and a 16-bit wide SDRAM supporting 13x9 layout for 32 megabytes of RAM.)
